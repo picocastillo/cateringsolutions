@@ -1,0 +1,8 @@
+<% a = f.object.afectado %>
+<tr class="<%= 'vencido' if a.vencido? %>">
+  <%= f.hidden_field :afectado_id %>
+  <td><%= link_to(a, comprobante_path(a)) %></td>
+  <td class="center"><%= a.fecha_vencimiento %></td>
+  <td class="right saldo"><%= a.saldo %></td>
+  <td><%= f.text_field :importe, size: 5, class: 'importe ', default: a.saldo %></td>
+</tr>

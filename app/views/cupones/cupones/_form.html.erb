@@ -1,0 +1,51 @@
+<%= modal 'form-modal', title: @cupon.new_record? ? 'Nuevo Cupón' : "Editando Cupón #{@cupon}" do %>
+  <%= simple_form_for @cupon, remote: true do |f| %>
+    <%= f.error_messages %>
+    <%= f.hidden_field :tienda_id %>
+
+    <% if @cupon.new_record? %>
+      <div class="col-sm-4">
+        <div class="form-group integer optional">
+          <label class="integer optional">Cantidad</label>
+          <input type="number" name="cantidad" id="cupon_cantidad" value="1" min="1" max="500" class="form-control numeric integer optional">
+          <small class="form-text text-muted">Cantidad de cupones a crear</small>
+        </div>
+      </div>
+    <% end %>
+
+    <%= f.input :nombre, wrapper_html: { class: 'col-sm-8' }, label: 'Nombre / Descripción', placeholder: 'Ej: Descuento bienvenida, Promo verano...', hint: 'Nombre visible en el cupón impreso y al seleccionarlo' %>
+
+    <%= f.input :tipo_descuento, collection: [['Importe Fijo', 'importe'], ['Porcentaje con Límite', 'porcentaje']], label: 'Tipo de Descuento', wrapper_html: { class: 'col-sm-4' }, input_html: { id: 'cupon_tipo_descuento' } %>
+    <%= f.input :importe, wrapper_html: { class: 'col-sm-4', id: 'campo_importe' }, label: 'Importe ($)', input_html: { step: '0.01', min: 0 } %>
+    <%= f.input :porcentaje, wrapper_html: { class: 'col-sm-4', id: 'campo_porcentaje', style: 'display:none' }, label: 'Porcentaje (%)', input_html: { step: '0.01', min: 0, max: 100 } %>
+    <%= f.input :limite_bonificacion, wrapper_html: { class: 'col-sm-4', id: 'campo_limite', style: 'display:none' }, label: 'Límite Bonificación ($)', input_html: { step: '0.01', min: 0 } %>
+
+    <div class="col-sm-12"><hr style="margin: 5px 0 15px;"></div>
+
+    <%= f.input :fecha_vencimiento, as: :string, label: 'Fecha de Vencimiento', input_html: { class: 'singledate' }, wrapper_html: { class: 'col-sm-4' }, hint: 'Si se deja vacío se asignan 90 días' %>
+
+    <div class="col-md-12">
+      <%= f.submit (@cupon.new_record? ? 'Crear' : 'Guardar'), class: "btn btn-success waves-effect waves-light m-r-10" %>
+      <%= link_to('Eliminar', cupon_path(@cupon), class: "btn btn-danger waves-effect waves-light m-r-10", method: :delete, remote: true, data: { confirm: "¿Está seguro que desea eliminar el cupón '#{@cupon}'?" }) if !@cupon.new_record? && can?(:destroy, @cupon) %>
+      <%= link_to('Cerrar', nil, class: "btn btn-default waves-effect waves-light m-r-10", data: { dismiss: 'modal' }) %>
+    </div>
+  <% end %>
+
+  <script>
+    $(function() {
+      // Toggle tipo descuento fields
+      function toggleTipoDescuento() {
+        var tipo = $('#cupon_tipo_descuento').val();
+        if (tipo === 'importe') {
+          $('#campo_importe').show();
+          $('#campo_porcentaje, #campo_limite').hide();
+        } else {
+          $('#campo_importe').hide();
+          $('#campo_porcentaje, #campo_limite').show();
+        }
+      }
+      toggleTipoDescuento();
+      $('#cupon_tipo_descuento').on('change', toggleTipoDescuento);
+    });
+  </script>
+<% end %>

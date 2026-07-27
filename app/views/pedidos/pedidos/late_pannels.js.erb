@@ -1,0 +1,16 @@
+$('#cargar-panels-later').remove();
+$("#panels-later-container").append("<%= j render 'later_pannels' %>");
+function sliders(){
+  $('body > .tooltip').remove();
+  initProductSliders();
+  $.onmount();
+};
+Promise.all([sliders()]);
+<% if @pedido.busqueda.present? %>
+  keyword = $("#pedido_busqueda").val();
+  $(".inner-details-card").unmark({
+    done: function() {
+      $(".inner-details-card").mark(keyword);
+    }
+  });
+<% end %>

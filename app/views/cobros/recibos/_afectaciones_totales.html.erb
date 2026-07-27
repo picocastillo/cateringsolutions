@@ -1,0 +1,14 @@
+<div class="card totales">
+  <div class="row mb-2 mt-2">
+    <% ta = @recibo.afectaciones.map(&:importe).sum %>
+    <% ta = ta == 0 ? Danconia::Money.new(0) : ta %>
+    <% tc = @recibo.medios_pago.map(&:importe).sum %>
+    <% tc = tc == 0 ? Danconia::Money.new(0) : tc %>
+    <% td = @recibo.afectaciones.map(&:afectado).map(&:saldo).sum %>
+    <% td = td == 0 ? Danconia::Money.new(0) : td %>
+    <% sd = tc > td ? ta - tc  : td - ta %>
+    <div class="col-md-4 text-center totalizador">Total Afectado<br><%= ta %></div>
+    <div class="col-md-4 text-center totalizador">Total Cobrado<br><%= tc %></div>
+    <div class="col-md-4 text-center totalizador<%= ' totalizador-warning' if sd != 0 %><%= ' totalizador-success' if sd == 0 && tc > 0 %>">Saldo<br><%= sd %></div>
+  </div>
+</div>

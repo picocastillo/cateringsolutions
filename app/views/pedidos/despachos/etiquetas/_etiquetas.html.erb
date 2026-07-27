@@ -1,0 +1,37 @@
+<% if @query.ver_aceptados_etiquetas.present? && @query.ver_aceptados_etiquetas == "true" %>
+  <div class="ayuda m-t-10">
+    <h6 style="font-weight: 600">ADVERTENCIA: Está visualizando pedidos Aceptados y Confirmados. Los pedidos en estado Aceptado pueden sufrir modificaciones hasta la hora de corte de cada cliente. Por lo cuál podrían quedar pedidos sin despachar o mal despachados si surgieran modificaciones o nuevos pedidos antes de ese horario.</h6>
+  </div>
+<% end %>
+<div class="ajax-data-container">
+  <% ninguno = true %>
+  <% despachos_by_cuenta = @despachos.group_by { |ps| ps.pedido.cuenta_id } %>
+  <% @query.clientes_lista.includes(:cuentas).each do |c| %>
+    <% cuenta_ids = c.cuentas.map(&:id) %>
+    <% prods = cuenta_ids.flat_map { |cid| despachos_by_cuenta[cid] || [] } %>
+    <% if prods.any? %>
+      <% ninguno = false %>
+      <div style="background: whitesmoke;padding: 10px 10px 1px 10px;margin-top: 5px;">
+        <h4><%= c.to_s %></h4>
+        <h6 class="card-subtitle">Cuentas: <%= @query.cuentas_ids.present? ? c.cuentas.select{|x| @query.cuentas_ids.split(',').map(&:to_i).include?(x.id) }.sort_by(&:nombre).map(&:nombre).join(', ') : c.cuentas.sort_by(&:nombre).map(&:nombre).join(', ') %></h6>
+      </div>
+      <div class="table-responsive">
+        <%= table_for prods.sort_by{|x| [(x.pedido.direccion_envio.present? ? x.pedido.direccion_envio : ''), x.pedido.cuenta.nombre, (x.pedido.usuario ? x.pedido.usuario.nombre : ''), x.producto.categoria.codigo, x.producto.nombre]}, id: 'pedidos-del-dia' do |t| %>
+          <% t.column(:cuenta, header: 'Cliente', class: 'text-left') {|x| link_to discontinuado(x.pedido.cuenta.cliente, x.pedido.cuenta.cliente), x.pedido.cuenta.cliente } %>
+          <% t.column(:cuenta, header: 'Cuenta', class: 'text-left') {|x| x.pedido.cuenta.nombre } if @query.agrupar_por_id > 1 %>
+          <% t.column(:cuenta, header: 'Usuario', class: 'text-left') {|x| x.pedido.usuario ? link_to(discontinuado(x.pedido.usuario, x.pedido.usuario.nombre), x.pedido.usuario) : x.pedido.para } if @query.agrupar_por_id > 1 %>
+          <% t.column(:cuenta, header: 'Legajo', class: 'text-left') {|x| x.pedido.usuario.try &:legajo } if @query.agrupar_por_id > 1 %>
+          <% t.column(:cuenta, header: 'Enviar a', class: 'text-left') { |x| x.pedido.enviar_a_string } %>
+          <% t.column(:producto, class: 'text-left') { |x| x.nombre_carrito }%>
+          <% t.column(:cantidad, header: 'Cantidad', class: 'text-right', footer: "<span style='font-weight: bold'>Total: </span> #{prods.sum { |x| x.cantidad_sumada.to_i }}".html_safe) { |x| x.cantidad_sumada } %>
+          <% t.column(:total, header: 'Importe', class: 'text-right', footer: "<span style='font-weight: bold'>Total: </span> #{Danconia::Money.new(prods.sum { |x| x.total_sumado.to_f })}".html_safe) { |t| Danconia::Money.new(t.total_sumado) } %>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+  <% if ninguno %>
+    <div style="text-align:center">
+      <h5>No hay pedidos en estado Confirmado este día.</h5>
+    </div>
+  <% end %>
+</div>

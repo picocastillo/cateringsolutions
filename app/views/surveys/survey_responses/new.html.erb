@@ -1,0 +1,126 @@
+<% content_for :page_id, 'survey-response-new' %>
+
+<div class="container-fluid mt-4" style="padding-top: 80px;">
+      <div class="card">
+        <div class="col-12 d-flex justify-content-between align-items-center" style="padding: 0.75rem 1.25rem !important;">
+          <h4 class="card-title mb-0">
+            <i class="fa fa-clipboard text-success"></i>
+            <%= @survey.title %>
+          </h4>
+          <% if current_user.cliente? %>
+            <button onclick="history.go(-1)" class='btn btn-secondary btn-sm'>
+              <i class="fa fa-arrow-left"></i>
+              Volver a Pedidos
+            </button>
+          <% else %>
+            <button onclick="history.go(-1)" class='btn btn-secondary btn-sm'>
+              <i class="fa fa-arrow-left"></i>
+              Volver
+            </button>
+          <% end %>
+        </div>
+        
+        <div class="card-body">
+          <% if @survey.description.present? %>
+            <div class="alert alert-info pt-4">
+              <%= simple_format(@survey.description) %>
+            </div>
+          <% end %>
+          
+          <% if @survey_response.present? && @survey_response.errors.any? %>
+            <div class="alert alert-danger">
+              <h6>Se encontraron errores:</h6>
+              <ul class="mb-0">
+                <% @survey_response.errors.full_messages.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+          
+          <%= form_with url: survey_survey_responses_path(@survey), local: true, method: :post do |form| %>
+            <%= hidden_field_tag "response[_ensure_presence]", "1" %>
+            <% @survey.questions.each_with_index do |question, index| %>
+              <div class="form-group mb-4">
+                <label class="form-label h6">
+                  <span class="badge badge-light mr-2"><%= index + 1 %></span>
+                  <%= question.text %>
+                  <% if question.required? %>
+                    <span class="text-danger ml-1">*</span>
+                  <% end %>
+                </label>
+                
+                <% case question.question_type %>
+                <% when 'text' %>
+                  <%= text_area_tag "response[#{question.id}]", "", 
+                                    class: "form-control", 
+                                    rows: 3, 
+                                    placeholder: "Escriba su respuesta aquí..." %>
+                
+                <% when 'multiple_choice' %>
+                  <% if question.answers.any? %>
+                    <% question.answers.each do |answer| %>
+                      <div class="custom-control custom-radio mb-2">
+                        <%= radio_button_tag "response[#{question.id}]", answer.text,
+                                             false,
+                                             class: "custom-control-input", 
+                                             id: "question_#{question.id}_answer_#{answer.id}" %>
+                        <%= label_tag "question_#{question.id}_answer_#{answer.id}", 
+                                      answer.text, 
+                                      class: "custom-control-label" %>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <p class="text-muted">Esta pregunta no tiene opciones configuradas.</p>
+                  <% end %>
+                
+                <% when 'scale' %>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">1 (Muy malo)</small>
+                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                      <% (1..5).each do |value| %>
+                        <label class="btn btn-outline-primary">
+                          <%= radio_button_tag "response[#{question.id}]", value,
+                                               false,
+                                               autocomplete: "off", 
+                                               id: "response_#{question.id}_#{value}" %>
+                          <%= value %>
+                        </label>
+                      <% end %>
+                    </div>
+                    <small class="text-muted">5 (Excelente)</small>
+                  </div>
+                <% end %>
+              </div>
+              
+              <% unless index == @survey.questions.count - 1 %>
+                <hr class="my-4">
+              <% end %>
+            <% end %>
+            
+            <div class="form-actions mt-5">
+              <div class="d-flex justify-content-between">
+                <% if current_user.cliente? %>
+                  <button onclick="history.go(-1)" class='btn btn-secondary'>
+                    <i class="fa fa-times"></i>
+                    Cancelar
+                  </button>
+                <% else %>
+                  <button onclick="history.go(-1)" class='btn btn-secondary'>
+                    <i class="fa fa-times"></i>
+                    Cancelar
+                  </button>
+                <% end %>
+                
+                <%= form.submit "Enviar Respuestas", class: 'btn btn-primary btn-lg' do %>
+                  <i class="fa fa-send"></i>
+                  Enviar Respuestas
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

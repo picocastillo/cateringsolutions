@@ -1,0 +1,21 @@
+<div style="padding: 1px 2px; width: 100%; box-sizing: border-box;">
+  <div style="text-align: center; margin-bottom: 1px;">
+    <%= inline_public_image("/#{cupon.tienda.dominio}_logov22.png", height: 31) %>
+  </div>
+  <div style="font-size: 8.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #333;">
+    <%= cupon.nombre.present? ? cupon.nombre.upcase : 'CUPÓN DE DESCUENTO' %>
+  </div>
+
+  <div style="margin: 2px 0; padding: 3px; border: 1px solid #333; background-color: #f5f5f5;">
+    <div style="font-size: 13pt; font-weight: bold; letter-spacing: 2px; color: #000;">
+      <%= cupon.codigo %>
+    </div>
+  </div>
+
+  <table width="100%" style="font-size: 6pt; color: #555;">
+    <tr>
+      <td style="text-align: left; font-weight: bold;">Descuento: <%= cupon.descuento_descripcion %></td>
+      <td style="text-align: right; font-weight: bold;">Válido hasta: <%= cupon.fecha_vencimiento&.strftime('%d/%m/%Y') %></td>
+    </tr>
+  </table>
+</div>

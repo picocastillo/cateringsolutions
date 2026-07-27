@@ -1,0 +1,16 @@
+<% medios_pago_count = @comprobante.pedido&.venta_mostrador? ? @comprobante.pedido.medios_pago.count : 0 %>
+<% descuento_lines = (@comprobante.pedido&.tiene_descuento_cupon? || @comprobante.pedido&.tiene_descuento_vm?) ? 3 : 0 %>
+<% content_for :styles do %>
+  @page {
+    size: 80mm <%= (92+(@comprobante.renglones.count*10*0.92)+(medios_pago_count*10*0.92)+(descuento_lines*10*0.92)).to_s %>mm;
+    margin: 0 2mm;
+  }
+
+
+  body {
+    font-family: Calibri;
+  }
+<% end %>
+
+
+<%= render 'comprobante', comprobante: @comprobante, comprobante_counter: 0 %>

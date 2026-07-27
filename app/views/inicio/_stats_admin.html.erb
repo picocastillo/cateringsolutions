@@ -1,0 +1,195 @@
+<%= cache "inicio-stats-admin-#{tienda_activa.id}-#{current_user.local_activo&.id}-#{Time.zone.today}", skip_digest: true do %>
+<%
+  # Net revenue from comprobantes (facturas - notas de crédito) grouped by day
+  comprobantes_scope = Ventas::Facturacion::Comprobante
+    .where(tienda_id: tienda_activa.id, estado_id: [2, 3])
+    .where('fecha_emision > ?', '2020-07-01')
+    .where('fecha_emision <= ?', Date.current)
+
+  comprobantes_scope = comprobantes_scope.where(local_id: current_user.local_activo.id) if current_user.tienda_activa.multiple_locales && current_user.local_activo
+
+  daily_data = comprobantes_scope
+    .group(Arel.sql("DATE(fecha_emision)"))
+    .group(:type)
+    .pluck(Arel.sql("DATE(fecha_emision), type, SUM(total)"))
+
+  daily_net_pesos = {}
+  daily_data.each do |fecha, type, total|
+    daily_net_pesos[fecha] ||= 0
+    if type == 'Ventas::Facturacion::NotaCredito'
+      daily_net_pesos[fecha] -= total.to_f
+    else
+      daily_net_pesos[fecha] += total.to_f
+    end
+  end
+
+  # Product quantities from pedidos (for the quantity bar overlay)
+  daily_quantities = Pedidos::Pedido
+    .where(tienda_id: tienda_activa.id, estado_id: [3, 4])
+    .where('fecha > ?', '2020-07-01')
+    .where('fecha <= ?', Date.current)
+    .joins(:productos_solicitados)
+    .group(:fecha)
+    .pluck(Arel.sql('pedidos.fecha, SUM(productos_solicitados.cantidad)'))
+    .to_h
+
+  cotizaciones = Cotizaciones::Dolar.where(fecha: Date.new(2020, 7, 1)..Date.current).pluck(:fecha, :precio_venta).to_h
+
+  # Group by month using daily comprobante data
+  monthly_groups = {}
+  daily_net_pesos.keys.sort.each do |fecha|
+    month_key = fecha.strftime('%m/%Y')
+    monthly_groups[month_key] ||= { pesos: 0.0, dolares: 0.0 }
+    monthly_groups[month_key][:pesos] += daily_net_pesos[fecha]
+  end
+
+  # Add quantities from pedidos
+  daily_quantities.each do |fecha, qty|
+    month_key = fecha.strftime('%m/%Y')
+    monthly_groups[month_key] ||= { pesos: 0.0, dolares: 0.0 }
+    monthly_groups[month_key][:cantidad] ||= 0
+    monthly_groups[month_key][:cantidad] += qty.to_i
+  end
+
+  # Convert to USD using each day's cotización
+  last_cotiz = nil
+  daily_net_pesos.keys.sort.each do |fecha|
+    cotiz = cotizaciones[fecha] || last_cotiz
+    last_cotiz = cotiz if cotiz
+    month_key = fecha.strftime('%m/%Y')
+    importe = daily_net_pesos[fecha]
+    monthly_groups[month_key][:dolares] += (cotiz && cotiz > 0 ? importe / cotiz : 0)
+  end
+
+  datos_importes = monthly_groups.map do |mes, data|
+    { label: mes, pesos: data[:pesos].round(2), dolares: data[:dolares].round(2), cantidad: data[:cantidad].to_i }
+  end
+%>
+<% if datos_importes.present? %>
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex flex-wrap">
+            <div class="col-12">
+              <h3 class="card-title">Ventas por Mes</h3>
+              <h6 class="card-subtitle">Importe total mensual en pesos y dólares</h6>
+            </div>
+          </div>
+          <%= content_tag :span, nil, id: 'importes-mensuales', data: { datos: datos_importes } %>
+          <div style="position: relative; height: 300px;"><canvas id="importes-line-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+<% end %>
+
+<script>
+if($('#inicio').length > 0) {
+$(function () {
+    "use strict";
+
+    if($('#importes-mensuales').data('datos')) {
+      var importesData = $('#importes-mensuales').data('datos');
+      var importesLabels = importesData.map(function(item) {
+        return item.label;
+      });
+
+      new Chart(document.getElementById('importes-line-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: importesLabels,
+          datasets: [{
+            type: 'bar',
+            label: 'Productos',
+            data: importesData.map(function(item) { return item.cantidad; }),
+            backgroundColor: 'rgba(156, 163, 175, 0.3)',
+            borderColor: 'rgba(156, 163, 175, 0.5)',
+            borderWidth: 1,
+            yAxisID: 'y2',
+            order: 3
+          }, {
+            type: 'line',
+            label: 'Pesos (ARS)',
+            data: importesData.map(function(item) { return item.pesos; }),
+            borderColor: '#009efb',
+            backgroundColor: 'rgba(0, 158, 251, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            yAxisID: 'y',
+            order: 2
+          }, {
+            type: 'line',
+            label: 'Dólares (USD)',
+            data: importesData.map(function(item) { return item.dolares; }),
+            borderColor: '#02af1f',
+            backgroundColor: 'rgba(2, 175, 31, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            yAxisID: 'y1',
+            order: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              beginAtZero: true,
+              title: { display: true, text: 'ARS $' },
+              ticks: {
+                callback: function(value) {
+                  return '$ ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                }
+              },
+              grid: { color: '#eef0f2' }
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              beginAtZero: true,
+              title: { display: true, text: 'USD $' },
+              ticks: {
+                callback: function(value) {
+                  return 'US$ ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                }
+              },
+              grid: { drawOnChartArea: false }
+            },
+            y2: {
+              type: 'linear',
+              display: false,
+              beginAtZero: true
+            },
+            x: { grid: { color: '#eef0f2' } }
+          },
+          plugins: {
+            legend: { display: true, position: 'top' },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: function(context) {
+                  if (context.datasetIndex === 0) {
+                    return context.dataset.label + ': ' + context.parsed.y.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                  }
+                  var prefix = context.datasetIndex === 1 ? '$ ' : 'US$ ';
+                  var value = context.parsed.y.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                  return context.dataset.label + ': ' + prefix + value;
+                }
+              }
+            }
+          },
+          hover: { mode: 'nearest', intersect: true }
+        }
+      });
+    }
+});
+}
+</script>

@@ -1,0 +1,71 @@
+<% page title: 'Ver Pedidos', raiz: 'Pedidos', hojas: 'Lista', acciones: [link_to('Nuevo', new_pedido_path), (link_to_function('Importar', data: {toggle: 'modal', target: '#importar'}) if can?(:import, Pedidos::Pedido)), export_link(Pedidos::Pedido, text: 'Exportar')].compact, id: 'index-pedidos' if current_user.cliente? %>
+
+<% page title: 'Ver Pedidos', raiz: 'Pedidos', hojas: 'Ver Pedidos', acciones: [link_to('Nuevo', new_pedido_path), (link_to_function('Importar', data: {toggle: 'modal', target: '#importar'}) if can?(:import, Pedidos::Pedido)), export_link(Pedidos::Pedido, text: 'Exportar')].compact, id: 'index-pedidos' unless current_user.cliente? %>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card filtros">
+        <div class="bg-info" >
+          <h4 class="text-white card-title">Filtros<div class="card-actions">
+              <a class="" data-action="collapse"><i class="<%= (current_user.cliente? && current_user.cumple_rol?(:administrador_empresa) || @filtro_abierto ) ? 'ti-minus' : 'ti-plus' %>"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body collapse<%= ' show' if (current_user.cliente? && current_user.cumple_rol?(:administrador_empresa) || @filtro_abierto ) %>">
+          <%= error_messages_for @query %>
+          <%= query_form_for @query, remote: true do |f| %>
+            <%= f.input :codigo, input_html: { autocomplete: 'off' } %>
+            <%= f.input :fecha_desde, as: :string, required: false, input_html: { class: 'singledate', autocomplete: 'off' } %>
+            <%= f.input :fecha_hasta, as: :string, required: false, input_html: { class: 'singledate', autocomplete: 'off' } %>
+            <%= f.input :cliente_ids, label: 'Clientes', as: :select2, input_html: {data: {multiple: true, url: clientes_path(format: :json), pre: @query.cliente_ids.presence && Clientes::Cliente.where(id: @query.cliente_ids.split(',').map(&:to_i))}, autocomplete: 'off'}  unless current_user.cliente? %>
+            <%= f.input :cuentas_ids, label: 'Cuentas', as: :select2, input_html: {data: {multiple: true, minimum_input_length: 1, label: 'cliente_y_nombre', selection: 'cliente_y_nombre', url: cuentas_path(format: :json), pre: @query.cuentas_ids.presence && Clientes::Cuenta.where(id: @query.cuentas_ids.split(',').map(&:to_i))}, autocomplete: 'off'} if current_user.cumple_rol?(:administrador_empresa) || !current_user.cliente? %>
+            <%= f.input :usuario_ids, label: 'Usuarios', as: :select2, input_html: {data: {multiple: true, url: usuarios_path(format: :json), pre: @query.usuario_ids.presence && Usuarios::Usuario.where(id: @query.usuario_ids)}, autocomplete: 'off'} if current_user.cumple_rol?(:administrador_empresa) || !current_user.cliente? %>
+            <%= f.input :producto_ids, label: 'Productos', as: :select2, input_html: {data: {multiple: true, placeholder: 'Ingrese código o nombre', selection: 'codigo_y_nombre', label: 'codigo_y_nombre', url: productos_path(format: :json), pre: @query.productos.map{|p| { id: p.id, codigo_y_nombre: p.codigo_y_nombre }}}, class: 'seleccion-usuario', autocomplete: 'off'} if !current_user.cliente? %>
+            <%= f.input :enviar_a_id, label: 'Envío a', as: :select, collection: [[' - Todos - ', nil], [(current_user.cliente ? current_user.cliente.nombre : 'Empresas'), 2],['Domicilio Particular', 1]], prompt: false, selected: @query.enviar_a_id, input_html: { autocomplete: 'off' } %>
+            <%= f.input :estado_id, label: 'Estado', as: :select, collection: [Pedidos::Estado[:aceptado], Pedidos::Estado[:confirmado], Pedidos::Estado[:cancelado]] , label_method: :desc, include_blank: true, input_html: { autocomplete: 'off' } %>
+            <%= f.input :cargado_por_id, label: 'Cargado por', as: :select, collection: [['Todos', nil], [tienda_activa.nombre, 1], ['Clientes', 2]], include_blank: false, input_html: { autocomplete: 'off' } unless current_user.cliente? %>
+            <%= f.input :mercado_pago_id, label: 'Mercado Pago', as: :select, collection: [['SI', 1], ['NO', 2]], include_blank: true, input_html: { autocomplete: 'off' } unless current_user.cliente? %>
+            <%= f.input :venta_mostrador, label: 'Venta Mostrador', as: :select, collection: [['SI', 'true'], ['NO', 'false']], include_blank: true, input_html: { autocomplete: 'off' } if tienda_activa.venta_mostrador? && !current_user.cliente? %>
+            <%= f.input :descuento_venta_mostrador_id, label: 'Descuento VM', as: :select, collection: [['Con descuento', 'any']] + VentasMostrador::DescuentoVentaMostrador.where(tienda: tienda_activa, activo: true).order(:nombre).map { |d| [d.nombre, d.id] }, include_blank: true, input_html: { autocomplete: 'off' } if tienda_activa.venta_mostrador? && !current_user.cliente? %>
+            <%= f.input :horario_ids, as: :select2_local, collection: Pedidos::Horario.where(tienda_id: tienda_activa.id).all, selected: @query.horario_ids, label: 'Horarios', label_method: :to_s, include_blank: true, input_html: {multiple: true, autocomplete: 'off'}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} if tienda_activa.horarios_de_entrega? && !current_user.cliente? %>
+            <%= f.input :horarios_de_corte_ids, as: :select2_local, collection: Clientes::Cuenta.horarios_corte_efectivos(tienda_activa.id), selected: @query.horarios_de_corte_ids, label: 'Hora de Corte', label_method: :to_s, include_blank: true, input_html: {multiple: true, autocomplete: 'off'}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} unless current_user.cliente? %>
+            <%= f.input :para, label: 'Para', input_html: { autocomplete: 'off' } unless current_user.cliente? %>
+            <%= search_buttons f %>
+          <% end %>
+        </div>
+      </div>
+      <div class="card" id="listado-pedidos">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <span id="pedidos-container">
+            <%= render 'resultados' %>
+          </span>
+      </div>
+  </div>
+</div>
+
+<%= import_dialog_with_warning 'Importar Pedidos', importar_pedidos_path do %>
+  <p>El archivo se procesará en segundo plano. Los pedidos aparecerán automáticamente al finalizar. Puede ver el progreso en la pantalla de <a href="<%= procesos_path %>">Procesos</a>.</p>
+  <p>El archivo de Excel debe ser formato XLS (97-2003) o XLSX y debe cumplir las siguientes reglas:</p>
+  <ul>
+    <li>La primer fila del archivo debe contener la fecha. La segunda fila deben ser las columnas <b>Código del menú</b>, <b>Nombre del menú</b>, <b>Nombre de empleado</b>,	<b>Lugar de entrega</b>(Alias de Cuenta: debe existir en el Cliente una Cuenta con nombre idéntico al lugar de entrega) y <b>Cantidad</b> (de estar en blanco se tomara 1). A partir de la tercer fila incorpore la información de los pedidos.</li>
+  </ul>
+  <p class="form-inline mtn">
+  <label style='margin-right: 10px'>Para Fecha</label>
+  <label>
+    <% d = Clientes::Cliente.find_by_cuit('30501601213') %>
+    <%= text_field_tag :fecha, params[:fecha].present? ? params[:fecha] : (Time.zone.today+1.day), class: 'singledate' %>
+  </label>
+</p>
+  <p class="form-inline mtn">
+  <label style='margin-right: 10px'>Para Cliente</label>
+  <label>
+    <% d = Clientes::Cliente.find_by_cuit('30501601213') %>
+    <%= select_tag :cliente_id, options_from_collection_for_select(Clientes::Cliente.active.order('clientes.nombre asc'), "id", "to_s",  params[:cliente_id] || d.try(:id)) %>
+  </label>
+</p>
+<% end %>

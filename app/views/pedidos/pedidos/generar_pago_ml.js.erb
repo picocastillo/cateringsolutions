@@ -1,0 +1,61 @@
+// Cookie helper functions (kept for the pago-pendiente hint flag)
+function setCookie(name, value) {
+  document.cookie = name + "=" + (value || "") + "; path=/";
+}
+
+function getCookie(name) {
+  var nameEQ = name + "=";
+  var ca = document.cookie.split(';');
+  for(var i = 0; i < ca.length; i++) {
+    var c = ca[i];
+    while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+}
+
+$("#preference-container").html("<%= j(@validation_errors&.any? ? '<button type="submit" class="mercadopago-button-disabled" disabled>Pagar con Mercadopago</button>'.html_safe : render('mercado_button')) %>");
+
+<% if @validation_errors&.any? %>
+  // Option validation failed — disable MP button, show hint.
+  var $vh = $('#mp-payment-validation-hint');
+  if ($vh.length) {
+    $vh.find('.hint-text').text(<%= raw @validation_errors.join(' ').to_json %>);
+    $vh.show();
+  }
+  $('#mp-payment-hint-template').hide();
+  $('#preference-container').unblock();
+<% else %>
+if($('#mp-boton-container').length > 0) {
+  pid = $('#mp-boton-container').data('pid');
+  pk = $('#mp-boton-container').data('pk');
+  if(pid.length > 0 && pk.length > 0) {
+    var pedidoId = '<%= @pedido.id %>';
+    var mp = new MercadoPago(pk, { locale: 'es-AR' });
+    var co = mp.checkout({
+      preference: { id: pid },
+      autoOpen: false
+    });
+
+    co.render({
+      container: '#mp-boton-container',
+      label: $('#mp-boton-container').data('texto')
+    });
+
+    // Show "pago pendiente" hint for non-CC pedidos so the user knows they
+    // still need to click the MercadoPago button to complete the purchase.
+    var isPagoPendiente = <%= (@pedido.pendiente? && !@pedido.cuenta.cuenta_corriente_habilitada?) ? 'true' : 'false' %>;
+    var templateHint = $('#mp-payment-hint-template');
+    if (isPagoPendiente && templateHint.length > 0) {
+      templateHint.show();
+    }
+
+    // Hide the hint once the user actually clicks Pagar
+    $('#mp-boton-container').on('click', 'button', function() {
+      templateHint.fadeOut(300);
+    });
+
+    $('#preference-container').unblock();
+  }
+}
+<% end %>

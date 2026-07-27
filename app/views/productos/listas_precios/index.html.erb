@@ -1,0 +1,58 @@
+<% page title: 'Listas de Precios', raiz: 'Cocina', hojas: 'Listas de Precios', id: 'index-listas-precios',
+       acciones: [
+         (export_link_precios(path: listas_precios_path(filtered_params.merge(format: :xls))) if can?(:index, Productos::Precio)),
+         (link_to_function('Importar', data: {toggle: 'modal', target: '#importar'}) if can?(:index, Productos::Precio)),
+         (link_to('Eliminar duplicados', eliminar_duplicados_listas_precios_path(filtered_params), method: :delete,
+                  data: { confirm: '¿Está seguro de eliminar todos los duplicados dejando solo los precios más actualizados? Solo se borrarán precios con mismos clientes, fechas y mismo importe.' },
+                  class: 'btn btn-danger eliminar-duplicados-link') if can?(:index, Productos::Precio))
+       ].compact %>
+  <div class="row">
+    <div class="col-12">
+      <div class="card filtros">
+        <div class="bg-info">
+          <h4 class="text-white card-title">Filtros<div class="card-actions">
+              <a class="" data-action="collapse"><i class="ti-plus"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body collapse">
+          <%= error_messages_for @query %>
+          <%= query_form_for @query, remote: true do |f| %>
+            <%= f.input :clientes_ids, as: :select2_local, collection: Clientes::Cliente.active.disponibles_en(tienda_activa).order(:nombre), prompt: ' - Todos - ', label: 'Clientes', input_html: { multiple: true, autocomplete: 'off' } %>
+            <%= f.input :categoria_ids, as: :select2_local, collection: Productos::Categoria.order(:codigo).where(tienda_id: tienda_activa).active, prompt: ' - Todas - ', label: 'Categorías', input_html: { multiple: true, autocomplete: 'off' } %>
+            <%= f.input :nombre_producto, label: 'Producto', input_html: { autocomplete: 'off' } %>
+            <div class="row">
+              <div class="col-md-6">
+                <%= f.input :importe_min, as: :decimal, label: 'Importe desde', input_html: { autocomplete: 'off', step: '0.01', min: '0' } %>
+              </div>
+              <div class="col-md-6">
+                <%= f.input :importe_max, as: :decimal, label: 'Importe hasta', input_html: { autocomplete: 'off', step: '0.01', min: '0' } %>
+              </div>
+            </div>
+            <%= f.input :activo_el, as: :string, required: false, label: 'Precios activos al', input_html: { class: 'singledate', autocomplete: 'off', value: @query.activo_el&.strftime('%d/%m/%Y') } %>
+            <%= f.input :solo_duplicados, as: :boolean, label: 'Mostrar solo duplicados' %>
+            <%= f.input :fechas_invalidas, as: :boolean, label: 'Mostrar fechas inválidas' %>
+            <%= f.input :productos_sin_precio, as: :boolean, label: 'Productos sin precio' %>
+            <%= search_buttons f %>
+          <% end %>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-actions">
+            <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+          </div>
+        </div>
+        <span id="listas-precios-container"><%= render 'resultados' %></span>
+      </div>
+    </div>
+  </div>
+
+<%= import_dialog 'Importar Precios', import_listas_precios_path do %>
+  <p>El archivo debe ser formato XLSX y cumplir las siguientes reglas:</p>
+  <ul>
+    <li>Si ingresa un valor en la columna <b>idPrecio</b>, se actualizará el precio con dicho ID.</li>
+    <li>Debe ingresar las columnas <b>Código Producto</b> (debe existir previamente), <b>Cuits Clientes</b> (CUITs separados por coma), <b>Fecha Desde</b>, <b>Fecha Hasta</b> (opcional), <b>Importe</b>.</li>
+  </ul>
+<% end %>

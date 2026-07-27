@@ -1,0 +1,2 @@
+$("#comprobantes-container").html("<%= j render 'resultados' %>");
+$('.export-link').attr('href', "<%= comprobantes_path(filtered_params.merge(format: :xls)) %>");

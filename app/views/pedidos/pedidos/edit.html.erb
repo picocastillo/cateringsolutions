@@ -1,0 +1,56 @@
+<% page title: @pedido.estado_id == 1 ? 'Nuevo Pedido' : "Editar Pedido", raiz: 'Pedidos', hojas: @pedido.estado_id == 1 ? "Nuevo" : "Editar", id: 'new-pedido', oculto: 'true' %>
+
+<div class="row page-titles">
+    <div class="col align-self-center">
+        <h3 class="text-themecolor"><% if current_user.cliente? %>
+          <%= "Hola #{current_user.nombre_normalizado.truncate(33)}" %>
+        <% else %>
+          <%= @pedido.estado_id == 1 ? 'Nuevo Pedido' : "Editar Pedido" %>
+        <% end %></h3>
+        <ol class="breadcrumb">
+          <% unless current_user.cliente? %>
+            <li class="breadcrumb-item">Pedidos</li>
+            <li class="breadcrumb-item"><%= @pedido.estado_id == 1 ? 'Nuevo' : "Editar" %></li>
+          <% else %>
+            <li class="breadcrumb-item"><%= @pedido.estado_id == 1 ? 'Nuevo' : "Editar" %> Pedido</li>
+          <% end %>
+        </ol>
+    </div>
+    <% if current_user.cliente? && current_user.cuenta&.cliente&.multi_tienda? %>
+      <% tiendas = current_user.tiendas_disponibles.to_a %>
+      <% if tiendas.size > 1 %>
+        <div class="col-auto align-self-center text-end text-nowrap ms-auto">
+          <small class="text-muted fw-bold mr-1">En tienda</small>
+          <% tiendas.each do |t| %>
+            <% active = t == current_user.tienda_activa %>
+            <%= button_to t.nombre,
+                          cambiar_tienda_activa_tiendas_path(tienda_activa_id: t.id),
+                          method: :post,
+                          class: "btn-tienda-header #{active ? 'activa' : ''}",
+                          style: '',
+                          form: { style: 'display: inline-block; margin: 0;', data: { turbolinks: false } },
+                          disabled: active %>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+</div>
+
+<% if @pedido.cuenta&.hora_corte_efectiva.present? && @pedido.pendiente? && session[:hora_corte_mostrada] != Date.current.to_s && @pedido.cuenta.horas_restantes_al_corte <= 4 %>
+<% session[:hora_corte_mostrada] = Date.current.to_s %>
+<script>
+  $(function() {
+    toast.warning({ html: 'Deberá confirmar el pedido para el <%= l(@pedido.cuenta.proximo_dia_pedido, format: '%A %d').capitalize %> antes de las <%= @pedido.cuenta.corte %> hs. Luego de ese horario los pedidos pendientes serán eliminados.', duration: 8000 });
+  });
+</script>
+<% end %>
+
+<% if params[:carrito_descartado].present? %>
+<script>
+  $(function() {
+    toast.warning({ html: 'Tu carrito de la tienda <strong><%= j params[:carrito_descartado].to_s %></strong> fue descartado. Si querés tener pedidos en varias tiendas a la vez, primero seleccioná una segunda fecha en el calendario para activar Pedidos Múltiples y después cambiá de tienda.', duration: 12000 });
+  });
+</script>
+<% end %>
+
+<%= render 'form'%>

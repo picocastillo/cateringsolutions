@@ -1,0 +1,27 @@
+<% page title: 'Menús Diarios', raiz: 'Cocina', hojas: 'Menús', acciones: [link_to('Nuevo', new_menu_diario_path, remote: true)], id: 'index-menus-diarios' %>
+
+
+<%= hidden_field_tag :input_highlight_cal, nil, id: 'input-highlight' %>
+
+<div class="row">
+  <div class="col-md-12">
+      <div class="card">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <div class="card-body">
+            <%= simple_fields_for @producto do |f| %>
+              <% productos_filtro = if tienda_activa.soporta_productos_diarios?
+                                      Productos::Producto.where(tienda_id: tienda_activa.id).active.includes(:categoria)
+                                    else
+                                      Productos::Producto.joins(:categoria).where('categorias.menu_diario = true').active
+                                    end %>
+              <%= f.input :producto_id, collection: productos_filtro, as: :select, label: false, input_html: { class: 'selectpicker-menu-diario', data: { style: 'btn-info' }, multiple: true, id: 'producto-menu-diario'} %>
+            <% end %>
+            <div id="calendar"></div>
+          </div>
+      </div>
+  </div>
+</div>

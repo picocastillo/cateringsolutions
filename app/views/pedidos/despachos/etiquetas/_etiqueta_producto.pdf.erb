@@ -1,0 +1,88 @@
+<div class="etiqueta<%= ' page' if !primero %>">
+  <div class="row">
+    <div class="titulo nombre">
+      <% if !ps.pedido.usuario && !ps.pedido.para %>
+        <%= ps.pedido.cuenta.cliente.to_s.upcase %> - <%= ps.pedido.cuenta.nombre.upcase %>
+      <% else %>
+        <% if !ps.pedido.usuario %>
+          <%= ps.pedido.para.upcase %>
+        <% else %>
+          <%= ps.producto.codigo %> - <%= ps.nombre_carrito.upcase %>
+        <% end %>
+      <% end %>
+    </div>
+    <table width="100%">
+      <tr>
+        <td class="muted-bold center producto" width="100%">
+          <% if !ps.pedido.usuario %>
+            <div class="producto-w"><%= ps.producto.codigo %> - <%= ps.nombre_carrito.upcase %></div>
+          <% else %>
+            <%= ps.pedido.usuario.nombre.upcase %>
+          <% end %>
+        </td>
+      </tr>
+      <tr>
+        <% unless ps.pedido.envio_a_domicilio %>
+          <% unless !ps.pedido.usuario && !ps.pedido.para %>
+            <% if ps.pedido.cuenta.cliente.to_s.upcase != ps.pedido.cuenta.nombre.upcase %>
+              <td class="muted center" width="100%">
+                <div class="cliente cliente-w">
+                  <%= ps.pedido.cuenta.cliente.to_s.upcase %> - <%= ps.pedido.cuenta.nombre.upcase %>
+                </div>
+              </td>
+            <% else %>
+            <td class="muted center" width="100%">
+              <div class="cliente">
+              <%= ps.pedido.cuenta.cliente.to_s.upcase %>
+              </div>
+            </td>
+            <% end %>
+          <% end %>
+        <% else %>
+          <td class="muted center" width="100%">
+            <div class="cliente">
+            A DOMICILIO: <%= ps.pedido.direccion_envio.upcase %>
+            </div>
+          </td>
+        <% end %>
+      </tr>
+      <% if ps.pedido.usuario || !ps.pedido.cuenta.cliente.codigo_externo_en_etiquetas %>
+        <tr>
+          <td class="muted center" width="100%">
+            <div class="resumen">
+            PEDIDO <%= ps.pedido.to_s %> - <%= psc = ps.pedido.productos_solicitados.sum(&:cantidad) %> PRODUCTO<%= psc > 1 ? 'S' : '' %>
+             </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="muted-bold center" width="100%">
+            <div class="vencimiento">ELABORACION: <%= ps.pedido.fecha.to_s %> - VENCE: <%= (ps.pedido.fecha + 3.days).to_date.to_s %></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="muted-bold center" width="100%">
+            <div class="precio"><%= Danconia::Money.new(ps.precio_unitario) %></div>
+          </td>
+        </tr>
+      <% else %>
+      <tr>
+        <td class="muted center" width="100%">
+          <div class="codigo-externo"><%= ps.producto.codigos_externos.to_s.upcase %></div>
+        </td>
+      </tr>
+      <tr>
+        <td class="muted-bold center" width="100%">
+          <div class="vencimiento">ELABORACION: <%= ps.pedido.fecha.to_s %> - VENCE: <%= (ps.pedido.fecha + 3.days).to_date.to_s %></div>
+        </td>
+      </tr>
+      <% end %>
+    </table>
+  </div>
+  <div class="barcode">
+    <% if !ps.pedido.usuario && ps.producto.codigos_externos.present? %>
+      <%= inline_barcode_image(ps.producto.codigos_externos.split(',').first.to_s.rjust(12, '0'), type: 'ean13', height: 20) %>
+    <% else %>
+      <%= inline_barcode_image(ps.codigo_de_barras, height: 19) %>
+    <% end %>
+  </div>
+</div>

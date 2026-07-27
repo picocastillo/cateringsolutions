@@ -1,0 +1,35 @@
+<div class="card-body collapse show ajax-data-container">
+  <div class="table-responsive">
+    <%= table_for @pedidos, id: 'pedidos' do |t| %>
+      <% t.column(:codigo, header: 'Detalles', class: 'text-right nowrap', footer: "<span style='white-space: nowrap;font-weight: bold'>Pedidos Totales: <span id='footer-pedidos-count'>...</span></span> ".html_safe) {|x| [(content_tag(:div, link_to(x.codigo, pedido_path(x))) unless x.pendiente?), content_tag(:div, x.fecha), content_tag(:div, "Envío: #{x.enviar_a_string}".html_safe, class: 'muted small'), (content_tag(:div, "Horario: #{x.horario.to_s}".html_safe, class: 'muted small') if tienda_activa.horarios_de_entrega? && (!current_user.cliente? || (x.cuenta && x.cuenta.cliente.horarios_de_entrega?))), (content_tag(:div, "Autor: #{(x.usuario == x.autor && x.usuario.cliente? ? 'Cliente' : link_to(x.autor.nombre, usuario_path(x.autor)))}".html_safe, class: 'muted small') unless current_user.cliente?), (content_tag(:div, "<span class='estado'><span class='badge estado pendiente p-1'>Cobro MP</span></span>".html_safe, class: 'muted small mt-1') if !current_user.cliente? && x.cobrado)].compact.join.html_safe } %>
+      <% # Step 6: show tienda column for cliente users whose cliente is shared across multiple tiendas %>
+      <% t.column(:tienda, header: 'Tienda', class: 'text-center') do |x|
+           tcolor = x.tienda&.color_barra_filtros.presence || '#6c757d'
+           content_tag(:span, x.tienda&.nombre,
+                       class: 'badge',
+                       style: "background:#{tcolor};color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,0.35);")
+         end if current_user.cliente? && current_user.cuenta&.cliente&.multi_tienda? %>
+      <% t.column(:usuario, class: 'hidden-md-down', header: 'Para') do |p|
+           parts = []
+           if p.usuario || p.cuenta
+             parts << (p.usuario ? link_to(p.to_s_vertical, usuario_path(p.usuario)) : link_to(p.para_to_s_vertical, cliente_path(p.cuenta.cliente)))
+           end
+           if p.pedido_multiple_id
+             siblings = p.pedido_multiple.pedidos.where.not(id: p.id).order(:fecha, :id)
+             if siblings.any?
+               sibling_links = siblings.map { |s| link_to((s.fecha ? l(s.fecha, format: '%d/%m') : '–'), pedido_path(s), data: { turbolinks: false }) }
+               parts << content_tag(:div, ('En grupo: ' + sibling_links.join(' ')).html_safe, class: 'muted small mt-1')
+             end
+           end
+           safe_join(parts)
+         end if current_user.operador? || current_user.cumple_rol?(:administrador_empresa) %>
+      <% t.column(:estado, class: 'text-center') { |c| pedido_estado_label c } %>
+      <% t.column(:venta_mostrador, header: 'VM', class: 'text-center', header_options: { title: 'Venta Mostrador' }) { |p| content_tag(:span, 'SI', class: 'badge badge-info') if p.venta_mostrador? } if tienda_activa.venta_mostrador? && tienda_activa.carrito_de_compras %>
+      <% t.column(:productos_solicitados, header: 'Productos', class: 'hidden-md-down', footer: "<span style='white-space: nowrap;font-weight: bold'>Productos Totales: <span id='footer-cantidad-total'>...</span></span> ".html_safe) { |t| content_tag(:div,(t.productos_solicitados.map(&:sin_importes).to_a + [("Obs Cliente: #{t.observaciones_cliente}" if t.observaciones_cliente)] + [("Obs Cliente: #{t.observaciones_chef}" if t.observaciones_chef)]).compact.join('<br>').html_safe, class: 'readmoreable') } %>
+      <% t.column(:total, header: 'Importe', class: 'text-right', footer: current_user.cliente&.mostrar_cuentas_corrientes ? nil : "<span style='white-space: nowrap;font-weight: bold'><span id='footer-importe-total'>...</span></span>".html_safe) { |t| (t.importe_total || 0) + t.costo_envio_domicilio} %>
+
+      <% t.actions { |t| [edit_pedido_link(t), (link_to(content_tag(:i, nil, class: 'ti-trash').html_safe, pedido_path(t), method: :delete, data: {confirm: "Está seguro que desea eliminar el pedido #{t.pendiente? ? '' : t.to_s}? El mismo dejará de existir.", toggle: 'tooltip', "original-title" => 'Eliminar' }) if can?(:destroy, t)), (link_to(content_tag(:i, nil, class: 'ti-close').html_safe, cancelar_pedido_path(t), method: :put, data: {confirm: "Está seguro que desea cancelar el pedido #{t.to_s}? El mismo quedará definitivamente en estado Cancelado y sus comprobantes serán anulados con Notas de Crédito.", toggle: 'tooltip', "original-title" => 'Cancelar' }) if can?(:cancelar, t))].compact } %>
+    <% end %>
+  </div>
+</div>
+<%= paginador @pedidos, ajax: true %>

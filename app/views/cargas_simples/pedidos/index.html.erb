@@ -1,0 +1,69 @@
+<% titr = @pedido.new_record? ? "Nuevo Pedido" : "Editando Pedido #{@pedido.to_s}"   %>
+
+<% page title: "Carga Rápida", raiz: 'Pedidos', hojas: 'Carga Rápida', id: 'index-carga-simple' %>
+  <div class="row">
+    <div class="col-md-12">
+      <h4 class="mb-2 "><%= titr %></h4>
+      <div class="card" id="listado-pedidos">
+        <div class="card-body collapse show">
+          <%= simple_nested_form_for @pedido, url: (@pedido.new_record? ? cargas_simples_pedidos_path : cargas_simples_pedido_path(@pedido)) do |f| %>
+            <%= f.error_messages %>
+            <%= f.input :tipo_pedido, label: 'Para', as: :select, collection: [['Usuario', 1],['Cuenta', 2]], prompt: false, selected: @pedido.tipo_pedido, wrapper_html: { class: 'col-sm-3 col-md-2 col-lg-2 mb-0'} %>
+            <%= f.input :usuario_id, label: 'Usuario', as: :select2, input_html: {data: {multiple: false, placeholder: 'Ingrese nombre, legajo o DNI', label: 'nombre_legajo_dni_cliente', url: usuarios_path(format: :json), pre: { id: @pedido.usuario.try(&:id), nombre: @pedido.usuario.try(&:nombre_legajo_dni_cliente)}}, class: 'seleccion-usuario'}, wrapper_html: { class: "col-sm-9 col-md-7 col-lg-8 mb-0#{' hide' if (@pedido.cuenta && !@pedido.usuario) || (params[:cuenta_id].present? && !params[:usuario_id].present?)}"} %>
+            <%= f.input :cuenta, as: :select2_local, collection: @cuentas_cs || Clientes::Cuenta.joins(cliente: :tiendas).where(tiendas: { id: tienda_activa.id }).active.distinct, selected: @pedido.cuenta_id, label: 'Cuenta', label_method: :cliente_y_nombre, include_blank: true, input_html: {multiple: false, style: 'border: none'}, wrapper_html: { class: "col-sm-3 col-md-3 col-lg-4 mb-0#{' hide' if (@pedido.usuario || !@pedido.cuenta) || (params[:usuario_id].present? && !params[:cuenta_id].present?)}"} %>
+            <span style="display: contents" id="input-para">
+              <%= render 'input_para' %>
+            </span>
+            <%= f.input :fecha, as: :string, required: false, input_html: { class: 'singledate'}, wrapper_html: { class: 'col-md-3 col-sm-12 col-lg-2 mb-0' } %>
+            <div id="productos-rapidos" style="width: 100%">
+              <%= render 'productos_rapidos' %>
+            </div>
+
+            <div class="col-12 mt-3" style="display: inline-flex;">
+              <%= f.default_button %>
+              <a name="button" type="button" class="btn btn-default" href="/cargas_simples/pedidos/" remote="true">Cancelar</a>
+              </div>
+          <% end %>
+        </div>
+      </div>
+      <hr style="margin-top: -10px">
+      <h4 class="mb-0">Pedidos</h4>
+      <p class="text-muted mt-0 font-12">Listado de pedidos cargados por personal de <%= tienda_activa.nombre %></p>
+      <div class="card filtros">
+        <div class="bg-info" >
+          <h4 class="text-white card-title">Filtros<div class="card-actions">
+              <a class="" data-action="collapse"><i class="ti-plus"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body collapse">
+          <%= error_messages_for @query %>
+          <%= query_form_for @query, url: cargas_simples_pedidos_path, remote: true do |f| %>
+            <%= f.input :codigo %>
+            <%= f.input :fecha_desde, as: :string, required: false, input_html: { class: 'singledate'} %>
+            <%= f.input :fecha_hasta, as: :string, required: false, input_html: { class: 'singledate'} %>
+            <%= f.input :cliente_ids, label: 'Clientes', as: :select2, input_html: {data: {multiple: true, url: clientes_path(format: :json), pre: @query.cliente_ids.presence && Clientes::Cliente.where(id: @query.cliente_ids)}}  unless current_user.cliente? %>
+            <%= f.input :cuentas_ids, label: 'Cuentas', as: :select2, input_html: {data: {multiple: true, minimum_input_length: 1, label: 'cliente_y_nombre', selection: 'cliente_y_nombre', url: cuentas_path(format: :json), pre: @query.cuentas_ids.presence && Clientes::Cuenta.where(id: @query.cuentas_ids)}} %>
+            <%= f.input :usuario_ids, label: 'Usuarios', as: :select2, input_html: {data: {multiple: true, url: usuarios_path(format: :json), pre: @query.usuario_ids.presence && Usuarios::Usuario.where(id: @query.usuario_ids)}} if current_user.cumple_rol?(:administrador_empresa) || !current_user.cliente? %>
+            <%= f.input :enviar_a_id, label: 'Envío a', as: :select, collection: [[' - Todos - ', nil], [(current_user.cliente ? current_user.cliente.nombre : 'Empresas'), 2],['Domicilio Particular', 1]], prompt: false, selected: @query.enviar_a_id %>
+            <%= f.input :estado_id, label: 'Estado', as: :select, collection: [Pedidos::Estado[:aceptado], Pedidos::Estado[:confirmado], Pedidos::Estado[:cancelado]] , label_method: :desc, include_blank: true %>
+            <%= f.input :horario_ids, as: :select2_local, collection: Pedidos::Horario.where(tienda_id: tienda_activa.id).all, selected: @query.horario_ids, label: 'Horarios', label_method: :to_s, include_blank: true, input_html: {multiple: true}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} if tienda_activa.horarios_de_entrega? && !current_user.cliente? %>
+            <%= f.input :para, label: 'Para' %>
+            <%= search_buttons f %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="card" id="listado-pedidos">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <span id="pedidos-container">
+            <%= render 'resultados' %>
+          </span>
+      </div>
+  </div>
+</div>

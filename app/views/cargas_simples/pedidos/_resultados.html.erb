@@ -1,0 +1,16 @@
+<div class="card-body collapse show ajax-data-container">
+  <div class="table-responsive">
+    <%= table_for @pedidos, id: 'pedidos' do |t| %>
+      <% t.column(:codigo, header: 'Cód.', class: 'text-right nowrap') {|x| link_to(x.codigo, pedido_path(x)) unless x.pendiente? }%>
+      <% t.column(:fecha) %>
+      <% t.column(:autor, class: 'hidden-md-down') { |t| t.usuario == t.autor && t.usuario.cliente? ? 'Cliente' : link_to(t.autor.nombre, usuario_path(t.autor)) } unless current_user.cliente? %>
+      <% t.column(:usuario, class: 'hidden-md-down', header: 'Para') { |t| (t.usuario ? link_to(t.to_s_vertical, usuario_path(t.usuario)) : link_to(t.para_to_s_vertical, cliente_path(t.cuenta.cliente)))  if t.usuario || t.cuenta } if !current_user.cliente? %>
+      <% t.column(:estado, class: 'text-center') { |c| pedido_estado_label c } %>
+      <% t.column(:productos_solicitados, header: 'Productos', class: 'hidden-md-down') { |t| content_tag(:div,(t.productos_solicitados.map(&:sin_importes).to_a + [("Obs Cliente: #{t.observaciones_cliente}" if t.observaciones_cliente)] + [("Obs Cliente: #{t.observaciones_chef}" if t.observaciones_chef)]).compact.join('<br>').html_safe, class: 'readmoreable') } %>
+      <% t.column(:total, header: 'Importe', class: 'text-right') { |t| t.importe_total} %>
+
+      <% t.actions { |t| [(link_to(content_tag(:i, nil, class: 'ti-marker-alt').html_safe, edit_cargas_simples_pedido_path(t), method: :get, data: {confirm: "Está seguro que desea editar el pedido #{t.pendiente? ? '' : t.to_s}?", toggle: 'tooltip', "original-title" => 'Editar' }) if can?(:edit_rapido, t)), (link_to(content_tag(:i, nil, class: 'ti-trash').html_safe, cargas_simples_pedido_path(t), method: :delete, data: {confirm: "Está seguro que desea eliminar el pedido #{t.pendiente? ? '' : t.to_s}? El mismo dejará de existir.", toggle: 'tooltip', "original-title" => 'Eliminar' }) if can?(:destroy, t)), (link_to(content_tag(:i, nil, class: 'ti-close').html_safe, cancelar_cargas_simples_pedido_path(t), method: :put, data: {confirm: "Está seguro que desea cancelar el pedido #{t.to_s}? El mismo quedará definitivamente en estado Cancelado y sus comprobantes serán anulados con Notas de Crédito.", toggle: 'tooltip', "original-title" => 'Cancelar' }) if can?(:cancelar, t))].compact} %>
+    <% end %>
+  </div>
+</div>
+<%= paginador @pedidos, ajax: true %>

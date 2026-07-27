@@ -1,0 +1,23 @@
+<% page title: 'Ver Locales', raiz: 'Locales', hojas: 'Ver Locales', acciones: [link_to('Nuevo', new_local_path, remote: true)], id: 'index-locales' %>
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <div class="card-body collapse show">
+            <div class="table-responsive">
+              <%= table_for @locales, id: 'locales' do |t| %>
+                <% t.column(:nombre) %>
+                <% t.column(:domicilio) %>
+                <% t.column(:telefono) %>
+                <% t.actions { |t| [(link_to(content_tag(:i, nil, class: 'ti-marker-alt').html_safe, edit_local_path(t), remote: true, data: {toggle: 'tooltip', "original-title" => 'Editar' }) if can?(:manage, t))]} %>
+              <% end %>
+            </div>
+          </div>
+          <%= paginador @locales %>
+      </div>
+  </div>
+</div>

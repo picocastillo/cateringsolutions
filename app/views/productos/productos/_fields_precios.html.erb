@@ -1,0 +1,70 @@
+<% total_precios = @producto.precios.size %>
+<% show_toggle = total_precios > 6 %>
+
+<% if show_toggle %>
+  <div class="mb-2">
+    <a href="#" id="toggle-precios-anteriores" class="btn btn-sm btn-outline-secondary">
+      <i class="fa fa-eye"></i> Mostrar anteriores (<%= total_precios - 5 %>)
+    </a>
+  </div>
+<% end %>
+
+<table class="table-responsive precios">
+  <thead>
+    <tr>
+      <th width="5%">idPrecio</th>
+      <th width="50%">Clientes</th>
+      <th width="15%">Fecha Desde</th>
+      <th width="15%">Fecha Hasta</th>
+      <th width="10%">Importe</th>
+      <th width="5%"><%= f.icon_to_add :precios %></th>
+    </tr>
+  </thead>
+  <tbody>
+  <% index = 0 %>
+  <%= f.fields_for :precios do |fi| %>
+    <% hidden_class = (show_toggle && index < (total_precios - 5)) ? 'precio-anterior' : '' %>
+    <tr class="fields <%= hidden_class %>" data-precio-id="<%= fi.object.id %>" style="<%= 'display: none;' if hidden_class.present? %>">
+      <td>
+        <div style="margin-top:-20px"><%= fi.object.id.to_s%></div>
+      </td>
+      <td>
+        <%= fi.input :cliente_ids, as: :select2_local, collection: Clientes::Cliente.disponibles_en(tienda_activa).order(:nombre), selected: fi.object.cliente_ids, placeholder: ' - TODOS (Precio Base) - ', label: false, input_html: { multiple: true } %>
+      </td>
+      <td>
+        <%= fi.input :fecha_desde, as: :string, label: false, input_html: { class: 'singledate'} %>
+      </td>
+      <td>
+        <%= fi.input :fecha_hasta, as: :string, label: false, input_html: { class: 'singledate'} %>
+      </td>
+      <td>
+        <%= fi.input :importe, as: :string, label: false, input_html: { style: 'text-align: right'} %>
+      </td>
+      <td>
+        <%= fi.icon_to_remove "menos"%>
+      </td>
+    </tr>
+    <% index += 1 %>
+  <% end %>
+  </tbody>
+</table>
+
+<% if show_toggle %>
+  <script>
+    $(document).ready(function() {
+      $('#toggle-precios-anteriores').on('click', function(e) {
+        e.preventDefault();
+        var $btn = $(this);
+        var $hiddenRows = $('.precio-anterior');
+        
+        if ($hiddenRows.first().is(':visible')) {
+          $hiddenRows.hide();
+          $btn.html('<i class="fa fa-eye"></i> Mostrar anteriores (<%= total_precios - 5 %>)');
+        } else {
+          $hiddenRows.show();
+          $btn.html('<i class="fa fa-eye-slash"></i> Ocultar anteriores');
+        }
+      });
+    });
+  </script>
+<% end %>

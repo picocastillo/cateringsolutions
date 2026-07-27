@@ -1,0 +1,33 @@
+<%# Monthly order count line chart. %>
+<% labels = @analytics[:chart_labels] %>
+<% values = @analytics[:freq_values] %>
+<div class="card">
+  <div class="card-body">
+    <h3 class="card-title">Pedidos por Mes</h3>
+    <h6 class="card-subtitle">Cantidad de pedidos confirmados — todos los clientes (últimos 12 meses)</h6>
+    <% if labels.any? %>
+      <%= content_tag :span, nil, id: 'inicio-analytics-frequency', data: { labels: labels, datos: values } %>
+      <div style="position: relative; height: 250px;"><canvas id="inicio-analytics-frequency-chart"></canvas></div>
+      <script>
+        (function() {
+          var $el = $('#inicio-analytics-frequency');
+          if (!$el.data('labels')) return;
+          new Chart(document.getElementById('inicio-analytics-frequency-chart').getContext('2d'), {
+            type: 'line',
+            data: {
+              labels: $el.data('labels'),
+              datasets: [{ label: 'Pedidos', data: $el.data('datos'), borderColor: '#02af1f', backgroundColor: 'rgba(2, 175, 31, 0.1)', borderWidth: 2, fill: true }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              scales: { y: { beginAtZero: true, grid: { color: '#eef0f2' } }, x: { grid: { color: '#eef0f2' } } },
+              plugins: { legend: { display: true, position: 'top' }, tooltip: { mode: 'index', intersect: false } }
+            }
+          });
+        })();
+      </script>
+    <% else %>
+      <p class="text-muted text-center py-4">Sin datos en los últimos 12 meses.</p>
+    <% end %>
+  </div>
+</div>

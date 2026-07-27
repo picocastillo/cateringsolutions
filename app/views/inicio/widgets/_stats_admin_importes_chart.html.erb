@@ -1,0 +1,114 @@
+<%
+  # Comprobantes/cantidades aggregated monthly in SQL; USD conversion still
+  # needs daily resolution (cotizacion changes daily). Cached briefly so the
+  # dashboard doesn't redo the multi-year scan on every AJAX hit.
+  local_id_cache = current_user.tienda_activa.multiple_locales ? current_user.local_activo&.id : nil
+  financiero_flag = current_user.admin_financiero? ? 1 : 0
+  cache_key = ['stats_admin_importes_chart_v2', tienda_activa.id, local_id_cache, financiero_flag, Date.current.to_s].join('/')
+  expires_in = (Time.zone.tomorrow.beginning_of_day - Time.zone.now).to_i
+  datos_importes = Rails.cache.fetch(cache_key, expires_in: expires_in) do
+    comprobantes_scope = Ventas::Facturacion::Comprobante
+                         .where(tienda_id: tienda_activa.id, estado_id: [2, 3])
+                         .where('fecha_emision > ?', '2020-07-01')
+                         .where('fecha_emision <= ?', Date.current)
+    comprobantes_scope = comprobantes_scope.where(local_id: current_user.local_activo.id) if current_user.tienda_activa.multiple_locales && current_user.local_activo
+
+    # Daily net pesos (still needed for USD conversion at the daily cotizacion).
+    daily_data = comprobantes_scope.group(Arel.sql('DATE(fecha_emision)')).group(:type)
+                                   .pluck(Arel.sql('DATE(fecha_emision), type, SUM(total)'))
+    daily_net_pesos = {}
+    daily_data.each do |fecha, type, total|
+      daily_net_pesos[fecha] ||= 0
+      if type == 'Ventas::Facturacion::NotaCredito'
+        daily_net_pesos[fecha] -= total.to_f
+      else
+        daily_net_pesos[fecha] += total.to_f
+      end
+    end
+
+    # Monthly product quantities aggregated in SQL.
+    pedidos_qty_scope = Pedidos::Pedido
+                        .where(tienda_id: tienda_activa.id, estado_id: [3, 4])
+                        .where('fecha > ?', '2020-07-01').where('fecha <= ?', Date.current)
+                        .joins(:productos_solicitados)
+    pedidos_qty_scope = pedidos_qty_scope.where(local_id: current_user.local_activo.id) if current_user.tienda_activa.multiple_locales && current_user.local_activo
+    monthly_quantities = pedidos_qty_scope.group(Arel.sql("DATE_FORMAT(pedidos.fecha, '%m/%Y')"))
+                                          .pluck(Arel.sql("DATE_FORMAT(pedidos.fecha, '%m/%Y'), SUM(productos_solicitados.cantidad)"))
+                                          .to_h
+
+    cotizaciones = Cotizaciones::Dolar.where(fecha: Date.new(2020, 7, 1)..Date.current).pluck(:fecha, :precio_venta).to_h
+
+    monthly_groups = {}
+    last = nil
+    daily_net_pesos.keys.sort.each do |fecha|
+      m = fecha.strftime('%m/%Y')
+      monthly_groups[m] ||= { pesos: 0.0, dolares: 0.0 }
+      monthly_groups[m][:pesos] += daily_net_pesos[fecha]
+      c = cotizaciones[fecha] || last
+      last = c if c
+      monthly_groups[m][:dolares] += (c && c > 0 ? daily_net_pesos[fecha] / c : 0)
+    end
+    monthly_quantities.each do |m, qty|
+      monthly_groups[m] ||= { pesos: 0.0, dolares: 0.0 }
+      monthly_groups[m][:cantidad] = qty.to_i
+    end
+
+    monthly_groups
+      .sort_by { |mes, _| mes.split('/').reverse.join('-') }
+      .map { |mes, d| { label: mes, pesos: d[:pesos].round(2), dolares: d[:dolares].round(2), cantidad: d[:cantidad].to_i } }
+  end
+%>
+<% cache(['stats_admin_importes_chart_html_v2', tienda_activa.id, local_id_cache, financiero_flag, Date.current.to_s]) do %>
+<% if datos_importes.present? %>
+  <div class="card">
+    <div class="card-body">
+      <h3 class="card-title">Ventas por Mes</h3>
+      <h6 class="card-subtitle">Importe total mensual en pesos y dólares</h6>
+      <%= content_tag :span, nil, id: 'importes-mensuales', data: { datos: datos_importes } %>
+      <div style="position: relative; height: 300px;"><canvas id="importes-line-chart"></canvas></div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      if (!$('#importes-mensuales').data('datos')) return;
+      var importesData = $('#importes-mensuales').data('datos');
+      var labels = importesData.map(function(i) { return i.label; });
+      new Chart(document.getElementById('importes-line-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { type: 'bar',  label: 'Productos',   data: importesData.map(function(i) { return i.cantidad; }), backgroundColor: 'rgba(156, 163, 175, 0.3)', borderColor: 'rgba(156, 163, 175, 0.5)', borderWidth: 1, yAxisID: 'y2', order: 3 },
+            { type: 'line', label: 'Pesos (ARS)', data: importesData.map(function(i) { return i.pesos; }),     borderColor: '#009efb', backgroundColor: 'rgba(0, 158, 251, 0.1)', borderWidth: 2, fill: false, yAxisID: 'y',  order: 2 },
+            { type: 'line', label: 'Dólares (USD)', data: importesData.map(function(i) { return i.dolares; }), borderColor: '#02af1f', backgroundColor: 'rgba(2, 175, 31, 0.1)', borderWidth: 2, fill: false, yAxisID: 'y1', order: 1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            y:  { type: 'linear', position: 'left',  beginAtZero: true, title: { display: true, text: 'ARS $' }, ticks: { callback: function(v) { return '$ '   + v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } }, grid: { color: '#eef0f2' } },
+            y1: { type: 'linear', position: 'right', beginAtZero: true, title: { display: true, text: 'USD $' }, ticks: { callback: function(v) { return 'US$ ' + v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } }, grid: { drawOnChartArea: false } },
+            y2: { type: 'linear', display: false, beginAtZero: true },
+            x:  { grid: { color: '#eef0f2' } }
+          },
+          plugins: {
+            legend: { display: true, position: 'top' },
+            tooltip: {
+              mode: 'index', intersect: false,
+              callbacks: {
+                label: function(ctx) {
+                  if (ctx.datasetIndex === 0) return ctx.dataset.label + ': ' + ctx.parsed.y.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                  var prefix = ctx.datasetIndex === 1 ? '$ ' : 'US$ ';
+                  return ctx.dataset.label + ': ' + prefix + ctx.parsed.y.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                }
+              }
+            }
+          },
+          hover: { mode: 'nearest', intersect: true }
+        }
+      });
+    })();
+  </script>
+<% end %>
+<% end %>

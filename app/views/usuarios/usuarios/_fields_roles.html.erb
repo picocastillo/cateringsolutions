@@ -1,0 +1,16 @@
+  <div class="row">
+  <%= f.input :roles, label: false, wrapper_html: {class: 'roles'} do %>
+    <% roles = Usuarios::Rol.configurables_admin %>
+    <% roles = roles.reject{|x| x == :super_admin } unless current_user.super_admin? %>
+    <% roles.group_by(&:modulo).each do |modulo, roles| %>
+        <h5><%= modulo %></h5>
+        <%= f.collection_check_boxes :rol_ids, roles, :id, :titulo, item_wrapper_class: 'checkbox' do |b| %>
+          <div class="col-md-12">
+            <%= b.check_box + b.text %>
+            <%= icono_tip b.object.descripcion if b.object.descripcion.present? %>
+          </div>
+        <% end %>
+
+    <% end %>
+  <% end %>
+  </div>

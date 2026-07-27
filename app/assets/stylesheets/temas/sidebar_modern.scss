@@ -1,0 +1,830 @@
+// ==========================================================================
+// Modern Sidebar - Clean, minimal sidebar with smooth transitions
+// Replaces the old Bootstrap 4 admin template sidebar
+// ==========================================================================
+
+// --------------------------------------------------------------------------
+// Variables
+// --------------------------------------------------------------------------
+$sidebar-width: 260px;
+$sidebar-mini-width: 68px;
+$sidebar-bg: #1e2530;
+$sidebar-text: #8a94a7;
+$sidebar-text-hover: #ffffff;
+$sidebar-active-bg: rgba(255, 255, 255, 0.08);
+$sidebar-active-accent: #3b82f6;
+$sidebar-section-bg: rgba(255, 255, 255, 0.04);
+$sidebar-divider: rgba(255, 255, 255, 0.06);
+$sidebar-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+$topbar-height: 64px;
+
+// --------------------------------------------------------------------------
+// Left sidebar base
+// --------------------------------------------------------------------------
+.left-sidebar {
+  position: fixed !important;
+  width: $sidebar-width;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  padding-top: 0;
+  background: $sidebar-bg;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+  transition: width $sidebar-transition, transform $sidebar-transition;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+}
+
+.fix-sidebar .left-sidebar {
+  position: fixed !important;
+}
+
+// --------------------------------------------------------------------------
+// Sidebar logo area (replaces the old navbar-header positioning)
+// --------------------------------------------------------------------------
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: $topbar-height;
+  padding: 0 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid $sidebar-divider;
+
+  a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+  }
+
+  .brand-logo {
+    max-height: 36px;
+    max-width: 160px;
+    transition: all $sidebar-transition;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Scroll area
+// --------------------------------------------------------------------------
+.scroll-sidebar {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 70px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Sidebar navigation
+// --------------------------------------------------------------------------
+.sidebar-nav {
+  background: transparent !important;
+  padding: 12px 0 !important;
+}
+
+#sidebarnav {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+// Section labels (small caps)
+.sidebar-nav .nav-section-label {
+  display: block;
+  padding: 20px 24px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+// --------------------------------------------------------------------------
+// Menu items - Top level
+// --------------------------------------------------------------------------
+.sidebar-nav > ul > li {
+  margin-bottom: 2px;
+}
+
+.sidebar-nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-nav ul li {
+  list-style: none;
+  position: relative;
+}
+
+// All links base style
+.sidebar-nav ul li a {
+  display: flex !important;
+  align-items: center;
+  padding: 10px 16px 10px 20px !important;
+  color: $sidebar-text !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  border-radius: 0 !important;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  position: relative;
+  line-height: 1.5;
+}
+
+.sidebar-nav ul li a i {
+  font-size: 20px !important;
+  width: 28px !important;
+  height: 28px;
+  line-height: 28px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+  color: $sidebar-text !important;
+  transition: color 0.15s ease;
+}
+
+.sidebar-nav ul li a .hide-menu {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: static !important;
+  right: auto !important;
+  font-weight: 500 !important;
+}
+
+// Hover state
+.sidebar-nav ul li a:hover {
+  color: $sidebar-text-hover !important;
+  background: $sidebar-active-bg !important;
+  font-weight: 500 !important;
+}
+
+.sidebar-nav ul li a:hover i {
+  color: $sidebar-text-hover !important;
+}
+
+// Active state
+.sidebar-nav ul li a.active {
+  color: $sidebar-text-hover !important;
+  background: $sidebar-active-bg !important;
+  font-weight: 600 !important;
+}
+
+.sidebar-nav ul li a.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: $sidebar-active-accent;
+  border-radius: 0 3px 3px 0;
+}
+
+.sidebar-nav ul li a.active i {
+  color: $sidebar-active-accent !important;
+}
+
+// --------------------------------------------------------------------------
+// Section headers (grupo with has-arrow)
+// --------------------------------------------------------------------------
+.sidebar-nav ul li > a.has-arrow {
+  background: transparent !important;
+  padding: 10px 16px 10px 20px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 12px;
+}
+
+.sidebar-nav ul li > a.has-arrow.titulo-menu {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.sidebar-nav ul li > a.has-arrow i {
+  font-size: 17px !important;
+  color: rgba(255, 255, 255, 0.35) !important;
+  width: 28px !important;
+  margin-right: 10px;
+}
+
+.sidebar-nav ul li > a.has-arrow:hover {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.sidebar-nav ul li > a.has-arrow:hover i {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+// Arrow indicator
+.sidebar-nav .has-arrow::after {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  right: 16px !important;
+}
+
+.sidebar-nav .has-arrow:hover::after {
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.sidebar-nav .active > .has-arrow::after,
+.sidebar-nav li > .has-arrow.active::after,
+.sidebar-nav .has-arrow[aria-expanded="true"]::after {
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+// --------------------------------------------------------------------------
+// Sub-menu items
+// --------------------------------------------------------------------------
+
+// Override claro.scss: #sidebarnav li.active li:hover { background: #f3f3f3 }
+#sidebarnav li.active li,
+#sidebarnav li.active li:hover {
+  background: transparent !important;
+}
+
+.sidebar-nav ul li ul {
+  padding-left: 0 !important;
+  padding-top: 4px !important;
+}
+
+.sidebar-nav ul li ul li a {
+  padding: 8px 16px 8px 58px !important;
+  font-size: 13px !important;
+  color: $sidebar-text !important;
+}
+
+.sidebar-nav ul li ul li a:hover {
+  color: $sidebar-text-hover !important;
+  background: $sidebar-active-bg !important;
+}
+
+.sidebar-nav ul li ul li a.active {
+  color: $sidebar-text-hover !important;
+  background: $sidebar-active-bg !important;
+}
+
+.sidebar-nav ul li ul li a.active::before {
+  left: 42px;
+  top: 50%;
+  bottom: auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+// --------------------------------------------------------------------------
+// Inicio link (dashboard) - special styling
+// --------------------------------------------------------------------------
+#sidebarnav > li:first-child > a {
+  margin: 4px 12px;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+}
+
+#sidebarnav > li:first-child > a:hover {
+  border-radius: 8px !important;
+}
+
+#sidebarnav > li:first-child > a.active::before,
+#sidebarnav > li:first-child > a::before {
+  display: none;
+}
+
+#inicio-link-notification {
+  border-radius: 8px !important;
+}
+
+// --------------------------------------------------------------------------
+// Sidebar footer
+// --------------------------------------------------------------------------
+.sidebar-footer {
+  position: fixed !important;
+  bottom: 0;
+  left: 0;
+  width: $sidebar-width;
+  background: darken($sidebar-bg, 3%) !important;
+  border-top: 1px solid $sidebar-divider !important;
+  padding: 0;
+  z-index: 101;
+  transition: width $sidebar-transition;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-footer a {
+  color: $sidebar-text !important;
+  transition: all 0.15s ease;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 14px !important;
+}
+
+.sidebar-footer a:hover {
+  color: $sidebar-text-hover !important;
+  background: $sidebar-active-bg;
+}
+
+.sidebar-footer a i {
+  font-size: 18px;
+}
+
+// --------------------------------------------------------------------------
+// Topbar adjustments
+// --------------------------------------------------------------------------
+.topbar {
+  position: fixed !important;
+  top: 0;
+  width: 100%;
+  z-index: 99;
+  height: $topbar-height;
+}
+
+.topbar .navbar-header {
+  display: none !important;  // Logo is now inside sidebar
+}
+
+.topbar .navbar-collapse {
+  margin-left: $sidebar-width;
+  transition: margin-left $sidebar-transition;
+}
+
+.topbar .top-navbar {
+  min-height: $topbar-height;
+  padding: 0 16px;
+}
+
+// --------------------------------------------------------------------------
+// Main content area
+// --------------------------------------------------------------------------
+.page-wrapper {
+  margin-left: $sidebar-width !important;
+  padding-top: $topbar-height !important;
+  transition: margin-left $sidebar-transition;
+  min-height: 100vh;
+}
+
+// --------------------------------------------------------------------------
+// Mini sidebar (collapsed)
+// --------------------------------------------------------------------------
+@media (min-width: 768px) {
+  .mini-sidebar .left-sidebar {
+    width: $sidebar-mini-width !important;
+    overflow: visible !important;
+  }
+
+  .mini-sidebar .sidebar-brand .brand-logo {
+    max-width: 30px;
+    overflow: hidden;
+  }
+
+  .mini-sidebar .scroll-sidebar,
+  .mini-sidebar .scroll-sidebar.slimScrollDiv,
+  .mini-sidebar .slimScrollDiv {
+    overflow: visible !important;
+  }
+
+  .mini-sidebar .sidebar-nav {
+    padding: 12px 0 !important;
+  }
+
+  .mini-sidebar .sidebar-nav .nav-section-label {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li > a .hide-menu,
+  .mini-sidebar .sidebar-nav #sidebarnav > li > a.has-arrow .hide-menu {
+    display: none !important;
+  }
+
+  // Override claro.scss: .mini-sidebar ... li:hover > a .hide-menu { display: inline }
+  .mini-sidebar .sidebar-nav #sidebarnav > li:hover > a.has-arrow .hide-menu {
+    display: none !important;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li > a {
+    padding: 10px 0 !important;
+    justify-content: center;
+    width: auto !important; // Override claro.scss width: 50px
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li > a i {
+    margin-right: 0 !important;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li > a.has-arrow::after {
+    display: none;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li:first-child > a {
+    margin: 4px 8px;
+    padding: 10px 0 !important;
+    justify-content: center;
+    width: auto !important;
+  }
+
+  .mini-sidebar .scroll-sidebar {
+    position: relative !important; // Override claro.scss position: absolute
+  }
+
+  // Fly-out submenu on hover
+  .mini-sidebar .sidebar-nav #sidebarnav > li > ul {
+    position: absolute !important;
+    left: $sidebar-mini-width !important;
+    top: 0 !important;
+    width: 220px !important;
+    background: lighten($sidebar-bg, 5%) !important;
+    box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.2) !important;
+    border-radius: 0 8px 8px 0;
+    display: none;
+    z-index: 1001;
+    padding: 8px 0 !important;
+    padding-left: 0 !important;
+  }
+  // Override claro.scss: #sidebarnav li.active li:hover { background: #f3f3f3 }
+  .mini-sidebar #sidebarnav li.active li,
+  .mini-sidebar #sidebarnav li.active li:hover {
+    background: transparent !important;
+  }
+  .mini-sidebar .sidebar-nav #sidebarnav > li:hover > ul,
+  .mini-sidebar .sidebar-nav #sidebarnav > li:hover > ul.collapse {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li > ul li a {
+    padding: 8px 16px 8px 20px !important;
+    color: #c8cfd8 !important;
+    background: #283140 !important;
+    font-weight: 400 !important;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li > ul li a:hover {
+    color: #ffffff !important;
+    background: #313d4f !important;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li > ul li a.active {
+    color: #ffffff !important;
+    background: #313d4f !important;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li > ul li a.active::before {
+    left: 8px;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li:hover > a {
+    background: $sidebar-active-bg !important;
+    color: $sidebar-text-hover !important;
+    width: auto !important; // Override claro.scss width: 260px on hover
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li:hover > a i {
+    color: $sidebar-text-hover !important;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li:hover > a:not(.has-arrow) .hide-menu {
+    display: inline-block;
+    position: absolute;
+    left: $sidebar-mini-width;
+    top: 0;
+    background: lighten($sidebar-bg, 5%);
+    padding: 10px 20px;
+    box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.2);
+    border-radius: 0 8px 8px 0;
+    white-space: nowrap;
+    color: $sidebar-text-hover !important;
+    z-index: 1002;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .mini-sidebar .sidebar-footer {
+    width: $sidebar-mini-width;
+    display: flex !important;
+  }
+
+  .mini-sidebar .sidebar-footer a {
+    width: 50%;
+  }
+
+  .mini-sidebar .page-wrapper {
+    margin-left: $sidebar-mini-width !important;
+  }
+
+  .mini-sidebar .topbar .navbar-collapse {
+    margin-left: $sidebar-mini-width;
+  }
+
+  .mini-sidebar .sidebar-nav #sidebarnav > li.active > a,
+  .mini-sidebar .sidebar-nav #sidebarnav > li.active > a.active {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+// --------------------------------------------------------------------------
+// No sidebar (full width) — reset for large screens
+// --------------------------------------------------------------------------
+@media (min-width: 1400px) {
+  .no-sidebar .left-sidebar {
+    width: $sidebar-width !important;
+    overflow: hidden;
+  }
+  .no-sidebar .page-wrapper {
+    margin-left: $sidebar-width !important;
+  }
+  .no-sidebar .topbar .navbar-collapse {
+    margin-left: $sidebar-width;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1399px) {
+  .no-sidebar .left-sidebar {
+    width: $sidebar-mini-width !important;
+    overflow: visible !important;
+  }
+  .no-sidebar .page-wrapper {
+    margin-left: $sidebar-mini-width !important;
+  }
+  .no-sidebar .topbar .navbar-collapse {
+    margin-left: $sidebar-mini-width;
+  }
+  .no-sidebar .sidebar-brand .brand-logo {
+    max-width: 30px;
+    overflow: hidden;
+  }
+  .no-sidebar .sidebar-nav .nav-section-label {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li > a .hide-menu {
+    display: none !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li:hover > a.has-arrow .hide-menu {
+    display: none !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li > a {
+    padding: 10px 0 !important;
+    justify-content: center;
+    width: auto !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li > a i {
+    margin-right: 0 !important;
+  }
+  .no-sidebar .scroll-sidebar {
+    position: relative !important;
+  }
+  .no-sidebar .scroll-sidebar,
+  .no-sidebar .scroll-sidebar.slimScrollDiv,
+  .no-sidebar .slimScrollDiv {
+    overflow: visible !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li > a.has-arrow::after {
+    display: none;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li:first-child > a {
+    margin: 4px 8px;
+    padding: 10px 0 !important;
+    justify-content: center;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li > ul {
+    position: absolute !important;
+    left: $sidebar-mini-width !important;
+    top: 0 !important;
+    width: 220px !important;
+    background: lighten($sidebar-bg, 5%) !important;
+    box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.2) !important;
+    border-radius: 0 8px 8px 0;
+    display: none;
+    z-index: 1001;
+    padding: 8px 0 !important;
+    padding-left: 0 !important;
+  }  // Override claro.scss: #sidebarnav li.active li:hover { background: #f3f3f3 }
+  .no-sidebar #sidebarnav li.active li,
+  .no-sidebar #sidebarnav li.active li:hover {
+    background: transparent !important;
+  }  .no-sidebar .sidebar-nav #sidebarnav > li:hover > ul,
+  .no-sidebar .sidebar-nav #sidebarnav > li:hover > ul.collapse {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li > ul li a {
+    padding: 8px 16px 8px 20px !important;
+    color: #c8cfd8 !important;
+    background: #283140 !important;
+    font-weight: 400 !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li > ul li a:hover {
+    color: #ffffff !important;
+    background: #313d4f !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li > ul li a.active {
+    color: #ffffff !important;
+    background: #313d4f !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li:hover > a {
+    background: $sidebar-active-bg !important;
+    color: $sidebar-text-hover !important;
+    width: auto !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li:hover > a i {
+    color: $sidebar-text-hover !important;
+  }
+  .no-sidebar .sidebar-nav #sidebarnav > li:hover > a:not(.has-arrow) .hide-menu {
+    display: inline-block;
+    position: absolute;
+    left: $sidebar-mini-width;
+    top: 0;
+    background: lighten($sidebar-bg, 5%);
+    padding: 10px 20px;
+    box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.2);
+    border-radius: 0 8px 8px 0;
+    white-space: nowrap;
+    color: $sidebar-text-hover !important;
+    z-index: 1002;
+  }
+  .no-sidebar .sidebar-footer {
+    width: $sidebar-mini-width;
+    display: flex !important;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Mobile (< 768px)
+// --------------------------------------------------------------------------
+@media (max-width: 767px) {
+  .left-sidebar {
+    transform: translateX(-100%);
+    width: $sidebar-width !important;
+    z-index: 1100;
+    box-shadow: none;
+  }
+
+  .show-sidebar .left-sidebar {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .page-wrapper {
+    margin-left: 0 !important;
+    padding-top: $topbar-height !important;
+  }
+
+  .topbar .navbar-collapse {
+    margin-left: 0 !important;
+  }
+
+  .sidebar-footer {
+    width: $sidebar-width !important;
+  }
+
+  // Backdrop overlay
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1099;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .show-sidebar .sidebar-backdrop {
+    display: block;
+    opacity: 1;
+  }
+
+  .no-sidebar .left-sidebar {
+    width: $sidebar-width !important;
+    overflow: hidden !important;
+  }
+  .no-sidebar .page-wrapper {
+    margin-left: 0 !important;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Cliente sidebar (user-sidebar-nav) - override for client users
+// --------------------------------------------------------------------------
+.sidebar-nav.user-sidebar-nav {
+  padding: 16px 0 !important;
+}
+
+.sidebar-nav.user-sidebar-nav > ul {
+  position: static !important;
+  top: auto !important;
+}
+
+.sidebar-nav.user-sidebar-nav > ul > li > a {
+  padding: 12px 16px 12px 20px !important;
+  margin: 2px 12px;
+  border-radius: 8px !important;
+}
+
+.sidebar-nav.user-sidebar-nav > ul > li > a > i {
+  width: 36px !important;
+  height: 36px;
+  line-height: 36px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  margin-right: 12px;
+  margin-left: 0 !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px !important;
+  color: $sidebar-text !important;
+  transition: all 0.15s ease;
+}
+
+.sidebar-nav.user-sidebar-nav > ul > li > a:hover > i,
+.sidebar-nav.user-sidebar-nav > ul > li > a.active > i {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: $sidebar-active-accent !important;
+}
+
+.sidebar-nav.user-sidebar-nav > ul > li > a.active {
+  background: $sidebar-active-bg !important;
+  color: $sidebar-text-hover !important;
+}
+
+.sidebar-nav.user-sidebar-nav > ul > li > a.active::before {
+  display: none;
+}
+
+.sidebar-nav.user-sidebar-nav #sidebarnav .hide-menu {
+  vertical-align: middle;
+  font-weight: 500 !important;
+  position: static !important;
+  right: auto !important;
+}
+
+// Mini sidebar overrides for client
+.mini-sidebar .sidebar-nav.user-sidebar-nav > ul > li > a {
+  padding: 12px 0 !important;
+  margin: 2px 4px;
+  justify-content: center;
+  border-radius: 8px !important;
+}
+
+.mini-sidebar .sidebar-nav.user-sidebar-nav > ul > li:hover > a > .hide-menu {
+  color: $sidebar-text-hover !important;
+}
+
+// --------------------------------------------------------------------------
+// Per-tenant theme color overrides (work with inline styles from layout)
+// --------------------------------------------------------------------------
+// .titulo-menu background is set via inline style from tienda_activa.color_de_menu
+// We override to make it work with our dark sidebar
+.titulo-menu {
+  background: transparent !important;
+}
+
+// Keep active state compatible with tenant colors
+.sidebar-nav > ul > li.active > a {
+  background: transparent !important;
+  box-shadow: none !important;
+}

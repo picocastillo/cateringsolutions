@@ -1,0 +1,8 @@
+<% content_for :styles do %>
+  @page {
+    size: legal;
+    margin: 5mm;
+  }
+<% end %>
+
+<%= render partial: 'ventas/facturacion/comprobantes/comprobante', collection: @comprobantes, as: :comprobante %>

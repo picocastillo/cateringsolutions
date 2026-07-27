@@ -1,0 +1,18 @@
+<div class="card-body collapse show ajax-data-container">
+  <div class="table-responsive">
+    <%= table_for @procesos do |t| %>
+      <% t.column :id, header: '#' %>
+      <% t.column :human_name, header: 'Proceso' %>
+      <% t.column :autor %>
+      <% t.column(:created_at, header: 'Fecha') { |p| p.created_at.to_s :short } %>
+      <% t.column(:estado, class: 'center') { |p| estado_proceso p } %>
+      <% t.column(:eta, header: 'Restante/Duración') { |p| eta_proceso p } %>
+      <% t.actions { |p| [
+        link_if(p.adjuntado_y_terminado?, content_tag(:i, nil, class: 'ti-download'), p.adjunto.url, { data: { toggle: 'tooltip', 'original-title' => 'Descargar' } }),
+        link_to_errores(p.progreso),
+        destroy_link(p, (p.ejecutando? || p.pendiente?) ? 'Detener y Eliminar' : 'Eliminar', path: proceso_path(p))
+      ] } %>
+    <% end %>
+  </div>
+</div>
+<%= paginador @procesos %>

@@ -1,0 +1,16 @@
+<% flash.each do |name, msg| %>
+  <% msgs = Array msg %>
+  <div>
+    <div class="col-sm-12 alert alert-<%= name == 'notice' ? 'success' : name %>">
+      <% if msgs.size == 1 %>
+        <%= raw msgs.first %>
+      <% else %>
+        <ul>
+          <% msgs.each do |msg| %>
+            <li><%= raw msg %></li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+  </div>
+<% end %>

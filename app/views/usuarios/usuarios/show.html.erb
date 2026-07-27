@@ -1,0 +1,109 @@
+<% page title: @usuario.nombre, raiz: 'Usuarios', hojas: 'Detalles', id: 'show-usuario', acciones: [(link_to('Editar', edit_usuario_path(@usuario)) if !current_user.cliente?), (link_to('Lista', usuarios_path) if !current_user.cliente?), (volver_link if current_user.cliente?)].compact %>
+
+<div class="row">
+                    <!-- Column -->
+                    <div class="col-lg-4 col-xlg-3 col-md-5">
+                        <div class="card">
+                            <div class="card-body">
+                                <center class="m-t-30"> <img src="<%= @usuario.foto_safe %>" class="img-rounded" width="150">
+                                    <h2 class="card-title m-t-10 m-b-0"><%= @usuario.nombre %></h2>
+                                    <% if @usuario.cliente  && !current_user.cliente %>
+                                      <h3 class="card-subtitle"><%= link_to discontinuado(@usuario.cliente, @usuario.cliente.nombre), @usuario.cliente %></h3>
+                                      <h5 class="card-subtitle mb-4" style="margin-top: -15px"><%= @usuario.cuenta.nombre %></h5>
+                                    <% end %>
+                                    <% if @usuario.cliente  && current_user.cliente %>
+                                      <h3 class="card-subtitle"><%= @usuario.cliente %></h3>
+                                      <% if @usuario.cliente.to_s != @usuario.cuenta.nombre %>
+                                        <h5 class="card-subtitle mb-4" style="margin-top: -15px"><%= @usuario.cuenta.nombre %></h5>
+                                      <% end %>
+                                    <% end %>
+                                    <h6 class="card-subtitle"><%= @usuario.cliente ? "Usuario Cliente#{' Administrador de Empresa' if @usuario.cumple_rol?(:administrador_empresa)}" : ( @usuario.admin? ? 'Administrador' : 'Operador') %></h6>
+                                    <h6 class="card-subtitle">Login: <%= @usuario.login %></h6>
+                                    <h6 class="card-subtitle estado">Estado: <%= active_label @usuario %></h6>
+                                    <% if @usuario.cliente? && !current_user.cliente? %>
+                                    <div class="row text-center justify-content-md-center">
+                                        <div class="col-6"><a href="/pedidos?q[usuario_ids]=<%= @usuario.id.to_s %>&q[estado_id]=3" target="_blank" class="link" data-toggle="tooltip" data-original-title="<%= Pedidos::Pedido.where('estado_id >= 3').where(usuario_id: @usuario).count %> Pedidos Confirmados"><i class="mdi mdi-calendar-clock"></i> <font class="font-medium"><%= Pedidos::Pedido.where('estado_id >= 3').where(usuario_id: @usuario).count %></font></a></div>
+                                        <div class="col-6"><a href="/cuentas_corrientes?q[usuarios_ids]=<%= @usuario.id.to_s %>&q[condicion_eq]=Pendientes" target="_blank" class="link nowrap" data-toggle="tooltip" data-original-title="<%= (deuda = number_to_currency(Contabilidad::SaldosMovimientosQuery.new(user: current_user, usuarios_ids: @usuario.id.to_s, csv_dias_numericos: '0').totales.saldo_total)) || '$0' %> Adeudados"><i class="mdi mdi-cash-usd"></i> <font class="font-medium"><%= deuda || '$0' %></font></a></div>
+                                    </div>
+                                    <% end %>
+                                </center>
+                            </div>
+                            <div>
+                                <hr> </div>
+                            <div class="card-body  p-b-30">
+                                <% if @usuario.dni.present? %>
+                                  <small class="text-muted">DNI </small>
+                                  <h6><%= @usuario.dni %></h6>
+                                <% end %>
+                                <% if @usuario.cuit.present? %>
+                                  <small class="text-muted">Cuit </small>
+                                  <h6><%= @usuario.cuit %></h6>
+                                <% end %>
+                                <% if @usuario.sucursal.present? %>
+                                  <small class="text-muted">Sucursal </small>
+                                  <h6><%= @usuario.sucursal %></h6>
+                                <% end %>
+                                <% if @usuario.legajo.present? %>
+                                  <small class="text-muted">Legajo </small>
+                                  <h6><%= @usuario.legajo %></h6>
+                                <% end %>
+                                <% cliente = @usuario.cliente %>
+                                <% if !@usuario.cliente? && cliente && cliente.cuit.present? %>
+                                  <small class="text-muted">CUIT Cliente</small>
+                                  <h6><%= cliente.cuit %></h6>
+                                <% end %>
+                                <% email = @usuario.email if @usuario.email.present? %>
+                                <% email = [email, cliente.email].compact.join(', ') if cliente && cliente.email.present? %>
+                                <% if email.present? %>
+                                  <small class="text-muted">Email </small>
+                                  <h6><%= link_to email, "mailto:#{email}" %></h6>
+                                <% end %>
+                                <% if cliente && cliente.domicilio.present? %>
+                                  <small class="text-muted">Domicilio</small>
+                                  <h6><%= cliente.domicilio %></h6>
+                                <% end %>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Column -->
+                    <!-- Column -->
+                    <div class="col-lg-8 col-xlg-9 col-md-7">
+                      <% if @usuario.cliente? %>
+                        <div class="card-header bg-gradient-primary text-white py-3">
+                          <h3 class="card-title mb-0 text-center">
+                            Pedidos Recientes
+                          </h3>
+                        </div>
+                        <div class="pt-4" style="padding: 0 15px;">
+                          <% Pedidos::Pedido.where(usuario_id: @usuario).where('estado_id <> 1').order('updated_at desc').limit(3).each do |ped| %>
+                            <div>
+                              <%= link_to("Pedido #{ped.to_s}", pedido_path(ped)) %>
+                              con un importe total de <%= ped.importe_total %>
+                              <div class="sl-date" style="margin-top: -5px;font-size:14px">hace <%= time_ago_in_words(ped.created_at) %></div>
+                              <div class="row m-t-10">
+                                <% ped.productos_solicitados.each do |ps| %>
+                                  <div class="col-lg-3 col-md-4 col-sm-6 col-6" style="text-align:center;">
+                                    <img src="<%= ps.producto.imagen_principal %>" class="img-responsive img-rounded" style="width: auto;max-height: 64px;background: <%= ps.producto.color_safe %>">
+                                    <p style="font-size: 13px;margin-top:5px;margin-bottom: 0px"><%= ps.to_s %></p>
+                                  </div>
+                                <% end %>
+                              </div>
+                            </div>
+                            <hr>
+                          <% end %>
+                          <%= link_to 'Mostrar más', "/pedidos?q[usuario_ids]=#{@usuario.id}", class: 'text-muted', style: 'display:inline-block;margin-bottom:25px;' %>
+                        </div>
+
+                        <div class="card-header bg-gradient-primary text-white py-3 mt-3">
+                          <h3 class="card-title mb-0 text-center">
+                            Productos favoritos
+                          </h3>
+                        </div>
+                        <div id="usuario-stats-div" class="pt-4" style="min-height:120px;padding:0">
+                          <%= loader('Cargando estadísticas...') %>
+                          <%= loader_script(stats_usuario_path(@usuario)) %>
+                        </div>
+                      <% end %>
+                    </div>
+                    <!-- Column -->
+                </div>

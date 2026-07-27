@@ -1,0 +1,95 @@
+<div class="card-body collapse show ajax-data-container">
+  <div class="table-responsive">
+    <%= table_for @stocks, id: 'stocks' do |t| %>
+      <% t.column(:producto) { |s| link_to discontinuado(s.producto, s.producto.nombre), s } %>
+      <% t.column(:categoria, class: 'hidden-md-down') { |s| s.producto.categoria.nombre } %>
+      <% t.column(:cantidad_actual, header: 'Stock Actual', class: 'text-right') { |s| s.cantidad_actual.to_i } %>
+      <% t.column(:cantidad_minima, header: 'Mínimo', class: 'text-right hidden-md-down') { |s| s.cantidad_minima.to_i } %>
+      <% t.column(:cantidad_maxima, header: 'Máximo', class: 'text-right hidden-md-down') { |s| s.cantidad_maxima ? s.cantidad_maxima.to_i : '-' } %>
+      <% t.column(:promedio_venta, header: 'Pronóstico diario', class: 'text-right hidden-md-down', title: 'Promedio de venta diaria últimos 90 días (excluyendo fines de semana)') do |s| %>
+        <%= number_with_precision(s.promedio_venta_diaria_90_dias, precision: 2) %>
+      <% end %>
+      <% t.column(:cobertura_estimada, header: 'Cobertura estimada', class: 'text-right hidden-md-down', title: 'Días de cobertura estimados según stock actual y promedio de ventas') do |s| %>
+        <% dias = s.cobertura_estimada_dias %>
+        <% if dias > 0 %>
+          <%= "#{dias} días" %>
+        <% else %>
+          <span class="text-muted">-</span>
+        <% end %>
+      <% end %>
+      <% t.column(:minimo_recomendado, header: 'Mínimo Recomendado 45 días', class: 'text-right hidden-md-down', title: 'Stock mínimo recomendado para 45 días de cobertura') do |s| %>
+        <%= s.minimo_recomendado_45_dias %>
+      <% end %>
+      <% t.column(:estado, header: 'Estado', class: 'center') do |s| %>
+        <% if s.stock_critico? %>
+          <span class="label label-danger">Crítico</span>
+        <% elsif s.stock_bajo? %>
+          <span class="label label-warning">Bajo</span>
+        <% elsif s.sin_stock? %>
+          <span class="label label-default">Sin Stock</span>
+        <% else %>
+          <span class="label label-success">Normal</span>
+        <% end %>
+      <% end %>
+      <% t.column(:porcentaje, header: '% Stock', class: 'text-right hidden-md-down') do |s| %>
+        <% if s.cantidad_maxima.present? && s.cantidad_maxima > 0 %>
+          <%= "#{s.porcentaje_stock}%" %>
+        <% else %>
+          '-'
+        <% end %>
+      <% end %>
+      <% t.column(:activo, class: 'center hidden-md-down') { |s| etiqueta_activo s } %>
+      <% t.actions { |s| [
+        show_link(s, content_tag(:i, nil, class: 'ti-eye')),
+        edit_link(s, content_tag(:i, nil, class: 'ti-marker-alt')),
+        link_to(content_tag(:i, nil, class: 'ti-list'), movimientos_stock_path(s), 
+                class: 'p-r-10', 
+                data: { toggle: 'tooltip', "original-title" => 'Ver Movimientos' }, 
+                remote: true)
+      ].compact } %>
+    <% end %>
+  </div>
+  
+  <% if @resumen_stocks.present? && @stocks.any? %>
+    <div class="row m-t-20">
+      <div class="col-md-12">
+        <div class="card card-body">
+          <h5>Resumen de Stocks</h5>
+          <div class="row">
+            <div class="col-md-2">
+              <div class="text-center">
+                <h3 class="text-info"><%= @resumen_stocks[:total] %></h3>
+                <p class="text-muted">Total</p>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="text-center">
+                <h3 class="text-success"><%= @resumen_stocks[:con_stock] %></h3>
+                <p class="text-muted">Con Stock</p>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="text-center">
+                <h3 class="text-default"><%= @resumen_stocks[:sin_stock] %></h3>
+                <p class="text-muted">Sin Stock</p>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <h3 class="text-warning"><%= @resumen_stocks[:stock_bajo] %></h3>
+                <p class="text-muted">Stock Bajo</p>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <h3 class="text-danger"><%= @resumen_stocks[:stock_critico] %></h3>
+                <p class="text-muted">Stock Crítico</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+<%= paginador @stocks, ajax: true %>

@@ -1,0 +1,39 @@
+<% if @stock_error %>
+  toast.stockError({
+    id: <%= @stock_error_producto.id %>,
+    name: '<%= j @stock_error_producto.to_s %>',
+    image: '<%= j @stock_error_producto.imagen_principal %>',
+    available: <%= @stock_error_disponible %>,
+    requested: <%= @stock_error_solicitado %>,
+    mode: '<%= @stock_error_disponible.zero? ? 'sin_stock' : 'insuficiente' %>'
+  });
+<% elsif @pedido.valid? %>
+  <% act_cart_total = @pedido.en_grupo? ? @pedido.pedido_multiple.total : @pedido.importe_total %>
+  <% day_total = @pedido.importe_total %>
+  $("#total-pedido-pendiente").html("<%= act_cart_total %>");
+  $("#cart-container .notify").html("<%= act_cart_total ? "<span class='heartbit'></span> <span class='point'></span>".html_safe : "" %>" );
+  <% if @pedido.en_grupo? %>
+    $("#grupo-badges-container").html("<%= j render 'pedidos/pedidos/grupo_badges', pedido: @pedido %>");
+  <% end %>
+  <% if @actualizar_menu_pedido %>
+    $("#pedido-en-curso").html("<%= j render '/layouts/pedido_en_curso' %>");
+  <% end %>
+  <% if @cupon_expirado %>
+    toast.error({ message: 'El cupón ha expirado y fue removido del pedido.', duration: 5000 });
+  <% end %>
+  <% if @limite_error_message %>
+    toast.error({ html: '<%= j @limite_error_message %>', duration: 5000 });
+  <% end %>
+<% else %>
+  toast.error({ html: '<%= "#{@pedido.errors.full_messages.to_sentence}.".html_safe %>', duration: 5000 });
+<% end %>
+
+<% if @pedido.productos_solicitados.present? && @pedido.fecha_permitida? && !@pedido.limite_compra_excedido? %>
+  $('#new-pedido .boton-aceptar-pedido').removeClass('disabled');
+<% else %>
+  $('#new-pedido .boton-aceptar-pedido').addClass('disabled');
+<% end %>
+$('#pedido-en-curso #continuar-compra').attr('href', 'JavaScript:void(0);')
+if($('#show-pedido').length > 0) {
+  $("#pedido-container").html("<%= j render 'pedido' %>");
+}

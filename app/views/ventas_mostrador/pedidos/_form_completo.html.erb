@@ -1,0 +1,14 @@
+<div class="card-body collapse show">
+  <%= hidden_field_tag 'productoanterior', 0, id: 'producto-anterior-vm' %>
+  <%= hidden_field_tag 'productoactual', 0, id: 'producto-actual-vm' %>
+  <%= simple_nested_form_for @pedido, url: (@pedido.new_record? ? ventas_mostrador_pedidos_path : ventas_mostrador_pedido_path(@pedido)) do |f| %>
+    <%= f.error_messages %>
+    <%= f.hidden_field :tipo_pedido, value: 2 %>
+    <%= f.input :cuenta, as: :select2_local, collection: Clientes::Cuenta.joins(cliente: :tiendas).active.where(tiendas: { id: tienda_activa.id }).distinct, selected: @pedido.cuenta_id, label: 'Cuenta', label_method: :cliente_y_nombre, include_blank: true, input_html: {multiple: false}, wrapper_html: { class: "col-sm-8 col-md-8 col-lg-5 mb-0"} %>
+    <%= f.input :fecha, as: :string, required: false, input_html: { class: 'singledate'}, wrapper_html: { class: 'col-sm-4 col-md-3  col-lg-2 mb-0' } %>
+    <div id="productos-rapidos" style="width: 100%;border: 1px solid #ced4da;;margin: 15px 15px 5px 15px;">
+      <%= render 'productos_rapidos' %>
+    </div>
+
+  <% end %>
+</div>

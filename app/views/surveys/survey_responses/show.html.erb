@@ -1,0 +1,202 @@
+<% content_for :page_id, 'survey-response-show' %>
+
+<div class="container-fluid mt-4" style="padding-top: 80px">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div class="col-12 d-flex justify-content-between align-items-center" style="padding: 0.75rem 1.25rem !important;">
+          <h4 class="card-title mb-0">
+            <i class="fa fa-clipboard text-primary"></i>
+            Respuesta de <%= @survey_response.user.nombre %>
+          </h4>
+          <div class="btn-group">
+            <%= link_to survey_survey_responses_path(@survey), class: 'btn btn-info btn-sm' do %>
+              <i class="fa fa-list"></i>
+              Ver Todas
+            <% end %>
+            <button type="button" class="ml-2 btn btn-secondary btn-sm" onclick="history.back()">
+              <i class="fa fa-arrow-left"></i>
+              Volver
+            </button>
+          </div>
+        </div>
+        
+        <div class="card-body">
+          <!-- Response Summary -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h6 class="card-title text-muted">Información de la Respuesta</h6>
+                  <p class="mb-1"><strong>Encuesta:</strong> <%= @survey.title %></p>
+                  <p class="mb-1"><strong>Usuario:</strong> <%= @survey_response.user.nombre %></p>
+                  <p class="mb-1"><strong>Email:</strong> <%= @survey_response.user.email %></p>
+                  <p class="mb-1"><strong>Fecha de inicio:</strong> <%= @survey_response.created_at.strftime('%d/%m/%Y %H:%M') %></p>
+                  <% if @survey_response.completed_at.present? %>
+                    <p class="mb-0"><strong>Fecha de finalización:</strong> 
+                      <span class="text-success"><%= @survey_response.completed_at.strftime('%d/%m/%Y %H:%M') %></span>
+                    </p>
+                  <% elsif @survey_response.completed? %>
+                    <p class="mb-0"><strong>Estado:</strong> 
+                      <span class="text-success">Completa (todas las preguntas respondidas)</span>
+                    </p>
+                  <% else %>
+                    <p class="mb-0"><strong>Estado:</strong> 
+                      <span class="text-warning">Incompleta</span>
+                    </p>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h6 class="card-title text-muted">Estado y Progreso</h6>
+                  <p class="mb-2">
+                    <strong>Estado:</strong>
+                    <% if @survey_response.completed? %>
+                      <span class="badge badge-success ml-2">
+                        <i class="fa fa-check-circle"></i>
+                        Completada
+                      </span>
+                    <% else %>
+                      <span class="badge badge-warning ml-2">
+                        <i class="fa fa-clock-o"></i>
+                        Pendiente
+                      </span>
+                    <% end %>
+                  </p>
+                  <p class="mb-2"><strong>Progreso:</strong></p>
+                  <div class="progress mb-2" style="height: 25px;">
+                    <div class="progress-bar <%= @survey_response.completed? ? 'bg-success' : 'bg-warning' %>" 
+                         role="progressbar" 
+                         style="width: <%= @survey_response.progress_percentage %>%"
+                         aria-valuenow="<%= @survey_response.progress_percentage %>" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                      <%= @survey_response.progress_percentage %>%
+                    </div>
+                  </div>
+                  <p class="mb-0 text-muted">
+                    <small><%= @survey_response.question_responses.count %> de <%= @survey.questions.count %> preguntas respondidas</small>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          
+
+          <!-- Questions and Answers -->
+          <div class="mb-4">
+            <h5 class="mb-3">
+              <i class="fa fa-question-circle text-info"></i>
+              Respuestas por Pregunta
+            </h5>
+            
+            <% @survey.questions.each_with_index do |question, index| %>
+              <% question_response = @survey_response.question_responses.find { |qr| qr.question_id == question.id } %>
+              
+              <div class="card mb-3 <%= question_response ? 'border-success' : 'border-warning' %>">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h6 class="card-title mb-0">
+                      <span class="badge badge-light mr-2"><%= index + 1 %></span>
+                      <%= question.text %>
+                      <% if question.required? %>
+                        <span class="badge badge-warning ml-2">
+                          <i class="fa fa-asterisk"></i> Obligatoria
+                        </span>
+                      <% end %>
+                    </h6>
+                    <% if question_response %>
+                      <span class="badge badge-success">
+                        <i class="fa fa-check"></i> Respondida
+                      </span>
+                    <% else %>
+                      <span class="badge badge-warning">
+                        <i class="fa fa-exclamation"></i> Sin responder
+                      </span>
+                    <% end %>
+                  </div>
+                  
+                  <div class="mb-2">
+                    <small class="text-muted">
+                      <i class="fa fa-tag mr-1"></i>
+                      Tipo: 
+                      <% case question.question_type %>
+                      <% when 'text' %>
+                        <span class="badge badge-info">Texto libre</span>
+                      <% when 'multiple_choice' %>
+                        <span class="badge badge-primary">Opción múltiple</span>
+                      <% when 'scale' %>
+                        <span class="badge badge-success">Escala (1-5)</span>
+                      <% end %>
+                    </small>
+                  </div>
+                  
+                  <div class="response-content p-3 bg-light rounded">
+                    <% if question_response %>
+                      <% case question.question_type %>
+                      <% when 'text' %>
+                        <p class="mb-0"><%= simple_format(question_response.response_text) %></p>
+                      <% when 'multiple_choice' %>
+                        <% if question_response.answer %>
+                          <p class="mb-0">
+                            <i class="fa fa-dot-circle text-primary mr-2"></i>
+                            <strong><%= question_response.answer.text %></strong>
+                          </p>
+                        <% elsif question_response.response_text %>
+                          <p class="mb-0">
+                            <i class="fa fa-dot-circle text-primary mr-2"></i>
+                            <strong><%= question_response.response_text %></strong>
+                          </p>
+                        <% end %>
+                      <% when 'scale' %>
+                        <div class="d-flex align-items-center">
+                          <span class="mr-3">Puntuación:</span>
+                          <% (1..5).each do |value| %>
+                            <span class="badge <%= question_response.response_text.to_i == value ? 'badge-primary' : 'badge-light' %> mr-1">
+                              <%= value %>
+                            </span>
+                          <% end %>
+                          <span class="ml-3 text-primary">
+                            <strong><%= question_response.response_text %>/5</strong>
+                          </span>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <p class="text-muted mb-0">
+                        <i class="fa fa-minus-circle mr-2"></i>
+                        <em>Sin respuesta</em>
+                      </p>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          
+          <!-- Actions -->
+          <% unless @survey_response.completed? %>
+            <div class="alert alert-warning">
+              <i class="fa fa-exclamation-triangle mr-2"></i>
+              <strong>Respuesta incompleta:</strong> Esta respuesta aún no ha sido marcada como completada.
+              <% if can?(:update, @survey_response) %>
+                <%= link_to complete_survey_survey_response_path(@survey, @survey_response), 
+                            method: :patch,
+                            class: 'btn btn-success btn-sm ml-2',
+                            confirm: '¿Está seguro de marcar esta respuesta como completada?' do %>
+                  <i class="fa fa-check mr-1"></i>
+                  Marcar como Completada
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

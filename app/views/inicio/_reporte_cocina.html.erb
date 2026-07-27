@@ -1,0 +1,29 @@
+<div class="message-box contact-box ajax-data-container">
+    <div class="message-widget contact-widget">
+      <% if @productos_cocina.present? %>
+        <div class="table-responsive">
+          <% unless tienda_activa.carrito_de_compras %>
+          <%= table_for @productos_cocina.sort_by{|x| [x.producto.categoria.codigo, x.producto.nombre]}, id: 'pedidos-del-dia' do |t| %>
+            <% t.column(:producto, class: 'text-left') { |x| link_to(x.nombre_carrito, pedidos_path(q: { producto_ids: x.producto.id.to_s, fecha_desde: @query.fecha.to_s, fecha_hasta: @query.fecha.to_s, cuentas_ids: @query.cuentas_ids, cliente_ids: @query.cliente_ids }, show_filtro: true )) }%>
+            <% t.column(:cantidad, header: 'A', header_options: {title: 'Aceptados'}, class: 'text-center', footer: @query_cocina.footer_aggregates[:cantidad_aceptada]) { |x| x.cantidad_aceptada } if tienda_activa.carrito_de_compras? %>
+            <% t.column(:cantidad, header: 'C', header_options: {title: 'Confirmados'}, class: 'text-center', footer: @query_cocina.footer_aggregates[:cantidad_confirmada]) { |x| x.cantidad_confirmada } if tienda_activa.carrito_de_compras? %>
+            <% t.column(:cantidad, header: 'T', header_options: {title: 'Total'}, class: 'text-center', footer: @query_cocina.footer_aggregates[:cantidad_total]) { |x| x.cantidad_sumada } %>
+            <% t.column(:cantidad, header: 'Importe', header_options: {title: 'Importe'}, class: 'text-right', footer: Danconia::Money.new(@query_cocina.footer_aggregates[:importe_total])) { |x| Danconia::Money.new(x.total_sumado) } %>
+          <% end %>
+        </div>
+        <% else %>
+          <%= table_for @productos_cocina.sort_by{|x| [x.producto.categoria.codigo, x.producto.nombre]}, id: 'pedidos-del-dia' do |t| %>
+            <% t.column(:producto, class: 'text-left p-0') { |x| link_to(x.nombre_carrito, pedidos_path(q: { producto_ids: x.producto.id.to_s, fecha_desde: @query.fecha.to_s, fecha_hasta: @query.fecha.to_s, cuentas_ids: @query.cuentas_ids, cliente_ids: @query.cliente_ids }, show_filtro: true )) }%>
+            <% t.column(:cantidad, header: 'Total', header_options: {title: 'Total'}, class: 'text-center', footer: @query_cocina.footer_aggregates[:cantidad_total]) { |x| x.cantidad_sumada } %>
+            <% t.column(:cantidad, header: 'Pendientes', header_options: {title: 'Pendientes'}, class: 'text-center', footer: @query_cocina.footer_aggregates[:pendientes]) { |x| x.pedido.pedido_cocina_id ? 0 : x.cantidad_aceptada } if tienda_activa.carrito_de_compras? %>
+            <% t.column(:cantidad, header: 'Esperando', header_options: {title: 'Esperando'}, class: 'text-center', footer: @query_cocina.footer_aggregates[:esperando]) { |x| x.pedido.pedido_cocina_id ? 0 : x.cantidad_confirmada } if tienda_activa.carrito_de_compras? %>
+            <% t.column(:cantidad, header: 'Cocinando', header_options: {title: 'Cocinando'}, class: 'text-center', footer: @query_cocina.footer_aggregates[:cocinando]) { |x| !x.pedido.pedido_cocina_id ? 0 : x.cantidad_confirmada } if tienda_activa.carrito_de_compras? %>
+          <% end %>
+        <% end %>
+      <% else %>
+        <div style="text-align:center">
+          <h5>No hay pedidos cargados para este día.</h5>
+        </div>
+      <% end %>
+    </div>
+</div>

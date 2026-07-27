@@ -1,0 +1,14 @@
+<%= modal 'form-modal', title: @local.new_record? ? 'Nuevo Local' : "Editando Local #{@local}" do %>
+    <%= simple_nested_form_for @local, remote: true do |f| %>
+      <%= f.error_messages %>
+      <%= f.input :nombre, required: true, wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :domicilio, required: true, wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :telefono, wrapper_html: { class: 'col-sm-12' } %>
+      <%= f.input :imagenes, wrapper_html: { class: 'col-md-12' } do %>
+        <%= render '/infraestructura/documentos/drag_and_drop_section', f: f, solo_imagenes: true, max_size: 10 %>
+      <% end %>
+      <div class="col-md-12">
+      <%= f.default_button %>
+      </div>
+  <% end %>
+  <% end %>

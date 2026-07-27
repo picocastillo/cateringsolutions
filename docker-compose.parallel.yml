@@ -1,0 +1,77 @@
+services:
+  mariadb:
+    image: mariadb:10.11.9
+    container_name: mariadb_10_11_9
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: mysqlroot
+      MYSQL_USER: root
+      MYSQL_PASSWORD: mysqlroot
+      MYSQL_ROOT_HOST: '%'
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./mariadb_conf/my_custom.cnf:/etc/mysql/conf.d/my_custom.cnf:ro
+
+  redis:
+    image: redis:latest
+    container_name: redis_local
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - redis_data:/data
+
+  # Selenium Grid Hub
+  selenium-hub:
+    image: selenium/hub:4.9.0
+    container_name: selenium_hub
+    restart: unless-stopped
+    ports:
+      - "4444:4444"    # Grid Hub
+      - "4442:4442"    # Event Bus Publish
+      - "4443:4443"    # Event Bus Subscribe
+    environment:
+      - SE_SESSION_REQUEST_TIMEOUT=300
+      - SE_NODE_SESSION_TIMEOUT=300
+      - SE_SESSION_RETRY_INTERVAL=5
+      - GRID_MAX_SESSION=80
+      - GRID_BROWSER_TIMEOUT=300
+      - GRID_TIMEOUT=300
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Chrome Node template (anchor)
+  chrome-node-1: &chrome-node
+    image: selenium/node-chrome:4.9.0
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=2
+      - SE_NODE_SESSION_TIMEOUT=300
+      - VNC_NO_PASSWORD=1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    shm_size: 2gb
+    mem_limit: 1.5g
+
+  chrome-node-2: *chrome-node
+  chrome-node-3: *chrome-node
+  chrome-node-4: *chrome-node
+  chrome-node-5: *chrome-node
+  chrome-node-6: *chrome-node
+  chrome-node-7: *chrome-node
+  chrome-node-8: *chrome-node
+  chrome-node-9: *chrome-node
+  chrome-node-10: *chrome-node
+
+volumes:
+  mariadb_data:
+    driver: local
+  redis_data:
+    driver: local

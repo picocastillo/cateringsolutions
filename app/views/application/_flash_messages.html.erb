@@ -1,0 +1,17 @@
+<% flash.each do |name, msg| %>
+  <% msgs = Array(msg) %>
+  <% text = msgs.size == 1 ? msgs.first.to_s : msgs.map { |m| "• #{m}" }.join("\n") %>
+  <% toast_type = case name.to_s
+                  when 'notice', 'notice_long' then 'success'
+                  when 'alert', 'error' then 'error'
+                  when 'warning' then 'warning'
+                  else 'info'
+                  end %>
+  <% toast_opts = { html: text }
+     toast_opts[:duration] = 15000 if name.to_s == 'notice_long' %>
+  <% if request.format == :js %>
+if (window.toast) { window.toast.<%= toast_type %>(<%= raw toast_opts.to_json %>); }
+  <% else %>
+<script>if (window.toast) { window.toast.<%= toast_type %>(<%= raw toast_opts.to_json %>); }</script>
+  <% end %>
+<% end %>

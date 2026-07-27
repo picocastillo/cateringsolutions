@@ -1,0 +1,16 @@
+(function() {
+  var options = <%= raw Clientes::Cuenta.joins(cliente: :tiendas)
+    .where(tiendas: { id: @usuario.tienda_cliente_id || tienda_activa.id })
+    .active
+    .distinct
+    .map { |c| [c.id, c.cliente_y_nombre] }
+    .to_json %>;
+
+  var select = document.getElementById('usuario_cuenta_id');
+  select.innerHTML = '<option value=""></option>' + options.map(function(o) {
+    return '<option value="' + o[0] + '">' +
+      String(o[1]).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+      '</option>';
+  }).join('');
+  $(select).trigger('change');
+})();

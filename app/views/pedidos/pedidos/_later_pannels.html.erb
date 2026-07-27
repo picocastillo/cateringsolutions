@@ -1,0 +1,15 @@
+<% if @prs.present? %>
+  <% prefs_cache = @prs.map { |x| x.producto.categoria.nombre }.uniq.each_with_object({}) { |n, h| h[n] = current_user.obtener_preferencia("togle_#{n}").estado } %>
+  <% @prs.sort_by{ |x| [(prefs_cache[x.producto.categoria.nombre] ? x.producto.categoria.codigo : 0), x.producto.categoria.codigo, (x.producto.nuevo? ? 0 : 1), (x.producto.nuevo? ? -x.producto.mostrar_como_nuevo_hasta.to_time.to_i : 0), x.producto.nombre] }.group_by{ |x| x.producto.categoria.nombre }.each do |cat, pds| %>
+    <div class="row" >
+      <%= render 'panel_productos', precios: [pds, cat]%>
+    </div>
+  <% end %>
+<% end %>
+<% if @cats_restantes.present? %>
+  <div style="min-height: 300px;text-align: center" id="cargar-panels-later" class="hide" data-cats="<%= @cats_restantes %>">
+    <div class="spinner-grow" style="width: 3rem; height: 3rem; margin: 3rem auto;">
+      <span class="sr-only">Cargando...</span>
+    </div>
+  </div>
+<% end %>

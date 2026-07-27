@@ -1,0 +1,40 @@
+<% cache ["precios_alerts", tienda_activa.id, @precios_cache_key] do %>
+<% if current_user.admin? && (@precios_duplicados_count.to_i > 0 || @productos_sin_precio_count.to_i > 0) %>
+  <div class="col-12 p-0 mt-3" id="precios-alerts">
+    <div class="card">
+      <div class="card-body bg-warning row" style="margin: 0;padding: 1.25rem;">
+        <div class="col-12">
+          <h4 class="text-white card-title">
+            <i class="ti-alert"></i> Alertas de Precios
+          </h4>
+          <h6 class="card-subtitle text-white m-b-0">
+            Precios con problemas detectados (se excluyen clientes de prueba)
+          </h6>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <% if @precios_duplicados_count.to_i > 0 %>
+          <div class="alert alert-danger" role="alert">
+            <h5 class="alert-heading">
+              <i class="ti-files"></i> Precios Duplicados (<%= @precios_duplicados_count %>)
+            </h5>
+            <p>Se encontraron <strong><%= @precios_duplicados_count %></strong> precios activos duplicados (mismo producto, clientes y fechas).</p>
+            <%= link_to 'Ver precios duplicados', listas_precios_path('q[solo_duplicados]': '1'), class: 'btn btn-danger btn-sm' %>
+          </div>
+        <% end %>
+
+        <% if @productos_sin_precio_count.to_i > 0 %>
+          <div class="alert alert-info" role="alert">
+            <h5 class="alert-heading">
+              <i class="ti-package"></i> Productos sin Precio (<%= @productos_sin_precio_count %>)
+            </h5>
+            <p>Se encontraron <strong><%= @productos_sin_precio_count %></strong> productos activos sin precio vigente al día de hoy.</p>
+            <%= link_to 'Ver productos sin precio', listas_precios_path('q[productos_sin_precio]': '1'), class: 'btn btn-info btn-sm' %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+<% end %>

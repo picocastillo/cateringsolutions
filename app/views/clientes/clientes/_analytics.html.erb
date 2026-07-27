@@ -1,0 +1,684 @@
+<%= cache "cliente-analytics-#{@cliente.id}-#{tienda_activa.id}-#{current_user.local_activo&.id}-#{Time.zone.today}-#{current_user.admin_financiero?}", skip_digest: true do %>
+<%
+  cuenta_ids = @cliente.cuentas.map(&:id)
+  today = Time.zone.today
+  es_admin_financiero = current_user.admin_financiero?
+  filtrar_local = current_user.tienda_activa.multiple_locales && current_user.local_activo
+  local_activo_id = current_user.local_activo&.id
+
+  # Confirmed/finalized pedidos
+  pedidos_confirmados = Pedidos::Pedido
+    .where(cuenta_id: cuenta_ids, estado_id: [3, 4])
+    .where('fecha IS NOT NULL')
+  pedidos_confirmados = pedidos_confirmados.where(local_id: local_activo_id) if filtrar_local
+
+  total_pedidos = pedidos_confirmados.count
+  first_order = pedidos_confirmados.minimum(:fecha)
+  last_order = pedidos_confirmados.maximum(:fecha)
+
+  if es_admin_financiero
+    # Revenue from comprobantes (facturas - notas de crédito)
+    comprobantes_scope = Ventas::Facturacion::Comprobante
+      .where(cuenta_id: cuenta_ids, estado_id: [2, 3])
+    comprobantes_scope = comprobantes_scope.where(local_id: local_activo_id) if filtrar_local
+
+    total_facturado = comprobantes_scope
+      .where(type: 'Ventas::Facturacion::Factura')
+      .sum(:total).to_f
+
+    total_nc = comprobantes_scope
+      .where(type: 'Ventas::Facturacion::NotaCredito')
+      .sum(:total).to_f
+
+    total_revenue = total_facturado - total_nc
+
+    # --- Daily net revenue for USD conversion ---
+    daily_comprobante_data = comprobantes_scope
+      .group(Arel.sql("DATE(fecha_emision)"))
+      .group(:type)
+      .pluck(Arel.sql("DATE(fecha_emision), type, SUM(total)"))
+
+    daily_net_pesos = {}
+    daily_comprobante_data.each do |fecha, type, total|
+      daily_net_pesos[fecha] ||= 0
+      if type == 'Ventas::Facturacion::NotaCredito'
+        daily_net_pesos[fecha] -= total.to_f
+      else
+        daily_net_pesos[fecha] += total.to_f
+      end
+    end
+
+    cotizaciones = Cotizaciones::Dolar.pluck(:fecha, :precio_venta).to_h
+    total_revenue_usd = 0.0
+    last_cotiz = nil
+    daily_net_pesos.keys.sort.each do |fecha|
+      cotiz = cotizaciones[fecha] || last_cotiz
+      last_cotiz = cotiz if cotiz
+      importe = daily_net_pesos[fecha]
+      total_revenue_usd += (cotiz && cotiz > 0 ? importe / cotiz : 0)
+    end
+
+    # --- AOV ---
+    aov = total_pedidos > 0 ? (total_revenue / total_pedidos) : 0
+    aov_usd = total_pedidos > 0 ? (total_revenue_usd / total_pedidos) : 0
+  end
+
+  # --- Purchase Frequency (orders per month) ---
+  if first_order && last_order && first_order < last_order
+    months_active = ((last_order.year * 12 + last_order.month) - (first_order.year * 12 + first_order.month)).to_f
+    months_active = [months_active, 1].max
+    purchase_frequency = total_pedidos / months_active
+  else
+    months_active = 0
+    purchase_frequency = total_pedidos > 0 ? total_pedidos.to_f : 0
+  end
+
+  # --- Customer Lifespan (months) ---
+  lifespan_months = if first_order
+                      ((today.year * 12 + today.month) - (first_order.year * 12 + first_order.month)).to_f
+                    else
+                      0
+                    end
+  lifespan_months = [lifespan_months, 1].max if first_order
+
+  if es_admin_financiero
+    # --- LTV (revenue-based) ---
+    ltv = aov * purchase_frequency * lifespan_months
+  end
+
+  # --- Churn indicators ---
+  days_since_last_order = last_order ? (today - last_order).to_i : nil
+
+  churn_status = if days_since_last_order.nil?
+                   'sin_pedidos'
+                 elsif days_since_last_order <= 30
+                   'activo'
+                 elsif days_since_last_order <= 60
+                   'en_riesgo'
+                 elsif days_since_last_order <= 90
+                   'inactivo'
+                 else
+                   'perdido'
+                 end
+
+  churn_color = { 'activo' => 'success', 'en_riesgo' => 'warning', 'inactivo' => 'danger', 'perdido' => 'dark', 'sin_pedidos' => 'secondary' }
+  churn_label = { 'activo' => 'Activo', 'en_riesgo' => 'En Riesgo', 'inactivo' => 'Inactivo', 'perdido' => 'Perdido', 'sin_pedidos' => 'Sin Pedidos' }
+
+  # --- Monthly revenue for chart (last 12 months) ---
+  twelve_months_ago = today - 12.months
+
+  if es_admin_financiero
+    monthly_revenue_pesos = {}
+    monthly_revenue_usd = {}
+    last_cotiz_chart = nil
+    daily_net_pesos.keys.sort.select { |f| f >= twelve_months_ago }.each do |fecha|
+      month_key = fecha.strftime('%Y-%m')
+      cotiz = cotizaciones[fecha] || last_cotiz_chart
+      last_cotiz_chart = cotiz if cotiz
+      importe = daily_net_pesos[fecha]
+      monthly_revenue_pesos[month_key] ||= 0
+      monthly_revenue_pesos[month_key] += importe
+      monthly_revenue_usd[month_key] ||= 0
+      monthly_revenue_usd[month_key] += (cotiz && cotiz > 0 ? importe / cotiz : 0)
+    end
+    sorted_months = monthly_revenue_pesos.keys.sort
+    chart_labels = sorted_months.map { |m| Date.parse("#{m}-01").strftime('%m/%Y') }
+    chart_values_pesos = sorted_months.map { |m| monthly_revenue_pesos[m].round(2) }
+    chart_values_usd = sorted_months.map { |m| monthly_revenue_usd[m].round(2) }
+  else
+    sorted_months = pedidos_confirmados
+      .where('fecha >= ?', twelve_months_ago)
+      .group(Arel.sql("DATE_FORMAT(fecha, '%Y-%m')"))
+      .pluck(Arel.sql("DATE_FORMAT(fecha, '%Y-%m')"))
+      .sort
+    chart_labels = sorted_months.map { |m| Date.parse("#{m}-01").strftime('%m/%Y') }
+  end
+
+  # --- Monthly order count for purchase frequency chart ---
+  monthly_orders = pedidos_confirmados
+    .where('fecha >= ?', twelve_months_ago)
+    .group(Arel.sql("DATE_FORMAT(fecha, '%Y-%m')"))
+    .pluck(Arel.sql("DATE_FORMAT(fecha, '%Y-%m'), COUNT(*)"))
+    .to_h
+
+  freq_values = sorted_months.map { |m| monthly_orders[m] || 0 }
+%>
+
+<div class="row">
+  <%# KPI Cards %>
+  <% if es_admin_financiero %>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Ticket Promedio (AOV)</h6>
+        <h3 class="mb-0" style="color: #009efb;"><%= number_to_currency(aov, unit: '$', separator: ',', delimiter: '.', precision: 0) %></h3>
+        <small class="text-muted">US$ <%= number_with_precision(aov_usd, precision: 0, delimiter: '.') %> · <%= total_pedidos %> pedidos</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Frecuencia de Compra</h6>
+        <h3 class="mb-0" style="color: #02af1f;"><%= '%.1f' % purchase_frequency %></h3>
+        <small class="text-muted">pedidos / mes</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Valor de Vida (VVC)</h6>
+        <h3 class="mb-0" style="color: #7460ee;"><%= number_to_currency(ltv, unit: '$', separator: ',', delimiter: '.', precision: 0) %></h3>
+        <small class="text-muted"><%= '%.0f' % lifespan_months %> meses como cliente</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Estado del Cliente</h6>
+        <h3 class="mb-0"><span class="badge badge-<%= churn_color[churn_status] %>" style="font-size: 16px;"><%= churn_label[churn_status] %></span></h3>
+        <small class="text-muted">
+          <% if days_since_last_order %>
+            Último pedido hace <%= days_since_last_order %> días
+          <% else %>
+            Sin pedidos registrados
+          <% end %>
+        </small>
+      </div>
+    </div>
+  </div>
+  <% else %>
+  <div class="col-12 col-md-4">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Total Pedidos</h6>
+        <h3 class="mb-0" style="color: #009efb;"><%= total_pedidos %></h3>
+        <small class="text-muted">confirmados + finalizados</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Frecuencia de Compra</h6>
+        <h3 class="mb-0" style="color: #02af1f;"><%= '%.1f' % purchase_frequency %></h3>
+        <small class="text-muted">pedidos / mes</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Estado del Cliente</h6>
+        <h3 class="mb-0"><span class="badge badge-<%= churn_color[churn_status] %>" style="font-size: 16px;"><%= churn_label[churn_status] %></span></h3>
+        <small class="text-muted">
+          <% if days_since_last_order %>
+            Último pedido hace <%= days_since_last_order %> días
+          <% else %>
+            Sin pedidos registrados
+          <% end %>
+        </small>
+      </div>
+    </div>
+  </div>
+  <% end %>
+</div>
+
+<% if chart_labels.any? %>
+<% if es_admin_financiero %>
+<div class="row">
+  <%# Revenue chart %>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Venta Neta Mensual</h3>
+        <h6 class="card-subtitle">Pesos y dólares — facturas menos notas de crédito (últimos 12 meses)</h6>
+        <%= content_tag :span, nil, id: 'analytics-revenue', data: { labels: chart_labels, pesos: chart_values_pesos, usd: chart_values_usd } %>
+        <div style="position: relative; height: 280px;"><canvas id="analytics-revenue-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+<div class="row">
+  <%# Purchase frequency chart %>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Pedidos por Mes</h3>
+        <h6 class="card-subtitle">Cantidad de pedidos confirmados (últimos 12 meses)</h6>
+        <%= content_tag :span, nil, id: 'analytics-frequency', data: { labels: chart_labels, datos: freq_values } %>
+        <div style="position: relative; height: 280px;"><canvas id="analytics-frequency-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+
+<% if es_admin_financiero && defined?(ltv) && ltv > 0 %>
+<%
+  cac_ratios = [1, 2, 3, 4, 5]
+  ratio_colors = ['#dc3545', '#ff4d4d', '#ffc107', '#02af1f', '#009efb']
+  ratio_badges = ['Crítico', 'Riesgoso', 'Saludable', 'Muy Bueno', 'Excelente']
+  ratio_badge_classes = ['badge-dark', 'badge-danger', 'badge-warning', 'badge-success', 'badge-info']
+
+  default_cost_pct = 50
+  default_margin = (100 - default_cost_pct) / 100.0
+  ltv_adjusted = ltv * default_margin
+  cac_limits = cac_ratios.map { |r| (ltv_adjusted / r).round(0) }
+%>
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between flex-wrap mb-0">
+          <h3 class="card-title mb-0">CAC — Costo de Adquisición de Cliente</h3>
+          <div class="d-flex align-items-center" style="background: #e8f4fd; padding: 6px 12px; border-left: 3px solid #009efb;">
+            <label for="costo-produccion-select" class="mb-0 mr-2" style="white-space: nowrap; font-size: 14px; font-weight: 600; color: #333;">Costo producción y despacho:</label>
+            <select id="costo-produccion-select" class="form-control" style="width: 90px; font-size: 15px; font-weight: 600; padding: 4px 8px;">
+              <option value="0"<%= ' selected' if default_cost_pct == 0 %>>0%</option>
+              <% (5..95).step(5).each do |pct| %>
+                <option value="<%= pct %>"<%= ' selected' if pct == default_cost_pct %>><%= pct %>%</option>
+              <% end %>
+              <option value="100"<%= ' selected' if default_cost_pct == 100 %>>100%</option>
+            </select>
+          </div>
+        </div>
+        <h6 class="card-subtitle" id="ltv-cac-subtitle">Basado en ganancia bruta (descontando costos de producción y despacho estimados en <%= default_cost_pct %>%). Destinar 33% o menos de la ganancia es saludable.</h6>
+
+        <%# Intro: what is LTV and CAC %>
+        <div class="mt-2 mb-3 p-3" style="background: #fff8e1; border-left: 4px solid #ffc107; font-size: 13px;">
+          <p class="mb-2"><strong>¿Qué significan estas siglas?</strong></p>
+          <p class="mb-2">
+            <strong>VVC</strong> (Valor de Vida del Cliente) = la <strong>ganancia bruta total</strong> que te dejó este cliente
+            desde que empezó a comprarte. Es la plata que te queda después de pagar los costos de producción y despacho.
+            <em>Es la plata que querés conservar.</em>
+          </p>
+          <p class="mb-0">
+            <strong>CAC</strong> (Costo de Adquisición de Cliente) = lo que gastaste o podrías gastar para <strong>conseguir</strong> a este cliente:
+            publicidad, marketing, vendedores, descuentos de primera compra, muestras gratis, etc.
+            <em>Es la plata que invertís para traer clientes nuevos.</em>
+          </p>
+        </div>
+
+        <%= content_tag :span, nil, id: 'analytics-ltv-cac', data: {
+          labels: cac_ratios.map { |r| "#{(100.0 / r).round(0)}%" },
+          datos: cac_limits,
+          colors: ratio_colors,
+          ltv: ltv.round(0),
+          ratios: cac_ratios,
+          ratio_badges: ratio_badges,
+          ratio_badge_classes: ratio_badge_classes
+        } %>
+        <div style="position: relative; height: 200px;"><canvas id="analytics-ltv-cac-chart"></canvas></div>
+
+        <%# Main ratio table %>
+        <div class="mt-3" id="ltv-cac-ratio-table">
+          <table class="table table-sm table-bordered mb-0">
+            <thead>
+              <tr>
+                <th class="text-center">% de ganancia usado para conseguir al cliente</th>
+                <% cac_ratios.each_with_index do |r, i| %>
+                  <th class="text-center" style="color: <%= ratio_colors[i] %>"><%= (100.0 / r).round(0) %>%</th>
+                <% end %>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="text-center text-muted">CAC Máximo usado para conseguir cliente</td>
+                <% cac_limits.each do |c| %>
+                  <td class="text-center"><strong><%= number_to_currency(c, unit: '$', separator: ',', delimiter: '.', precision: 0) %></strong></td>
+                <% end %>
+              </tr>
+              <tr>
+                <td class="text-center text-muted">Interpretación</td>
+                <% cac_ratios.each_with_index do |_r, i| %>
+                  <td class="text-center"><span class="badge <%= ratio_badge_classes[i] %>"><%= ratio_badges[i] %></span></td>
+                <% end %>
+              </tr>
+              <tr>
+                <td class="text-center text-muted">Dto. Máx. Recomendado</td>
+                <% cac_limits.each do |c| %>
+                  <% dto = ltv > 0 ? (c.to_f / ltv * 100).round(1) : 0 %>
+                  <td class="text-center"><strong><%= dto > 0 ? "#{dto}%" : '—' %></strong></td>
+                <% end %>
+              </tr>
+            </tbody>
+          </table>
+          <small class="text-muted d-block mt-1" id="ltv-cac-footnote">* Calculado con margen bruto del <%= (default_margin * 100).round(0) %>% (costo de producción y despacho estimado: <%= default_cost_pct %>% de la facturación)</small>
+        </div>
+
+        <%# Explanation %>
+        <%
+          default_dto_pct = ltv > 0 ? ((ltv_adjusted / 3).to_f / ltv * 100).round(1) : 0
+        %>
+        <div class="mt-3 p-3" id="ltv-cac-explanation" style="background: #f8f9fa; border-left: 4px solid #009efb;">
+          <p class="mb-2"><strong>¿Cómo leer el gráfico?</strong></p>
+          <p class="mb-2" style="font-size: 13px;">
+            Este cliente te facturó <strong><%= number_to_currency(ltv, unit: '$', separator: ',', delimiter: '.', precision: 0) %></strong> en total.
+            Si tus costos de producción y despacho son el <strong><%= default_cost_pct %>%</strong>,
+            tu ganancia bruta (VVC) es <strong><%= number_to_currency(ltv_adjusted, unit: '$', separator: ',', delimiter: '.', precision: 0) %></strong>.
+          </p>
+          <p class="mb-2" style="font-size: 13px;">
+            Cada barra muestra <strong>qué porcentaje de esa ganancia podrías destinar a conseguir y mantener a este cliente</strong>
+            (publicidad, vendedores, descuentos, muestras gratis).
+            Lo saludable es destinar hasta el <strong>33%</strong> de la ganancia, o sea hasta
+            <strong><%= number_to_currency(cac_limits[2], unit: '$', separator: ',', delimiter: '.', precision: 0) %></strong>,
+            y quedarte con el 67% restante.
+          </p>
+          <p class="mb-2" style="font-size: 13px;">
+            <strong>Dto. Máx. Recomendado:</strong> con costos del <%= default_cost_pct %>%, podrías hacerle hasta un
+            <strong><%= default_dto_pct %>%</strong> de descuento sobre el precio sin perder plata.
+            Más que eso y el cliente deja de ser rentable.
+          </p>
+          <p class="mb-0" style="font-size: 13px;">
+            Podés cambiar el % de costo de producción y despacho arriba para ajustar los números a tu negocio.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+
+<% if first_order %>
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Resumen del Cliente</h3>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <tbody>
+              <tr>
+                <td class="text-muted" style="width: 40%;">Primer pedido</td>
+                <td><strong><%= I18n.l(first_order, format: '%d/%m/%Y') %></strong></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Último pedido</td>
+                <td><strong><%= I18n.l(last_order, format: '%d/%m/%Y') %></strong></td>
+              </tr>
+              <% if es_admin_financiero %>
+              <tr>
+                <td class="text-muted">Total facturado</td>
+                <td><strong><%= number_to_currency(total_facturado, unit: '$', separator: ',', delimiter: '.', precision: 2) %></strong></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Total notas de crédito</td>
+                <td><strong><%= number_to_currency(total_nc, unit: '$', separator: ',', delimiter: '.', precision: 2) %></strong></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Neto facturado</td>
+                <td><strong><%= number_to_currency(total_revenue, unit: '$', separator: ',', delimiter: '.', precision: 2) %></strong> <small class="text-muted">(US$ <%= number_with_precision(total_revenue_usd, precision: 2, delimiter: '.') %>)</small></td>
+              </tr>
+              <% end %>
+              <tr>
+                <td class="text-muted">Antigüedad</td>
+                <td><strong><%= '%.0f' % lifespan_months %> meses</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+
+<script>
+$(function () {
+  "use strict";
+
+  function renderAnalyticsChart(dataId, canvasId, type, color, bgColor, label, isCurrency) {
+    var $el = $('#' + dataId);
+    if (!$el.data('labels')) return;
+
+    var yTickCallback = isCurrency
+      ? function(value) {
+          var parts = value.toString().split(".");
+          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+          return '$' + parts.join(",");
+        }
+      : function(value) { return value; };
+
+    var tooltipCallback = isCurrency
+      ? function(context) {
+          var value = context.parsed.y;
+          var parts = value.toFixed(0).toString().split(".");
+          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+          return label + ': $' + parts.join(",");
+        }
+      : function(context) { return label + ': ' + context.parsed.y; };
+
+    new Chart(document.getElementById(canvasId).getContext('2d'), {
+      type: type,
+      data: {
+        labels: $el.data('labels'),
+        datasets: [{
+          label: label,
+          data: $el.data('datos'),
+          borderColor: color,
+          backgroundColor: bgColor,
+          borderWidth: 2,
+          fill: type === 'line'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { callback: yTickCallback },
+            grid: { color: '#eef0f2' }
+          },
+          x: { grid: { color: '#eef0f2' } }
+        },
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: { label: tooltipCallback }
+          }
+        }
+      }
+    });
+  }
+
+  renderAnalyticsChart('analytics-frequency', 'analytics-frequency-chart', 'line', '#02af1f', 'rgba(2, 175, 31, 0.1)', 'Pedidos', false);
+
+  // Dual-axis revenue chart (Pesos left Y, USD right Y)
+  (function() {
+    var $el = $('#analytics-revenue');
+    if (!$el.data('labels')) return;
+
+    function formatArs(value) {
+      var parts = value.toString().split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return '$ ' + parts.join(",");
+    }
+    function formatUsd(value) {
+      var parts = value.toString().split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return 'US$ ' + parts.join(",");
+    }
+
+    new Chart(document.getElementById('analytics-revenue-chart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: $el.data('labels'),
+        datasets: [
+          {
+            label: 'Pesos',
+            data: $el.data('pesos'),
+            borderColor: '#7460ee',
+            backgroundColor: 'rgba(116, 96, 238, 0.4)',
+            borderWidth: 2,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Dólares',
+            data: $el.data('usd'),
+            borderColor: '#02af1f',
+            backgroundColor: 'rgba(2, 175, 31, 0.05)',
+            borderWidth: 2,
+            fill: true,
+            yAxisID: 'y1',
+            type: 'line'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: {
+            type: 'linear', display: true, position: 'left', beginAtZero: true,
+            ticks: { callback: formatArs, color: '#7460ee' },
+            grid: { color: '#eef0f2' },
+            title: { display: true, text: 'Pesos', color: '#7460ee' }
+          },
+          y1: {
+            type: 'linear', display: true, position: 'right', beginAtZero: true,
+            ticks: { callback: formatUsd, color: '#02af1f' },
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: 'Dólares', color: '#02af1f' }
+          },
+          x: { grid: { color: '#eef0f2' } }
+        },
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            mode: 'index', intersect: false,
+            callbacks: {
+              label: function(context) {
+                var value = context.parsed.y;
+                var parts = value.toFixed(0).toString().split(".");
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                if (context.dataset.yAxisID === 'y1') return 'Dólares: US$ ' + parts.join(",");
+                return 'Pesos: $ ' + parts.join(",");
+              }
+            }
+          }
+        }
+      }
+    });
+  })();
+
+  // VVC:CAC horizontal bar chart (dynamic)
+  var $cac = $('#analytics-ltv-cac');
+  if ($cac.data('labels')) {
+    var ltvTotal = $cac.data('ltv');
+    var cacRatios = $cac.data('ratios');
+    var cacColors = $cac.data('colors');
+    var cacBadges = $cac.data('ratio-badges');
+    var cacBadgeClasses = $cac.data('ratio-badge-classes');
+    var ltvCacChart = null;
+
+    function formatCurrency(value) {
+      var parts = Math.round(value).toString().split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return '$' + parts.join(",");
+    }
+
+    function recalcLtvCac(costPct) {
+      var margin = (100 - costPct) / 100.0;
+      var ltvAdj = ltvTotal * margin;
+      var cacLimits = cacRatios.map(function(r) { return Math.round(ltvAdj / r); });
+      var cac31 = cacLimits[2];
+      var dtoPct = ltvTotal > 0 && cac31 > 0 ? (cac31 / ltvTotal * 100).toFixed(1) : 0;
+
+      // Update subtitle
+      $('#ltv-cac-subtitle').text('Basado en ganancia bruta (descontando costos de producción y despacho estimados en ' + costPct + '%). Destinar 33% o menos de la ganancia es saludable.');
+
+      // Update chart
+      if (ltvCacChart) { ltvCacChart.destroy(); }
+      ltvCacChart = new Chart(document.getElementById('analytics-ltv-cac-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: cacRatios.map(function(r) { return Math.round(100 / r) + '%'; }),
+          datasets: [{
+            label: 'CAC Máximo usado para conseguir cliente',
+            data: cacLimits,
+            backgroundColor: cacColors,
+            borderColor: cacColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { callback: function(v) { return formatCurrency(v); } },
+              grid: { color: '#eef0f2' }
+            },
+            y: { grid: { display: false } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return 'CAC Máximo usado para conseguir cliente: ' + formatCurrency(ctx.parsed.x); }
+              }
+            }
+          }
+        }
+      });
+
+      // Update ratio table CAC values
+      var cacCells = $('#ltv-cac-ratio-table tbody tr:first-child td:not(:first-child)');
+      cacCells.each(function(i) { $(this).html('<strong>' + formatCurrency(cacLimits[i]) + '</strong>'); });
+
+      // Update ratio table Dto. Máx. values
+      var dtoCells = $('#ltv-cac-ratio-table tbody tr:nth-child(3) td:not(:first-child)');
+      dtoCells.each(function(i) {
+        var d = ltvTotal > 0 ? (cacLimits[i] / ltvTotal * 100).toFixed(1) : 0;
+        $(this).html('<strong>' + (d > 0 ? d + '%' : '—') + '</strong>');
+      });
+
+      // Update footnote
+      var margenPct = 100 - costPct;
+      $('#ltv-cac-footnote').text('* Calculado con margen bruto del ' + margenPct + '% (costo de producción y despacho estimado: ' + costPct + '% de la facturación)');
+
+      // Update explanation
+      var html = '<p class="mb-2"><strong>¿Cómo leer el gráfico?</strong></p>' +
+        '<p class="mb-2" style="font-size: 13px;">' +
+          'Este cliente te facturó <strong>' + formatCurrency(ltvTotal) + '</strong> en total. ' +
+          'Si tus costos de producción y despacho son el <strong>' + costPct + '%</strong>, ' +
+          'tu ganancia bruta (VVC) es <strong>' + formatCurrency(ltvAdj) + '</strong>.' +
+        '</p>' +
+        '<p class="mb-2" style="font-size: 13px;">' +
+          'Cada barra muestra <strong>qué porcentaje de esa ganancia podrías destinar a conseguir y mantener a este cliente</strong> ' +
+          '(publicidad, vendedores, descuentos, muestras gratis). ' +
+          'Lo saludable es destinar hasta el <strong>33%</strong> de la ganancia, o sea hasta ' +
+          '<strong>' + formatCurrency(cac31) + '</strong>, y quedarte con el 67% restante.' +
+        '</p>' +
+        '<p class="mb-2" style="font-size: 13px;">' +
+          '<strong>Dto. Máx. Recomendado:</strong> con costos del ' + costPct + '%, podrías hacerle hasta un ' +
+          '<strong>' + dtoPct + '%</strong> de descuento sobre el precio sin perder plata. ' +
+          'Más que eso y el cliente deja de ser rentable.' +
+        '</p>' +
+        '<p class="mb-0" style="font-size: 13px;">' +
+          'Podés cambiar el % de costo de producción y despacho arriba para ajustar los números a tu negocio.' +
+        '</p>';
+      $('#ltv-cac-explanation').html(html);
+    }
+
+    // Initial render
+    recalcLtvCac(parseInt($('#costo-produccion-select').val()));
+
+    // On change
+    $('#costo-produccion-select').on('change', function() {
+      recalcLtvCac(parseInt($(this).val()));
+    });
+  }
+});
+</script>
+<% end %>

@@ -1,0 +1,136 @@
+<% page title: @cliente.to_s, raiz: 'Clientes', hojas: 'Detalles', id: 'show-cliente', acciones: [link_to('Editar', edit_cliente_path(@cliente))] %>
+
+<div class="row">
+                    <!-- Column -->
+                    <div class="col-lg-4 col-xlg-3 col-md-5">
+                        <div class="card">
+                            <div class="card-body">
+                                <center class="m-t-30">
+                                    <h2 class="card-title m-t-10 m-b-30"><%= @cliente.nombre %></h2>
+                                    <h6 class="card-subtitle estado">Estado: <%= active_label @cliente %></h6>
+                                    <h6 class="card-subtitle estado">Horario de Corte: <%= @cliente.corte %>hs</h6>
+                                    <h6 class="card-subtitle estado">Inicio Facturación: <%= @cliente.dia_inicio_ciclo_facturacion %></h6>
+                                    <h6 class="card-subtitle estado">Vencimientos a: <%= @cliente.vencimiento_a %> días</h6>
+                                    <% if @cliente.permitir_envios_a_domicilio %>
+                                      <h6 class="card-subtitle estado">Acepta Envíos a Domicilio</h6>
+                                    <% end %>
+                                    <div class="row text-center justify-content-md-center">
+                                      <% us = Usuarios::Usuario.active.joins(:cuenta).where('cuentas.cliente_id = ?', @cliente) %>
+                                      <% cu = us.count %>
+                                      <% ps = Productos::ProductoSolicitado.joins(:pedido).where('pedidos.usuario_id in (?)', us.pluck(:id)).count %>
+                                        <div class="col-6"><a href="javascript:void(0)" class="link" data-toggle="tooltip" data-original-title="<%= cu %> Usuarios Activos"><i class="icon-people"></i> <font class="font-medium"><%= cu %></font></a></div>
+                                        <div class="col-6"><a href="/pedidos?q[cliente_ids]=<%= @cliente.id.to_s %>&q[estado_id]=3" target="_blank" class="link" data-toggle="tooltip" data-original-title="<%= Pedidos::Pedido.where('estado_id >= 3').where('pedidos.cuenta_id in (?)', @cliente.cuentas.map(&:id)).count %> Pedidos Confirmados"><i class="mdi mdi-calendar-clock"></i> <font class="font-medium"><%= Pedidos::Pedido.where('estado_id >= 3').where('pedidos.cuenta_id in (?)', @cliente.cuentas.map(&:id)).count %></font></a></div>
+                                    </div>
+                                </center>
+                            </div>
+                            <div>
+                                <hr> </div>
+                            <div class="card-body  p-b-30">
+                              <% if @cliente.limite_compra_pesos.present? %>
+                                <small class="text-muted">Límite de compra </small>
+                                <h6 style="margin: 0"><%= number_to_currency(@cliente.limite_compra_pesos, unit: '$', separator: ',', delimiter: '.') %></h6>
+                              <% end %>
+                              <% if @cliente.limite_compra_dolares.present? %>
+                                <small class="text-muted">Límite de compra en dólares </small>
+                                <h6 style="margin: 0">
+                                  US$ <%= number_with_precision(@cliente.limite_compra_dolares, precision: 2) %>
+                                  <% precio_dolar = Cotizaciones::Dolar.precio_hoy %>
+                                  <% if precio_dolar && precio_dolar > 0 %>
+                                    <small class="text-muted">(Cotiz: $<%= '%.2f' % precio_dolar %> &rarr; <%= number_to_currency(@cliente.limite_compra_dolares * precio_dolar, unit: '$', separator: ',', delimiter: '.') %>)</small>
+                                  <% end %>
+                                </h6>
+                              <% end %>
+
+                              <small class="text-muted">Cuenta Corriente </small>
+                              <h6 style="margin: 0"><%= @cliente.cuenta_corriente.present? ? 'Si' : 'No' %></h6>
+
+                              <% if @cliente.cuenta_corriente.present? && @cliente.cuentas.present? %>
+                                <div style="margin-left: 15px; margin-top: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #007bff; border-radius: 3px;">
+                                  <% @cliente.cuentas.each do |cuenta| %>
+                                    <small class="text-muted" style="font-size: 11px;"><%= cuenta.nombre %>: </small>
+                                    <h6 style="margin: 0; font-size: 14px; color: #6c757d;"><%= cuenta.cuenta_corriente_parcial.nil? ? '<em>Heredar del cliente</em>'.html_safe : (cuenta.cuenta_corriente_parcial? ? 'Sí' : 'No') %></h6>
+                                  <% end %>
+                                </div>
+                              <% end %>
+
+                              <small class="text-muted">Mostrar Cuenta Corriente </small>
+                              <h6 style="margin: 0"><%= @cliente.mostrar_cuentas_corrientes.present? ? 'Si' : 'No' %></h6>
+
+                              <small class="text-muted">Elije horario de entrega </small>
+                              <h6 style="margin: 0"><%= @cliente.horarios_de_entrega? ? 'Si' : 'No' %></h6>
+
+                              <% if @cliente.cuentas.present? %>
+                              <small class="text-muted">Cuentas </small>
+                                <% @cliente.cuentas.each.map do |c| %>
+                                  <h6 style="margin: 0"><%= c.nro_y_nombre %></h6>
+                                <% end %>
+                              <% end %>
+                              
+                                <% if @cliente.cuit.present? %>
+                                  <small class="text-muted">CUIT </small>
+                                  <h6><%= @cliente.cuit %></h6>
+                                <% end %>
+                                <% if @cliente.email.present? %>
+                                  <small class="text-muted">Email </small>
+                                  <h6><%= link_to @cliente.email, "mailto:#{@cliente.email}" %></h6>
+                                <% end %>
+                                <% if @cliente.telefono.present? %>
+                                  <small class="text-muted">Teléfono</small>
+                                  <h6><%= link_to @cliente.telefono, "tel:#{@cliente.telefono.gsub(' ', '').gsub('-','')}" %></h6>
+                                <% end %>
+                                <% if @cliente.domicilio.present? %>
+                                  <small class="text-muted">Domicilio</small>
+                                  <h6><%= @cliente.domicilio %></h6>
+                                <% end %>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Column -->
+                    <!-- Column -->
+                    <div class="col-lg-8 col-xlg-9 col-md-7">
+                        <% unless ENV['DISABLED_CHARTS'] == 'true' %>
+                        <div class="card-header bg-gradient-primary text-white py-3">
+                          <h3 class="card-title mb-0 text-center">
+                            Estadísticas - <%= @cliente.nombre %>
+                          </h3>
+                        </div>
+                        <div id="cliente-stats-div" class="pt-4" style="min-height:120px;display:flex;align-items:center;justify-content:center;height:100%;padding:0">
+                          <%= loader('Cargando estadísticas...') %>
+                          <%= loader_script(stats_cliente_path(@cliente)) %>
+                        </div>
+                        <% end %>
+                    </div>
+                    <!-- Column -->
+                </div>
+
+<% if current_user.admin? && ENV['DISABLED_CHARTS'] != 'true' %>
+<div class="row">
+  <div class="col-12">
+    <div class="card-header bg-gradient-info text-white py-3 mt-3">
+      <h3 class="card-title mb-0 text-center">
+        <i class="mdi mdi-chart-line"></i> Analytics - <%= @cliente.nombre %>
+      </h3>
+    </div>
+    <div id="cliente-analytics-div" class="pt-4" style="min-height:120px;display:flex;align-items:center;justify-content:center;">
+      <%= loader('Cargando analytics...') %>
+      <%= loader_script(analytics_cliente_path(@cliente)) %>
+    </div>
+  </div>
+</div>
+<% end %>
+
+<% if current_user.admin_financiero? && ENV['DISABLED_CHARTS'] != 'true' %>
+<div class="row">
+  <div class="col-12">
+    <div class="card-header bg-gradient-success text-white py-3 mt-3">
+      <h3 class="card-title mb-0 text-center">
+        <i class="mdi mdi-cash-multiple"></i> Información Financiera - <%= @cliente.nombre %>
+      </h3>
+    </div>
+    <div id="cliente-financieros-div" class="pt-4" style="min-height:120px;display:flex;align-items:center;justify-content:center;">
+      <%= loader('Cargando información financiera...') %>
+      <%= loader_script(financieros_cliente_path(@cliente)) %>
+    </div>
+  </div>
+</div>
+<% end %>

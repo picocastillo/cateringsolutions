@@ -1,0 +1,62 @@
+<% page title: "Mi Cuenta", raiz: 'Usuarios', hojas: 'Mi Cuenta', id: 'edit-usuario' %>
+
+<%= simple_form_for @user, url: cuenta_path, html: {method: :put} do |f| %>
+  <%= f.error_messages %>
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-body">
+        <ul class="nav nav-tabs profile-tab" role="tablist">
+            <li class="nav-item"> <a class="nav-link active" data-toggle="tab" href="#general" role="tab">Cambio de Contraseña</a> </li>
+            <% unless current_user.cliente? %>
+              <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#impresion" role="tab">Impresión</a> </li>
+            <% end %>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane active form-material" id="general" role="tabpanel">
+              <div class="card-body">
+                <div class="form-group col-12">
+                  <label class="form-control-label password_anterior optional" for="usuario_password">Contraseña Actual</label>
+                  <input class="form-control password_anterior optional" type="password" name="password_anterior" id="password_anterior">
+                </div>
+
+                <%= f.input :password, label: 'Contraseña Nueva', wrapper_html: {class: 'col-6'} %>
+                <%= f.input :password_confirmation, label: 'Confirme Contraseña', wrapper_html: {class: 'col-6'} %>
+                <%= f.input :documentos, label: 'Imágen Cuenta', wrapper_html: { class: 'col-sm-12' } do %>
+                  <%= render '/infraestructura/documentos/drag_and_drop_section', f: f, solo_imagenes: true, max_size: 10 %>
+                <% end %>
+            </div>
+          </div>
+          <% unless current_user.cliente? %>
+            <div class="tab-pane form-material" id="impresion" role="tabpanel">
+              <div class="card-body">
+                <div class="row">
+                  <div class="form-group col-md-6">
+                    <%= f.input :servicio_de_impresion_id, label: 'Servicio de Impresión Silenciosa',
+                      collection: Usuarios::ServicioDeImpresion.all.map { |s| [s.desc, s.id] },
+                      selected: @user.servicio_de_impresion_id,
+                      include_blank: false,
+                      hint: 'WHB = impresora WHB instalada en esta PC. QZ Tray = nueva aplicación QZ Tray.',
+                      wrapper_html: { class: 'col-12' } %>
+                  </div>
+                  <div class="col-md-6 mt-3">
+                    <label class="form-control-label">Estado de conexión</label>
+                    <div id="qz-connection-status" class="mt-2">
+                      <span id="qz-status-indicator" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#dc3545;margin-right:8px;vertical-align:middle;"></span>
+                      <span id="qz-status-text" style="vertical-align:middle;font-size:0.95rem;">Verificando...</span>
+                    </div>
+                    <button type="button" id="qz-test-connection" class="btn btn-sm btn-outline-secondary mt-2">
+                      <i class="ti-reload"></i> Probar conexión
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-12">
+  <%= f.default_button 'Guardar' %>
+  </div>
+<% end -%>

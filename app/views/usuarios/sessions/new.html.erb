@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login - Kiosk</title>
+  <meta charset="utf-8">
+  <meta content="initial-scale=1, shrink-to-fit=no, width=device-width" name="viewport">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+</head>
+<body id="login">
+  <section id="wrapper">
+    <div class="row">
+      <div class="col-sm-6 offset-sm-3 col-md-4 offset-md-4 col-lg-3 offset-lg-5 login-box card" style="background: #48545f; margin-top: 10%; padding: 20px;">
+        <div class="card-body" id="page-login">
+          <%= form_tag session_path, class: 'form-horizontal form-material', id: 'loginform' do %>
+            <h3 class="box-title m-b-20 m-t-20" style="text-align: center; color: white;">
+              <img src="/logo.png" width="180px" alt="Logo"/>
+            </h3>
+            
+            <% if flash[:error] %>
+              <div class="alert alert-danger" style="color: white; background: rgba(255,0,0,0.3);">
+                <%= flash[:error] %>
+              </div>
+            <% end %>
+            
+            <div class="col-xs-12" style="margin-bottom: 15px;">
+              <%= text_field_tag :username, params[:username], class: 'form-control', style: 'color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);', placeholder: 'Usuario' %>
+            </div>
+
+            <div class="col-xs-12" style="margin-bottom: 15px;">
+              <%= password_field_tag :password, '', class: 'form-control', style: 'color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);', placeholder: 'Contraseña' %>
+            </div>
+            
+            <div class="text-center m-t-30 m-b-20">
+              <div class="col-xs-12" style="text-align: center">
+                <%= button_tag 'Entrar', class: 'btn btn-default btn-lg btn-block text-uppercase waves-effect waves-light', style: 'background: #26c6da; border: none; color: white;' %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+    
+    .login-box {
+      border-radius: 10px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    }
+    
+    .form-control::placeholder {
+      color: rgba(255,255,255,0.7) !important;
+    }
+    
+    .btn:hover {
+      background: #00acc1 !important;
+    }
+  </style>
+</body>
+</html>

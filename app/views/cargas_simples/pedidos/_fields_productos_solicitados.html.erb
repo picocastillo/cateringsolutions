@@ -1,0 +1,29 @@
+
+<div class="col-md-12 mt-3">
+  <hr>
+  <table class="table-responsive productos_solicitados">
+    <thead>
+      <tr>
+        <th width="85%">Productos</th>
+        <th width="5%">Cantidad</th>
+        <th width="10%"><%= f.icon_to_add :productos_solicitados %></th>
+      </tr>
+    </thead>
+    <tbody>
+    <%= f.fields_for :productos_solicitados do |fi| %>
+      <tr class="fields">
+        <%= fi.hidden_field :id, value: fi.object.id unless fi.object.new_record? %>
+        <td>
+          <%= fi.input :producto_id, label: false, as: :select2, input_html: {disabled: fi.object.presence && !fi.object.new_record?, data: {multiple: false, placeholder: 'Ingrese nombre', label: 'nombre_y_precio', url: precios_path(format: :json, fecha: @pedido.fecha, usuario_id: @pedido.usuario_id, cuenta_id: @pedido.cuenta_id), pre: fi.object.presence && fi.object.producto && {id: fi.object.producto.id, nombre_y_precio: fi.object.nombre_codigos_y_precio} }}, wrapper_html: { class: "mb-1"}  %>
+        </td>
+        <td>
+          <%= fi.input :cantidad, as: :integer, label: false, wrapper_html: { class: "mb-1"} %>
+        </td>
+        <td style="padding-top: 19px;">
+          <%= fi.icon_to_remove "menos" %>
+        </td>
+      </tr>
+    <% end %>
+    </tbody>
+  </table>
+</div>

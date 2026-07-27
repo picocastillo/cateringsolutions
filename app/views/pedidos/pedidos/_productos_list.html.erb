@@ -1,0 +1,93 @@
+<% show_totals = local_assigns.fetch(:show_totals, true) %>
+<% if @pedido.productos_solicitados.present? %>
+  <div class="order-card mt-4 mb-4" style="background: #fefefe; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+    <!-- Header -->
+    <div class="text-white py-2 px-3 d-flex align-items-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; border-radius: 12px 12px 0 0; margin-bottom: 0;">
+      <i class="fas fa-utensils mr-3" style="font-size: 2.2rem; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);"></i>
+      <div>
+        <h5 class="mb-0 font-weight-bold text-white" style="font-size: 1.4rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+          Tu Pedido
+        </h5>
+        <p class="mb-0 font-weight-light text-white" style="font-size: 0.95rem; opacity: 0.9;">
+          <%= @pedido.productos_solicitados.sum(:cantidad) %> <%= @pedido.productos_solicitados.sum(:cantidad) == 1 ? 'producto' : 'productos' %>
+        </p>
+      </div>
+    </div>
+
+    <!-- Products List -->
+    <div style="padding: 0;">
+      <% categorias = @pedido.productos_solicitados.sort_by{ |x| [x.producto.categoria.codigo, x.producto.nombre]}.group_by{ |x| x.producto.categoria.nombre } %>
+      <% categorias.each_with_index do |(categoria_nombre, pss), categoria_index| %>
+
+        <!-- Category Header -->
+        <% if categorias.keys.size > 1 %>
+          <div class="category-header" style="padding: 12px 25px; border-bottom: 1px solid #e8ecf4; <%= 'border-top: 1px solid #e8ecf4;' if categoria_index > 0 %>">
+            <h6 class="mb-0" style="color: #6366f1; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">
+              <%= categoria_nombre %>
+            </h6>
+          </div>
+        <% end %>
+
+        <!-- Category Products -->
+        <% pss.each_with_index do |ps, index| %>
+          <div class="product-item" style="padding: 12px 25px; border-bottom: 1px solid #f0f2f8; display: flex; align-items: center; <%= 'border-bottom: none;' if categoria_index == categorias.keys.size - 1 && index == pss.size - 1 %>">
+
+            <!-- Product Image -->
+            <div class="hidden-sm-down product-image" style="margin-right: 20px; flex-shrink: 0;">
+              <div style="width: 60px; height: 60px; overflow: visible; box-shadow: 0 2px 8px rgba(0,0,0,0.12); position: relative;">
+                <%= image_tag ps.producto.imagen_principal, style: "border-radius: 12px;width: 100%; height: 100%; object-fit: cover; background: #{ps.producto.color_safe}" %>
+              </div>
+            </div>
+
+            <!-- Product Details -->
+            <div style="flex-grow: 1; min-width: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <div style="flex-grow: 1; min-width: 0; margin-right: 15px;">
+                  <h6 style="margin: 0; font-weight: 600; color: #2d3748; font-size: 1.05em; line-height: 1.3;">
+                    <% unless current_user.cliente? %>
+                      <span style="color: #a0aec0; font-size: 0.8em; margin-right: 8px;">#<%= ps.producto.codigo.to_s.rjust(3, '0') %></span>
+                    <% end %>
+                    <%= ps.nombre_carrito %>
+                  </h6>
+
+                  <!-- Mobile quantity and price -->
+                  <div class="hidden-md-up" style="margin-top: 8px;">
+                    <span style="background: #edf2f7; color: #4a5568; padding: 4px 8px; border-radius: 6px; font-size: 0.85em; font-weight: 500;">
+                      <%= ps.peso.present? ? "#{ps.peso} Kg x" : "#{ps.cantidad}x" %> <%= Danconia::Money.new(ps.precio_unitario) %><%= '/Kg'.html_safe if ps.peso.present? %>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Desktop Price -->
+                <div class="hidden-sm-down" style="text-align: right; flex-shrink: 0;">
+                  <div style="color: #718096; font-size: 0.9em; margin-bottom: 4px;">
+                    <%= ps.peso.present? ? "#{ps.peso} Kg x" : "#{ps.cantidad}x" %> <%= Danconia::Money.new(ps.precio_unitario) %><%= '/Kg'.html_safe if ps.peso.present? %>
+                  </div>
+                  <div style="font-weight: 700; color: #2d3748; font-size: 1.1em;">
+                    <%= ps.importe_total_sin_descuento %>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mobile Total -->
+              <div class="hidden-md-up" style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                <div></div>
+                <div style="font-weight: 700; color: #2d3748; font-size: 1.1em;">
+                  <%= ps.importe_total_sin_descuento %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if show_totals %>
+    <%= render 'pedidos/pedidos/pedido_totals', standalone: false %>
+    <% end %>
+  </div>
+<% else %>
+  <div style="background:whitesmoke;width:100%;padding:20px;text-align: center;">
+    <h3>Sin productos.</h3>
+  </div>
+<% end %>

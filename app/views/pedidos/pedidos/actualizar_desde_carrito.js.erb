@@ -1,0 +1,45 @@
+<% if @pedido.valid? %>
+  $("#cart-container .notify").html("<%= @pedido.importe_total ? "<span class='heartbit'></span> <span class='point'></span>".html_safe : "" %>" );
+  <% if @vaciar_carrito %>
+    $("#cart-container").html("<%= j render '/layouts/cart_container' %>");
+    $("#grupo-badges-container").empty();
+    $(document).trigger('pedidos:cart-vaciado');
+    if($('#new-pedido').length > 0) {
+      $("#boton-compra").html("<%= j render '/pedidos/pedidos/boton_compra' %>");
+      $("#productos-en-venta").html("<%= j render 'productos_en_venta' %>");
+      $("#listado-de-productos").html("<%= j render 'listado_de_productos' %>");
+      $('#cargar-productos').hide();
+      $('#listado-de-productos').fadeIn(300);
+    }
+    $('body > .tooltip').remove();
+    initProductSliders();
+    $.onmount();
+  <% end %>
+  if($('#new-pedido').length > 0) {
+    <% if (!@pedido.cuenta && !@pedido.usuario) || (@pedido.fecha && !@pedido.fecha_permitida?) %>
+      $("#productos-en-venta").hide();
+    <% else %>
+      $("#productos-en-venta").show();
+    <% end %>
+    <% if @pedido.fecha_permitida? && !@pedido.limite_compra_excedido? %>
+      $('#new-pedido .boton-aceptar-pedido').removeClass('disabled');
+    <% else %>
+      $('#new-pedido .boton-aceptar-pedido').addClass('disabled');
+    <% end %>
+  }
+<% else %>
+  toast.error({ html: '<%= "#{@pedido.errors.full_messages.to_sentence}.<br>Total Pedido: $#{@pedido.importe_total}".html_safe %>', duration: 5000 });
+<% end %>
+<% if @cupon_expirado %>
+  toast.error({ message: 'El cupón ha expirado y fue removido del pedido.', duration: 5000 });
+<% end %>
+if($('#show-pedido').length > 0) {
+  $("#pedido-container").html("<%= j render 'pedido' %>");
+}
+if($('#new-pedido').length > 0) {
+  $('#pedido-en-curso #continuar-compra').attr('href', 'JavaScript:void(0);');
+}
+if($('#pedido-en-curso .item:not(.eliminado)').length == 0) {
+  $('#new-pedido .boton-aceptar-pedido').addClass('disabled');
+  $('#pedido-en-curso .boton-aceptar-pedido').addClass('disabled');
+}

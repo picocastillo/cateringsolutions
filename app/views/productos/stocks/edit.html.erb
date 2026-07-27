@@ -1,0 +1,95 @@
+<% page title: 'Editar Stock', raiz: 'Productos', hojas: "#{@stock.producto.nombre} - Editar", acciones: [link_to('Ver', @stock), link_to('Volver', stocks_path)].compact, id: 'edit-stock' %>
+
+<div class="row">
+  <div class="col-md-8">
+    <%= simple_form_for @stock, url: stock_path(@stock), method: :put do |f| %>
+      <%= f.error_messages %>
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title m-b-0">Editar Stock - <%= @stock.producto.nombre %></h4>
+        </div>
+        <div class="card-body form-material">
+          <div class="row">
+            <div class="col-md-12">
+              <h5>Información del Producto</h5>
+              <p><strong>Producto:</strong> <%= @stock.producto.nombre %></p>
+              <p><strong>Categoría:</strong> <%= @stock.producto.categoria.nombre %></p>
+              <p><strong>Tienda:</strong> <%= @stock.tienda.nombre %></p>
+              <p><strong>Local:</strong> <%= @stock.local&.nombre || 'Stock Principal' %></p>
+              <hr>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label class="control-label">Stock Actual</label>
+                <p class="h4 text-info"><%= @stock.cantidad_actual.to_i %></p>
+                <p class="help-block">Para cambiar la cantidad, utilice el <a href="<%= stock_path(@stock) %>">Ajuste Rápido</a> en la vista de detalle.</p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <%= f.input :cantidad_minima, as: :integer, label: 'Stock Mínimo', required: true, input_html: { step: 1, min: 0 }, hint: 'Cantidad mínima antes de alerta' %>
+            </div>
+            <div class="col-md-4">
+              <%= f.input :cantidad_maxima, as: :integer, label: 'Stock Máximo', required: false, input_html: { step: 1, min: 0 }, hint: 'Cantidad máxima (opcional)' %>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-12">
+              <%= f.input :observaciones, as: :text, label: 'Observaciones', required: false, input_html: { rows: 3 }, hint: 'Notas adicionales sobre este stock' %>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <%= f.input :activo, as: :boolean, label: '¿Stock Activo?', hint: 'Desmarcar para desactivar el control de stock para este producto' %>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-12">
+        <%= f.default_button 'Guardar Cambios' %>
+      </div>
+    <% end %>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h4 class="card-title m-b-0">Estado Actual</h4>
+      </div>
+      <div class="card-body">
+        <p><strong>Estado:</strong>
+          <% if @stock.stock_critico? %>
+            <span class="label label-danger">Stock Crítico</span>
+          <% elsif @stock.stock_bajo? %>
+            <span class="label label-warning">Stock Bajo</span>
+          <% elsif @stock.sin_stock? %>
+            <span class="label label-default">Sin Stock</span>
+          <% else %>
+            <span class="label label-success">Stock Normal</span>
+          <% end %>
+        </p>
+        
+        <% if @stock.cantidad_maxima.present? %>
+          <p><strong>Porcentaje:</strong> <%= @stock.porcentaje_stock %>%</p>
+        <% end %>
+        
+        <p><strong>Disponible:</strong> <%= @stock.disponible? ? 'Sí' : 'No' %></p>
+        
+        <hr>
+        
+        <h6>Ayuda</h6>
+        <ul class="list-unstyled small">
+          <li><strong>Stock Actual:</strong> Cantidad disponible actualmente</li>
+          <li><strong>Stock Mínimo:</strong> Cuando llegue a esta cantidad se considerará "stock bajo"</li>
+          <li><strong>Stock Máximo:</strong> Cantidad máxima recomendada (opcional)</li>
+          <li><strong>Stock Crítico:</strong> Cuando esté por debajo del mínimo</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

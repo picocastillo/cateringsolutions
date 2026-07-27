@@ -1,0 +1,702 @@
+<%= cache "inicio-analytics-#{tienda_activa.id}-#{current_user.local_activo&.id}-#{Time.zone.today}-#{current_user.admin_financiero?}", skip_digest: true do %>
+<%
+  today = Time.zone.today
+  twelve_months_ago = today - 12.months
+  es_admin_financiero = current_user.admin_financiero?
+
+  # Local filtering (only when tienda has multiple locales AND user has active local)
+  filtrar_local = current_user.tienda_activa.multiple_locales && current_user.local_activo
+  local_activo_id = current_user.local_activo&.id
+
+  # All confirmed/finalized pedidos for this tienda
+  pedidos_scope = Pedidos::Pedido
+    .where(tienda_id: tienda_activa.id, estado_id: [3, 4])
+    .where('fecha IS NOT NULL')
+  pedidos_scope = pedidos_scope.where(local_id: local_activo_id) if filtrar_local
+
+  total_pedidos = pedidos_scope.count
+
+  if es_admin_financiero
+    # Revenue from comprobantes (facturas - notas de crédito)
+    comprobantes_scope = Ventas::Facturacion::Comprobante
+      .where(tienda_id: tienda_activa.id, estado_id: [2, 3])
+    comprobantes_scope = comprobantes_scope.where(local_id: local_activo_id) if filtrar_local
+
+    total_facturado = comprobantes_scope
+      .where(type: 'Ventas::Facturacion::Factura')
+      .sum(:total).to_f
+
+    total_nc = comprobantes_scope
+      .where(type: 'Ventas::Facturacion::NotaCredito')
+      .sum(:total).to_f
+
+    total_revenue = total_facturado - total_nc
+
+    # --- Daily net revenue from comprobantes for USD conversion ---
+    # Use comprobantes (same source as peso totals) to ensure consistency
+    daily_comprobante_data = comprobantes_scope
+      .group(Arel.sql("DATE(fecha_emision)"))
+      .group(:type)
+      .pluck(Arel.sql("DATE(fecha_emision), type, SUM(total)"))
+
+    daily_net_pesos = {}
+    daily_comprobante_data.each do |fecha, type, total|
+      daily_net_pesos[fecha] ||= 0
+      if type == 'Ventas::Facturacion::NotaCredito'
+        daily_net_pesos[fecha] -= total.to_f
+      else
+        daily_net_pesos[fecha] += total.to_f
+      end
+    end
+
+    # Convert to USD using each day's cotización
+    cotizaciones = Cotizaciones::Dolar.pluck(:fecha, :precio_venta).to_h
+    total_revenue_usd = 0.0
+    last_cotiz = nil
+    daily_net_pesos.keys.sort.each do |fecha|
+      cotiz = cotizaciones[fecha] || last_cotiz
+      last_cotiz = cotiz if cotiz
+      importe = daily_net_pesos[fecha]
+      total_revenue_usd += (cotiz && cotiz > 0 ? importe / cotiz : 0)
+    end
+
+    aov_usd = total_pedidos > 0 ? (total_revenue_usd / total_pedidos) : 0
+  end
+
+  # --- Active clients count ---
+  active_clientes_count = Clientes::Cliente.disponibles_en(tienda_activa).active.count
+
+  # --- Churn breakdown (by cliente, single query) ---
+  cliente_ids = Clientes::Cliente.disponibles_en(tienda_activa).active.pluck(:id)
+
+  last_order_scope = Pedidos::Pedido
+    .joins(:cuenta)
+    .where(cuentas: { cliente_id: cliente_ids })
+    .where(estado_id: [3, 4])
+    .where('pedidos.fecha IS NOT NULL')
+  last_order_scope = last_order_scope.where(local_id: local_activo_id) if filtrar_local
+  last_order_by_cliente = last_order_scope
+    .group('cuentas.cliente_id')
+    .pluck(Arel.sql('cuentas.cliente_id, MAX(pedidos.fecha)'))
+    .to_h
+
+  churn_counts = { 'activo' => 0, 'en_riesgo' => 0, 'inactivo' => 0, 'perdido' => 0, 'sin_pedidos' => 0 }
+  cliente_ids.each do |cid|
+    last_date = last_order_by_cliente[cid]
+    if last_date.nil?
+      churn_counts['sin_pedidos'] += 1
+    else
+      days = (today - last_date).to_i
+      if days <= 30
+        churn_counts['activo'] += 1
+      elsif days <= 60
+        churn_counts['en_riesgo'] += 1
+      elsif days <= 90
+        churn_counts['inactivo'] += 1
+      else
+        churn_counts['perdido'] += 1
+      end
+    end
+  end
+
+  # --- Monthly revenue in Pesos + USD chart (last 12 months) ---
+  if es_admin_financiero
+    monthly_revenue_usd = {}
+    monthly_revenue_pesos = {}
+    last_cotiz_chart = nil
+    daily_net_pesos.keys.sort.select { |f| f >= twelve_months_ago }.each do |fecha|
+      month_key = fecha.strftime('%Y-%m')
+      cotiz = cotizaciones[fecha] || last_cotiz_chart
+      last_cotiz_chart = cotiz if cotiz
+      importe = daily_net_pesos[fecha]
+      monthly_revenue_pesos[month_key] ||= 0
+      monthly_revenue_pesos[month_key] += importe
+      monthly_revenue_usd[month_key] ||= 0
+      monthly_revenue_usd[month_key] += (cotiz && cotiz > 0 ? importe / cotiz : 0)
+    end
+    sorted_months = monthly_revenue_usd.keys.sort
+  end
+
+  # Use sorted_months from revenue if available, otherwise from orders
+  unless es_admin_financiero
+    sorted_months = pedidos_scope
+      .where('fecha >= ?', twelve_months_ago)
+      .group(Arel.sql("DATE_FORMAT(fecha, '%Y-%m')"))
+      .pluck(Arel.sql("DATE_FORMAT(fecha, '%Y-%m')"))
+      .sort
+  end
+
+  chart_labels = sorted_months.map { |m| Date.parse("#{m}-01").strftime('%m/%Y') }
+
+  if es_admin_financiero
+    chart_values_usd = sorted_months.map { |m| monthly_revenue_usd[m].round(2) }
+    chart_values_pesos = sorted_months.map { |m| monthly_revenue_pesos[m].round(2) }
+  end
+
+  # --- Monthly order count ---
+  monthly_orders = pedidos_scope
+    .where('fecha >= ?', twelve_months_ago)
+    .group(Arel.sql("DATE_FORMAT(fecha, '%Y-%m')"))
+    .pluck(Arel.sql("DATE_FORMAT(fecha, '%Y-%m'), COUNT(*)"))
+    .to_h
+  freq_values = sorted_months.map { |m| monthly_orders[m] || 0 }
+
+  # --- Monthly AOV in USD + Pesos ---
+  if es_admin_financiero
+    aov_values_usd = sorted_months.each_with_index.map do |m, i|
+      freq_values[i] > 0 ? (chart_values_usd[i] / freq_values[i]).round(2) : 0
+    end
+    aov_values_pesos = sorted_months.each_with_index.map do |m, i|
+      freq_values[i] > 0 ? (chart_values_pesos[i] / freq_values[i]).round(2) : 0
+    end
+
+    # --- Average VVC (Valor de Vida del Cliente) for CAC chart (last 12 months) ---
+    vvc_comprobantes = comprobantes_scope.where('fecha_emision >= ?', twelve_months_ago)
+    vvc_revenue = vvc_comprobantes.where(type: 'Ventas::Facturacion::Factura').sum(:total).to_f -
+                  vvc_comprobantes.where(type: 'Ventas::Facturacion::NotaCredito').sum(:total).to_f
+
+    vvc_clientes_scope = Pedidos::Pedido
+      .joins(:cuenta)
+      .where(cuentas: { cliente_id: cliente_ids })
+      .where(estado_id: [3, 4], tienda_id: tienda_activa.id)
+      .where('pedidos.fecha >= ?', twelve_months_ago)
+    vvc_clientes_scope = vvc_clientes_scope.where(local_id: local_activo_id) if filtrar_local
+    vvc_clientes_count = vvc_clientes_scope.distinct.count('cuentas.cliente_id')
+
+    avg_vvc = vvc_clientes_count > 0 ? (vvc_revenue / vvc_clientes_count) : 0
+  end
+%>
+
+<div class="row">
+  <%# KPI Cards %>
+  <% kpi_col = es_admin_financiero ? 'col-6 col-md-3' : 'col-12 col-md-4' %>
+  <% if es_admin_financiero %>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Ticket Promedio (AOV)</h6>
+        <h3 class="mb-0" style="color: #009efb;">US$ <%= number_with_precision(aov_usd, precision: 0, delimiter: '.') %></h3>
+        <small class="text-muted"><%= total_pedidos %> pedidos totales</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Facturación Neta Total</h6>
+        <h3 class="mb-0" style="color: #7460ee;"><%= number_to_currency(total_revenue, unit: '$', separator: ',', delimiter: '.', precision: 0) %></h3>
+        <small class="text-muted">US$ <%= number_with_precision(total_revenue_usd, precision: 0, delimiter: '.') %></small>
+      </div>
+    </div>
+  </div>
+  <% else %>
+  <div class="<%= kpi_col %>">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Total Pedidos</h6>
+        <h3 class="mb-0" style="color: #009efb;"><%= total_pedidos %></h3>
+        <small class="text-muted">confirmados + finalizados</small>
+      </div>
+    </div>
+  </div>
+  <% end %>
+  <div class="<%= kpi_col %>">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Clientes Activos</h6>
+        <h3 class="mb-0" style="color: #02af1f;"><%= active_clientes_count %></h3>
+        <small class="text-muted">registrados</small>
+      </div>
+    </div>
+  </div>
+  <div class="<%= kpi_col %>">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Retención de Clientes</h6>
+        <div class="d-flex justify-content-around mb-1">
+          <span class="badge badge-success" title="Activos (≤30 días)"><%= churn_counts['activo'] %></span>
+          <span class="badge badge-warning" title="En riesgo (31-60 días)"><%= churn_counts['en_riesgo'] %></span>
+          <span class="badge badge-danger" title="Inactivos (61-90 días)"><%= churn_counts['inactivo'] %></span>
+          <span class="badge badge-dark" title="Perdidos (>90 días)"><%= churn_counts['perdido'] %></span>
+        </div>
+        <small class="text-muted">
+          <span class="badge badge-success">&nbsp;</span> Activos
+          <span class="badge badge-warning">&nbsp;</span> Riesgo
+          <span class="badge badge-danger">&nbsp;</span> Inact.
+          <span class="badge badge-dark">&nbsp;</span> Perd.
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if chart_labels.any? %>
+<%
+  # When financial charts are present, use half-width; otherwise full-width
+  chart_col = es_admin_financiero ? 'col-12 col-md-6' : 'col-12'
+%>
+<div class="row">
+  <% if es_admin_financiero %>
+  <%# Revenue chart %>
+  <div class="col-12 col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Venta Neta Mensual</h3>
+        <h6 class="card-subtitle">Pesos y dólares — todos los clientes (últimos 12 meses)</h6>
+        <%= content_tag :span, nil, id: 'inicio-analytics-revenue', data: { labels: chart_labels, pesos: chart_values_pesos, usd: chart_values_usd } %>
+        <div style="position: relative; height: 250px;"><canvas id="inicio-analytics-revenue-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <% end %>
+
+  <%# Order count chart %>
+  <div class="<%= chart_col %>">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Pedidos por Mes</h3>
+        <h6 class="card-subtitle">Cantidad de pedidos confirmados — todos los clientes (últimos 12 meses)</h6>
+        <%= content_tag :span, nil, id: 'inicio-analytics-frequency', data: { labels: chart_labels, datos: freq_values } %>
+        <div style="position: relative; height: 250px;"><canvas id="inicio-analytics-frequency-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if es_admin_financiero %>
+<div class="row">
+  <%# AOV trend chart %>
+  <div class="col-12 col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Ticket Promedio Mensual (AOV)</h3>
+        <h6 class="card-subtitle">Pesos y dólares / pedidos por mes (últimos 12 meses)</h6>
+        <%= content_tag :span, nil, id: 'inicio-analytics-aov', data: { labels: chart_labels, pesos: aov_values_pesos, usd: aov_values_usd } %>
+        <div style="position: relative; height: 250px;"><canvas id="inicio-analytics-aov-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <%# Churn breakdown chart %>
+  <div class="col-12 col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Estado de Clientes</h3>
+        <h6 class="card-subtitle">Distribución según último pedido</h6>
+        <%= content_tag :span, nil, id: 'inicio-analytics-churn', data: {
+          labels: ['Activos', 'En Riesgo', 'Inactivos', 'Perdidos', 'Sin Pedidos'],
+          datos: [churn_counts['activo'], churn_counts['en_riesgo'], churn_counts['inactivo'], churn_counts['perdido'], churn_counts['sin_pedidos']],
+          colors: ['#02af1f', '#ffc107', '#ff4d4d', '#343a40', '#adb5bd']
+        } %>
+        <div style="position: relative; height: 250px;"><canvas id="inicio-analytics-churn-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# VVC:CAC Section (average across all clients) %>
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">CAC — Costo de Adquisición de Cliente por año</h3>
+        <h6 class="card-subtitle mb-3">Cuánto podés gastar en promedio para conseguir un nuevo cliente (últimos 12 meses)</h6>
+
+        <div class="p-3 mb-3" style="background: #fff8e1; border-left: 4px solid #ffc107;">
+          <strong>¿Qué es esto?</strong><br>
+          <strong>VVC</strong> (Valor de Vida del Cliente) = ganancia bruta promedio que genera cada cliente a lo largo de toda su relación comercial.<br>
+          <strong>CAC</strong> (Costo de Adquisición de Cliente) = lo que gastás en marketing, descuentos, o acciones comerciales para conseguir un cliente nuevo.<br>
+          <small class="text-muted">Si el CAC es menor que la ganancia que genera el cliente, tu inversión se recupera. Si es mayor, perdés plata por cada cliente nuevo.</small>
+        </div>
+
+        <div class="form-group row align-items-center mb-3">
+          <label class="col-auto col-form-label font-weight-bold" for="inicio_cac_cost_pct">Costo de producción y despacho:</label>
+          <div class="col-auto">
+            <select id="inicio_cac_cost_pct" class="form-control form-control-lg" style="font-size: 1.2rem; font-weight: bold; background: #e3f2fd; border-color: #90caf9; min-width: 100px;">
+              <% (0..100).step(5).each do |pct| %>
+                <option value="<%= pct %>" <%= pct == 50 ? 'selected' : '' %>><%= pct %>%</option>
+              <% end %>
+            </select>
+          </div>
+          <span class="col-auto text-muted">% de la facturación que se va en costos (producción, logística, despacho)</span>
+        </div>
+
+        <%= content_tag :span, nil, id: 'inicio-cac-data', data: { avg_vvc: avg_vvc.round(2), clientes_count: vvc_clientes_count } %>
+        <div style="position: relative; height: 280px;"><canvas id="inicio-cac-chart"></canvas></div>
+
+        <div class="table-responsive mt-3">
+          <table class="table table-bordered table-sm text-center" id="inicio-cac-table">
+            <thead class="thead-light">
+              <tr>
+                <th>% de ganancia usado para conseguir al cliente</th>
+                <th>100%</th>
+                <th>50%</th>
+                <th>33%</th>
+                <th>25%</th>
+                <th>20%</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="font-weight-bold">CAC Máximo usado para conseguir cliente</td>
+                <td id="inicio-cac-r1"></td>
+                <td id="inicio-cac-r2"></td>
+                <td id="inicio-cac-r3"></td>
+                <td id="inicio-cac-r4"></td>
+                <td id="inicio-cac-r5"></td>
+              </tr>
+              <tr>
+                <td class="font-weight-bold">Interpretación</td>
+                <td id="inicio-cac-i1"></td>
+                <td id="inicio-cac-i2"></td>
+                <td id="inicio-cac-i3"></td>
+                <td id="inicio-cac-i4"></td>
+                <td id="inicio-cac-i5"></td>
+              </tr>
+              <tr>
+                <td class="font-weight-bold">Dto. Máx. Recomendado</td>
+                <td id="inicio-cac-d1"></td>
+                <td id="inicio-cac-d2"></td>
+                <td id="inicio-cac-d3"></td>
+                <td id="inicio-cac-d4"></td>
+                <td id="inicio-cac-d5"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-muted mt-2" id="inicio-cac-footnote" style="font-size: 12px;"></p>
+        <div id="inicio-cac-explanation" class="mt-2 p-2" style="background: #f8f9fa; font-size: 13px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<% else %>
+<div class="row">
+  <%# Churn breakdown chart (non-financial admins, full width) %>
+  <div class="<%= chart_col %>">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Estado de Clientes</h3>
+        <h6 class="card-subtitle">Distribución según último pedido</h6>
+        <%= content_tag :span, nil, id: 'inicio-analytics-churn', data: {
+          labels: ['Activos', 'En Riesgo', 'Inactivos', 'Perdidos', 'Sin Pedidos'],
+          datos: [churn_counts['activo'], churn_counts['en_riesgo'], churn_counts['inactivo'], churn_counts['perdido'], churn_counts['sin_pedidos']],
+          colors: ['#02af1f', '#ffc107', '#ff4d4d', '#343a40', '#adb5bd']
+        } %>
+        <div style="position: relative; height: 250px;"><canvas id="inicio-analytics-churn-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+<% end %>
+
+<script>
+$(function () {
+  "use strict";
+
+  function renderInicioAnalyticsChart(dataId, canvasId, type, color, bgColor, label, isCurrency) {
+    var $el = $('#' + dataId);
+    if (!$el.data('labels')) return;
+
+    var yTickCallback = isCurrency
+      ? function(value) {
+          var parts = value.toString().split(".");
+          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+          return 'US$ ' + parts.join(",");
+        }
+      : function(value) { return value; };
+
+    var tooltipCallback = isCurrency
+      ? function(context) {
+          var value = context.parsed.y;
+          var parts = value.toFixed(0).toString().split(".");
+          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+          return label + ': US$ ' + parts.join(",");
+        }
+      : function(context) { return label + ': ' + context.parsed.y; };
+
+    new Chart(document.getElementById(canvasId).getContext('2d'), {
+      type: type,
+      data: {
+        labels: $el.data('labels'),
+        datasets: [{
+          label: label,
+          data: $el.data('datos'),
+          borderColor: color,
+          backgroundColor: bgColor,
+          borderWidth: 2,
+          fill: type === 'line'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { callback: yTickCallback },
+            grid: { color: '#eef0f2' }
+          },
+          x: { grid: { color: '#eef0f2' } }
+        },
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: { label: tooltipCallback }
+          }
+        }
+      }
+    });
+  }
+
+  renderInicioAnalyticsChart('inicio-analytics-frequency', 'inicio-analytics-frequency-chart', 'line', '#02af1f', 'rgba(2, 175, 31, 0.1)', 'Pedidos', false);
+
+  // Dual-axis chart (Pesos left Y, USD right Y)
+  function renderDualCurrencyChart(dataId, canvasId, type) {
+    var $el = $('#' + dataId);
+    if (!$el.data('labels')) return;
+
+    function formatArs(value) {
+      var parts = value.toString().split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return '$ ' + parts.join(",");
+    }
+    function formatUsd(value) {
+      var parts = value.toString().split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return 'US$ ' + parts.join(",");
+    }
+
+    new Chart(document.getElementById(canvasId).getContext('2d'), {
+      type: type,
+      data: {
+        labels: $el.data('labels'),
+        datasets: [
+          {
+            label: 'Pesos',
+            data: $el.data('pesos'),
+            borderColor: '#7460ee',
+            backgroundColor: type === 'bar' ? 'rgba(116, 96, 238, 0.4)' : 'rgba(116, 96, 238, 0.05)',
+            borderWidth: 2,
+            fill: type === 'line',
+            yAxisID: 'y'
+          },
+          {
+            label: 'Dólares',
+            data: $el.data('usd'),
+            borderColor: '#02af1f',
+            backgroundColor: type === 'bar' ? 'rgba(2, 175, 31, 0.4)' : 'rgba(2, 175, 31, 0.05)',
+            borderWidth: 2,
+            fill: type === 'line',
+            yAxisID: 'y1',
+            type: 'line'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            beginAtZero: true,
+            ticks: { callback: formatArs, color: '#7460ee' },
+            grid: { color: '#eef0f2' },
+            title: { display: true, text: 'Pesos', color: '#7460ee' }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            beginAtZero: true,
+            ticks: { callback: formatUsd, color: '#02af1f' },
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: 'Dólares', color: '#02af1f' }
+          },
+          x: { grid: { color: '#eef0f2' } }
+        },
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              label: function(context) {
+                var value = context.parsed.y;
+                var parts = value.toFixed(0).toString().split(".");
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                if (context.dataset.yAxisID === 'y1') {
+                  return 'Dólares: US$ ' + parts.join(",");
+                }
+                return 'Pesos: $ ' + parts.join(",");
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  renderDualCurrencyChart('inicio-analytics-revenue', 'inicio-analytics-revenue-chart', 'bar');
+  renderDualCurrencyChart('inicio-analytics-aov', 'inicio-analytics-aov-chart', 'line');
+
+  // Churn doughnut chart
+  var $churn = $('#inicio-analytics-churn');
+  if ($churn.data('labels')) {
+    new Chart(document.getElementById('inicio-analytics-churn-chart').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: $churn.data('labels'),
+        datasets: [{
+          data: $churn.data('datos'),
+          backgroundColor: $churn.data('colors'),
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'right' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                var pct = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                return context.label + ': ' + context.parsed + ' (' + pct + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // --- VVC:CAC chart for inicio (average across all clients) ---
+  var $cacData = $('#inicio-cac-data');
+  if ($cacData.length && $cacData.data('avg-vvc')) {
+    var inicioCacChart = null;
+    var avgVvc = parseFloat($cacData.data('avg-vvc'));
+    var clientesCount = parseInt($cacData.data('clientes-count'));
+
+    function formatCurrencyInicio(value) {
+      var parts = Math.round(value).toString().split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return '$ ' + parts.join(",");
+    }
+
+    function recalcInicioCac(costPct) {
+      var margin = 1 - (costPct / 100);
+      var grossProfit = avgVvc * margin;
+      var ratios = [1, 2, 3, 4, 5];
+      var pctLabels = ['100%', '50%', '33%', '25%', '20%'];
+      var cacValues = ratios.map(function(r) { return grossProfit / r; });
+      var interpretations = [
+        { label: 'Crítico', cls: 'badge-danger' },
+        { label: 'Riesgoso', cls: 'badge-warning' },
+        { label: 'Saludable', cls: 'badge-success' },
+        { label: 'Muy Bueno', cls: 'badge-info' },
+        { label: 'Excelente', cls: 'badge-primary' }
+      ];
+
+      // Update table
+      for (var i = 0; i < 5; i++) {
+        $('#inicio-cac-r' + (i + 1)).html('<strong>' + formatCurrencyInicio(cacValues[i]) + '</strong>');
+        $('#inicio-cac-i' + (i + 1)).html('<span class="badge ' + interpretations[i].cls + '">' + interpretations[i].label + '</span>');
+        var dtoPct = Math.round((cacValues[i] / avgVvc) * 100);
+        $('#inicio-cac-d' + (i + 1)).text(dtoPct + '%');
+      }
+
+      // Footnote
+      $('#inicio-cac-footnote').html(
+        'VVC promedio: ' + formatCurrencyInicio(avgVvc) +
+        ' — Ganancia bruta promedio por cliente: ' + formatCurrencyInicio(grossProfit) +
+        ' (' + Math.round(margin * 100) + '% margen) — Basado en ' + clientesCount + ' clientes con pedidos en los últimos 12 meses.'
+      );
+
+      // Explanation
+      var safe = cacValues[2]; // 33% = saludable
+      $('#inicio-cac-explanation').html(
+        '<strong>¿Cómo leer estos datos?</strong><br>' +
+        'Con un costo de producción y despacho del <strong>' + costPct + '%</strong>, ' +
+        'la ganancia bruta promedio por cliente es <strong>' + formatCurrencyInicio(grossProfit) + '</strong>.<br>' +
+        'Para que la inversión en adquisición sea saludable, el CAC promedio no debería superar <strong>' + formatCurrencyInicio(safe) + '</strong> por cliente.'
+      );
+
+      // Chart
+      if (inicioCacChart) inicioCacChart.destroy();
+      inicioCacChart = new Chart(document.getElementById('inicio-cac-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: pctLabels,
+          datasets: [{
+            label: 'CAC Máximo',
+            data: cacValues,
+            backgroundColor: ['#ff4d4d', '#ffc107', '#02af1f', '#17a2b8', '#7460ee'],
+            borderWidth: 1,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { callback: function(v) { return formatCurrencyInicio(v); } },
+              grid: { color: '#eef0f2' }
+            },
+            y: { grid: { display: false } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return 'CAC Máximo: ' + formatCurrencyInicio(ctx.parsed.x); }
+              }
+            },
+            annotation: {
+              annotations: {
+                grossProfitLine: {
+                  type: 'line',
+                  xMin: grossProfit,
+                  xMax: grossProfit,
+                  borderColor: '#343a40',
+                  borderWidth: 2,
+                  borderDash: [5, 5],
+                  label: {
+                    display: true,
+                    content: 'Ganancia bruta: ' + formatCurrencyInicio(grossProfit),
+                    position: 'start',
+                    backgroundColor: '#343a40',
+                    color: '#fff',
+                    font: { size: 11 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Initial render
+    recalcInicioCac(parseInt($('#inicio_cac_cost_pct').val()));
+
+    // On select change
+    $('#inicio_cac_cost_pct').on('change', function() {
+      recalcInicioCac(parseInt($(this).val()));
+    });
+  }
+});
+</script>
+<% end %>

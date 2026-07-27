@@ -1,0 +1,31 @@
+<table id="encabezado">
+  <tr>
+    <td width="100%">
+      <% if comprobante.tienda.multiple_locales? %>
+        <%= inline_paperclip_image(comprobante.local.documentos.first, height: 80, width: 180, style: 'margin-left: 40px') if comprobante.local.documentos.first %>
+      <% else %>
+        <%= inline_public_image("/#{comprobante.tienda.dominio}_black.png", height: 80, width: 180, style: 'margin-left: 40px') %>
+      <% end %>
+      <div class="contacto">
+          <% if comprobante.tienda.multiple_locales? %>
+            <% if comprobante.local.domicilio.present? %>
+            <div><%= comprobante.local.domicilio %></div>
+            <% end %>
+            <% if comprobante.local.telefono.present? %>
+             <div style="margin-top:4px">tel: <%= comprobante.local.telefono %></div>
+            <% end %>
+          <% else %>
+            <% if comprobante.tienda.domicilio.present? %>
+            <div><%= comprobante.tienda.domicilio %></div>
+            <% end %>
+            <% if comprobante.tienda.telefono.present? %>
+            <div style="margin-top:4px">tel: <%= comprobante.tienda.telefono %></div>
+            <% end %>
+            <% if comprobante.tienda.email.present? %>
+            <div style="margin-top:4px">e-mail: <%= comprobante.tienda.email %></div>
+            <% end %>
+          <% end %>
+      </div>
+    </td>
+  </tr>
+</table>

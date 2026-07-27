@@ -1,0 +1,49 @@
+<div class="message-box contact-box ajax-data-container">
+    <div class="message-widget contact-widget">
+      <% if @productos_vm.present? %>
+        <div class="table-responsive">
+            <% items_sorted = @productos_vm.sort_by { |x| [x.producto.categoria.codigo, x.producto.nombre] } %>
+            <table class="table stylish-table" id="pedidos-del-dia-vm">
+              <thead>
+                <tr>
+                  <th class="text-left">Producto</th>
+                  <th class="text-center" title="Total">T</th>
+                  <th class="text-right" title="Importe">Importe</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% items_sorted.each do |x| %>
+                  <tr>
+                    <td class="text-left"><%= link_to(x.nombre_carrito, ventas_mostrador_pedidos_path(q: { producto_ids: x.producto.id.to_s, fecha_desde: @query.fecha.to_s, fecha_hasta: @query.fecha.to_s, cuentas_ids: @query.cuentas_ids, cliente_ids: @query.cliente_ids }, show_filtro: true)) %></td>
+                    <td class="text-center"><%= x.cantidad_sumada %></td>
+                    <td class="text-right"><%= Danconia::Money.new(x.total_sumado) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+              <% if @subtotales_medios_pago.present? %>
+              <tbody>
+                <% @subtotales_medios_pago.each do |tipo, importe| %>
+                  <tr>
+                    <td></td>
+                    <td class="text-right"><strong><%= Pedidos::MedioPago::TIPOS[tipo] || tipo.to_s.capitalize %></strong></td>
+                    <td class="text-right"><%= Danconia::Money.new(importe) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+              <% end %>
+              <tfoot>
+                <tr>
+                  <td></td>
+                  <td class="text-center"><%= @query_vm.footer_aggregates[:cantidad_total] %></td>
+                  <td class="text-right"><%= Danconia::Money.new(@query_vm.footer_aggregates[:importe_total]) %></td>
+                </tr>
+              </tfoot>
+            </table>
+        </div>
+      <% else %>
+        <div style="text-align:center">
+          <h5>No hay ventas de mostrador para este día.</h5>
+        </div>
+      <% end %>
+    </div>
+</div>

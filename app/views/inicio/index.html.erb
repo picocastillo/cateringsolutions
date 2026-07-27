@@ -1,0 +1,173 @@
+<% page title: tienda_activa.nombre, raiz: 'Bienvenidos', hojas: 'Inicio', id: 'inicio' %>
+    <div class="row p-x-4" data-manualfocus>
+        <div id="<%= 'daily-orders-container' if current_user.admin? && tienda_activa.carrito_de_compras %>" class="col-12" style="padding:0">
+          <%= render 'daily_orders' %>
+        </div>
+        <%= render 'stock_alerts' %>
+        <%= render 'precios_alerts' %>
+                <%= error_messages_for @query %>
+        <div class="col-12 p-0" id="reportes-diarios">
+          <% if tienda_activa.carrito_de_compras || tienda_activa.venta_mostrador? %>
+          <div class="card pedidos-boxs">
+              <div class="card-body bg-info row" style="margin: 0;padding: 1.25rem 0rem;">
+                  <div class="col-4 col-12">
+                    <h4 class="text-white card-title">Reportes del día</h4>
+                    <h6 class="card-subtitle text-white m-b-0">Visualizalos y exportalos aquí</h6>
+                  </div>
+                  <div style="float:right;display: contents" class="col-12">
+                    <%= query_form_for @query, url: inicio_index_path, html: { style: 'float: right;margin-right: -5px;'}, remote: true do |f| %>
+                            <%= f.input :cliente_ids, label: false, as: :select2, input_html: { placeholder: 'Clientes..', data: {multiple: true, url: clientes_path(format: :json, active: true), pre: @query.cliente_ids.presence && Clientes::Cliente.disponibles_en(tienda_activa).where(id: @query.cliente_ids)}, class: 'seleccion-cliente', style: 'width: 100%;float: right'}, wrapper_html: { class: 'col-12 col-sm-6 col-md-6 col-lg-4' } %>
+                            <%= f.input :cuentas_ids, label: false, as: :select2, input_html: { placeholder: 'Cuentas..', data: {multiple: true, minimum_input_length: 1, label: 'cliente_y_nombre', selection: 'cliente_y_nombre', url: cuentas_path(format: :json, active: true), pre: @query.cuentas_ids.presence && Clientes::Cuenta.where(id: @query.cuentas_ids)}, class: 'seleccion-cliente', style: 'width: 100%;float: right'}, wrapper_html: { class: 'col-12 col-sm-6 col-md-6 col-lg-4' } %>
+                            <%= f.input :categoria_ids, as: :select2_local, collection: Productos::Categoria.order(:codigo).where(tienda_id: tienda_activa).active, label: false, input_html: {multiple: true, placeholder: 'Categorias..'}, wrapper_html: { class: "col-8 col-sm-6 col-md-5 col-lg-4"} %>
+
+                            <%= f.input :fecha_desde, as: :string, required: false, label: false, input_html: { class: 'singledate', style: 'width: 100%;text-align: right', placeholder: 'Desde'}, wrapper_html: { class: 'col-8 col-sm-6 col-md-3 col-lg-4', style: 'float: right;max-width: max-content;' } %>
+                            <%= f.input :fecha_hasta, as: :string, required: false, label: false, input_html: { class: 'singledate', style: 'width: 100%;text-align: right;', placeholder: 'Hasta'}, wrapper_html: { class: 'col-8 col-sm-6 col-md-3 col-lg-4', style: 'float: right;max-width: max-content;' } %>
+                            <%= f.input :horarios_de_corte_ids, as: :select2_local, collection: Clientes::Cuenta.horarios_corte_efectivos(tienda_activa.id), selected: @query.horarios_de_corte_ids, label: false, label_method: :to_s, include_blank: true, input_html: {multiple: true, placeholder: 'Horario de corte', style: 'width: 100%'}, wrapper_html: { class: "col-8 col-sm-6 col-md-3 col-lg-2"} %>
+                            <% if tienda_activa.carrito_de_compras && tienda_activa.venta_mostrador? %>
+                            <%= f.input :venta_mostrador, label: false, as: :select, collection: [['Venta Mostrador', 'true'], ['No Venta Mostrador', 'false']], include_blank: 'Todos', input_html: { style: 'width: 100%' }, wrapper_html: { class: 'col-8 col-sm-6 col-md-3 col-lg-2' } %>
+                            <% end %>
+                            <div class="form-actions"><input type="submit" name="commit" value="Buscar" class="btn btn-primary search-btn" data-disable-with="Buscar" style="margin-top: -10px;margin-left: 40px;"></div>
+                   <% end %>
+                 </div>
+              </div>
+          </div>
+          <% end %>
+
+          <div id="panel-cocina" style="<%= 'display:none' unless @query_cocina %>">
+          <% if @query_cocina %>
+          <div class="card pedidos-boxs">
+              <div class="card-body bg-info row" style="margin: 0;padding: 0.75rem 0rem;">
+                  <div class="col-12">
+                    <h5 class="text-white card-title m-0">Productos a cocinar</h5>
+                  </div>
+              </div>
+              <div style="background: whitesmoke;padding: 10px 20px 0px 20px;">
+                  <h2 class="add-ct-btn"><%= export_link_cocina((@query.fecha.present? ? @query.fecha : Date.today), venta_mostrador: false, class: 'export-link-cocina btn btn-circle btn-lg btn-success waves-effect waves-dark') %></h2>
+              </div>
+              <div class="card-body">
+                <span id="reporte-cocina">
+                  <%= render 'reporte_cocina' %>
+                </span>
+              </div>
+          </div>
+          <% end %>
+          </div>
+
+          <div id="panel-vm" style="<%= 'display:none' unless @query_vm %>">
+          <% if @query_vm %>
+          <div class="card pedidos-boxs">
+              <div class="card-body bg-info row" style="margin: 0;padding: 0.75rem 0rem;">
+                  <div class="col-12">
+                    <h5 class="text-white card-title m-0">Productos Venta Mostrador</h5>
+                  </div>
+              </div>
+              <div style="background: whitesmoke;padding: 10px 20px 0px 20px;">
+                  <h2 class="add-ct-btn"><%= export_link_cocina((@query.fecha.present? ? @query.fecha : Date.today), venta_mostrador: true, class: 'export-link-vm btn btn-circle btn-lg btn-success waves-effect waves-dark') %></h2>
+              </div>
+              <div class="card-body">
+                <span id="reporte-vm">
+                  <%= render 'reporte_vm' %>
+                </span>
+              </div>
+          </div>
+          <% end %>
+          </div>
+
+          <script>
+            $('.singledate').datepicker({todayHighlight: true, orientation: "bottom", disableTouchKeyboard: mobile()});
+          </script>
+        </div>
+        
+          <script>
+            $('.singledate').datepicker({todayHighlight: true, orientation: "bottom", disableTouchKeyboard: mobile()});
+          </script>
+        <% unless ENV['DISABLED_CHARTS'] == 'true' %>
+        <% if current_user.admin? %>
+        <div class="card-header bg-gradient-info text-white py-2 mt-2 mb-3">
+          <h3 class="card-title mb-0 text-center">
+            <i class="mdi mdi-chart-line"></i> Analytics Global
+          </h3>
+        </div>
+
+        <%# Analytics: KPI tiles row + chart grid. Each cell lazy-loads its own widget. %>
+        <div class="row col-12 px-0 mx-0">
+          <% if current_user.admin_financiero? %>
+            <div id="widget-analytics_kpis_main" class="col-12 col-md-6 px-0" style="min-height:90px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+          <% else %>
+            <div id="widget-analytics_kpis_pedidos" class="col-12 col-md-4" style="min-height:90px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+          <% end %>
+          <div id="widget-analytics_kpis_clientes" class="<%= current_user.admin_financiero? ? 'col-6 col-md-3' : 'col-12 col-md-4' %>" style="min-height:90px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+          <div id="widget-analytics_kpis_churn"    class="<%= current_user.admin_financiero? ? 'col-6 col-md-3' : 'col-12 col-md-4' %>" style="min-height:90px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+        </div>
+        <div class="row col-12 px-0 mx-0">
+          <% if current_user.admin_financiero? %>
+            <div id="widget-analytics_revenue_chart" class="col-12 col-md-6" style="min-height:300px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+            <div id="widget-analytics_orders_chart"  class="col-12 col-md-6" style="min-height:300px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+            <div id="widget-analytics_aov_chart"     class="col-12 col-md-6" style="min-height:300px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+            <div id="widget-analytics_churn_chart"   class="col-12 col-md-6" style="min-height:300px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+            <div id="widget-analytics_cac_chart"     class="col-12"          style="min-height:300px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+          <% else %>
+            <div id="widget-analytics_orders_chart"  class="col-12"          style="min-height:300px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+            <div id="widget-analytics_churn_chart"   class="col-12"          style="min-height:300px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+          <% end %>
+        </div>
+        <% end %>
+
+        <%# Stats (everyone): top productos + top menus diarios + usuarios chart %>
+        <div class="row col-12 px-0 mx-0 pt-4">
+          <div id="widget-stats_top_productos"     class="col-12 col-md-6" style="min-height:240px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+          <div id="widget-stats_top_menus_diarios" class="col-12 col-md-6" style="min-height:240px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+          <div id="widget-stats_usuarios_chart"    class="col-12"          style="min-height:340px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+        </div>
+
+        <% if current_user.admin_financiero? %>
+        <div class="row col-12 px-0 mx-0 pt-4">
+          <div id="widget-stats_admin_importes_chart" class="col-12" style="min-height:340px;display:flex;align-items:center;justify-content:center"><%= loader %></div>
+        </div>
+        <% end %>
+
+        <script>
+          $(function() {
+            function loadWidget(name) {
+              var $div = $('#widget-' + name);
+              if (!$div.length) return;
+              $.ajax({
+                url: '/inicio/widget',
+                data: { name: name },
+                dataType: 'script',
+                timeout: 40000,
+                error: function() {
+                  $div.html(
+                    '<div class="text-center text-muted py-4" style="width:100%">' +
+                    '<i class="mdi mdi-alert-circle-outline" style="font-size:1.6rem"></i><br>' +
+                    'No disponible. <a href="javascript:location.reload()">Recargar</a>' +
+                    '</div>'
+                  ).css({'min-height':'auto','align-items':'initial','justify-content':'initial'});
+                }
+              });
+            }
+
+            var widgets = [];
+            <% if current_user.admin? %>
+              widgets.push(<%== current_user.admin_financiero? ? "'analytics_kpis_main'" : "'analytics_kpis_pedidos'" %>);
+              widgets.push('analytics_kpis_clientes', 'analytics_kpis_churn');
+              widgets.push('analytics_orders_chart', 'analytics_churn_chart');
+              <% if current_user.admin_financiero? %>
+                widgets.push('analytics_revenue_chart', 'analytics_aov_chart', 'analytics_cac_chart');
+              <% end %>
+            <% end %>
+            widgets.push('stats_top_productos', 'stats_top_menus_diarios', 'stats_usuarios_chart');
+            <% if current_user.admin_financiero? %>
+              widgets.push('stats_admin_importes_chart');
+            <% end %>
+
+            // Stagger the kickoff slightly so the browser can paint the page
+            // first and so the first request warms the per-tienda Redis cache
+            // for subsequent analytics widgets.
+            widgets.forEach(function(name, i) {
+              setTimeout(function() { loadWidget(name); }, i * 60);
+            });
+          });
+        </script>
+        <% end %>
+    </div>

@@ -1,0 +1,10 @@
+<table class="datatable comprador mbn">
+  <tr>
+    <th>Señor(es)</th>
+    <td><%= truncate cuenta.cliente.nombre, length: 65 %></td>
+    <th>Cuenta</th>
+    <td><%= cuenta %></td>
+    <th>Pedido Nº</th>
+    <td width="15%"><%= truncate(comprobante.pedido.codigo.to_s, length: 15, omission: '') if comprobante.pedido %></td>
+  </tr>
+</table>

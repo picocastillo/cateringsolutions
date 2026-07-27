@@ -1,0 +1,226 @@
+<header class="topbar">
+  <nav class="navbar top-navbar navbar-expand-md navbar-light barra-superior">
+    <div class="navbar-header" <% if !@outside_private && current_user && tienda_activa.color_barra_superior.present? %>style="background:<%= tienda_activa.color_fondo_logo %>!important"<% end %>>
+      <a class="navbar-brand hide" href="<%= current_user && current_user.cliente? ? '/pedidos/new' : (current_user ? '/inicio' : '/') %>">
+        <b>
+          <img src="/<%= tienda_activa.dominio ? tienda_activa.dominio : 'cateringsolutions.com.ar' %>_logov22.png" alt="Logo" class="dark-logo" />
+          <img src="/<%= tienda_activa.dominio ? tienda_activa.dominio : 'cateringsolutions.com.ar' %>_logov22.png" alt="Logo" class="light-logo" />
+        </b>
+      </a>
+    </div>
+    <div class="navbar-collapse">
+      <ul class="navbar-nav mr-auto mt-md-0">
+        <% if !@outside_private && current_user %>
+          <li class="nav-item">
+            <a class="nav-link nav-toggler hidden-md-up text-muted waves-effect waves-dark" href="javascript:void(0)"><i class="mdi mdi-menu"></i></a>
+          </li>
+          <% if !current_user.cliente? %>
+            <li class="nav-item nav-item-close">
+              <a class="nav-link nav-toggler-chica sidebartoggler hidden-sm-down text-muted waves-effect waves-dark" href="javascript:void(0)"><i class="ti-menu"></i></a>
+            </li>
+          <% end %>
+          <%
+            completed_survey_ids = Surveys::SurveyResponse.where(user: current_user).pluck(:survey_id)
+            available_survey = Surveys::Survey.where(active: true, tienda_id: tienda_activa.id)
+                                              .where.not(id: completed_survey_ids)
+                                              .where('fecha_desde IS NULL OR fecha_desde <= ?', Date.current)
+                                              .where('fecha_hasta IS NULL OR fecha_hasta >= ?', Date.current)
+                                              .order(created_at: :desc)
+                                              .first
+          %>
+          <% if available_survey.present? && available_survey.created_at > 3.months.ago %>
+            <li class="nav-item encuesta-nav-item">
+              <%= link_to new_survey_survey_response_path(available_survey),
+                          class: 'nav-link waves-effect waves-light encuesta-link',
+                          style: 'font-weight: 500; text-decoration: none; color: #5b6abf;',
+                          title: "¡Ayúdanos completando esta encuesta!" do %>
+                <i class="fa fa-clipboard hidden-sm-down" style="margin-right: 6px;"></i>
+                <i class="fa fa-clipboard hidden-sm-up"></i>
+                <span class="hidden-sm-down">¡Completar encuesta!</span>
+                <span style="font-size: 12px; vertical-align: bottom;" class="hidden-md-up">¡Encuesta!</span>
+              <% end %>
+            </li>
+          <% end %>
+          <% if !current_user.cliente? && tienda_activa.venta_mostrador? %>
+            <li class="nav-item">
+              <%= text_field_tag :buscador_precios_global, nil, class: 'string select2-remote', data: {multiple: false, placeholder: 'Buscar precio (F6)', label: 'nombre_y_precio', selection: 'nombre_corto_y_precio', url: precios_path(format: :json, fecha: Date.today, cuenta_id: Clientes::Cuenta.find_by_nombre('Consumidor Final').try(&:id))}, style: 'margin: 13px 0px;' %>
+            </li>
+          <% end %>
+        <% end %>
+      </ul>
+      <ul class="navbar-nav my-lg-0">
+        <% @pedido_pendiente = (Pedidos::Pedido.where(autor_id: current_user, venta_mostrador: false, estado_id: 1, tienda_id: tienda_activa).order('id desc').first) if current_user && !@pedido_pendiente %>
+        <% if !@outside_private && current_user && tienda_activa.carrito_de_compras? %>
+          <li class="nav-item dropdown" id="cart-container">
+            <%= render '/layouts/cart_container' %>
+          </li>
+        <% end %>
+        <%= render '/layouts/perfil_menu' %>
+      </ul>
+    </div>
+  </nav>
+</header>
+
+<% if current_user && !@outside_private %>
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+  <aside class="left-sidebar">
+    <!-- Sidebar brand / logo -->
+    <div class="sidebar-brand" <% if tienda_activa.color_fondo_logo.present? %>style="background:<%= tienda_activa.color_fondo_logo %>!important; border-bottom-color: rgba(255,255,255,0.1);"<% end %>>
+      <a href="<%= current_user.cliente? ? '/pedidos/new' : '/inicio' %>">
+        <img src="/<%= tienda_activa.dominio ? tienda_activa.dominio : 'cateringsolutions.com.ar' %>_logov22.png" alt="<%= tienda_activa.nombre %>" class="brand-logo" />
+      </a>
+    </div>
+
+    <!-- Sidebar scroll -->
+    <div class="scroll-sidebar">
+      <nav class="sidebar-nav hidden<%= ' user-sidebar-nav' if current_user.cliente? %>" id="tronco-menu">
+        <ul id="sidebarnav">
+          <% unless current_user.cliente? %>
+            <%# ── Dashboard ── %>
+            <% color = color_cocina(@total_pedidos_hoy, @pedidos_listos_cocinar, @pedidos_cocinados) %>
+            <li>
+              <a href="/inicio"
+                 id="<%= 'inicio-link-notification' if current_user.admin? && tienda_activa.carrito_de_compras %>"
+                 class="<%= 'active' if request.fullpath == '/inicio' %>"
+                 <% if color.present? %>style="background: <%= color %>!important; color: #fff!important;"<% end %>>
+                <i id="inicio-link-notification-icon" class="mdi mdi-gauge" <% if color.present? %>style="color: #fff!important"<% end %>></i>
+                <span class="hide-menu">Inicio</span>
+              </a>
+            </li>
+
+            <%# ── Pedidos ── %>
+            <li class="active">
+              <a class="has-arrow titulo-menu" href="javascript:void(0);" aria-expanded="true">
+                <i class="mdi mdi-calendar-clock"></i>
+                <span class="hide-menu">Pedidos</span>
+              </a>
+              <ul aria-expanded="true" class="collapse in">
+                <% if tienda_activa.carrito_de_compras? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('pedidos') && request.fullpath.include?('edit') && !request.fullpath.include?('cargas_simples') %>" href="/pedidos/<%= @pedido_pendiente.present? ? "#{@pedido_pendiente.id}/edit" : "new" %>">Nuevo</a></li>
+                <% end %>
+                <% if tienda_activa.carrito_de_compras? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('cargas_simples') %>" href="/cargas_simples/pedidos">Carga Rápida</a></li>
+                <% end %>
+                <% if tienda_activa.venta_mostrador? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('ventas_mostrador') %>" href="/ventas_mostrador/pedidos">Venta Mostrador</a></li>
+                <% end %>
+                <% if tienda_activa.carrito_de_compras? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/pedidos') && !request.fullpath.include?('/pedidos/') && !request.fullpath.include?('cargas_simples') && !request.fullpath.include?('ventas_mostrador') %>" href="/pedidos">Ver Pedidos</a></li>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/pedidos_cocina') %>" href="/pedidos_cocina">Pedidos de Cocina</a></li>
+                <% end %>
+                <% if tienda_activa.despachos? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/etiquetas') && !request.fullpath.include?('/etiquetas/') %>" href="/etiquetas">Etiquetas</a></li>
+                <% end %>
+                <% if tienda_activa.horarios_de_entrega? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/horarios') && !request.fullpath.include?('/horarios/') %>" href="/horarios">Horarios</a></li>
+                <% end %>
+                
+                <li><a class="<%= 'active' if request.fullpath.include?('/ayuda') %>" href="/ayuda">Ayuda</a></li>
+              </ul>
+            </li>
+
+            <%# ── Productos ── %>
+            <li class="active">
+              <a class="has-arrow titulo-menu" href="javascript:void(0);" aria-expanded="true">
+                <i class="mdi mdi-food-variant"></i>
+                <span class="hide-menu">Productos</span>
+              </a>
+              <ul aria-expanded="true" class="collapse in">
+                <li><a class="<%= 'active' if request.fullpath.include?('/productos') && !request.fullpath.include?('/productos/') %>" href="/productos">Ver Productos</a></li>
+                <% if tienda_activa.carrito_de_compras? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/menus_diarios') && !request.fullpath.include?('/menus_diarios/') %>" href="/menus_diarios">Menús Diarios</a></li>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/grupos_cocinas') && !request.fullpath.include?('/grupos_cocinas/') %>" href="/grupos_cocinas/">Grupos</a></li>
+                <% end %>
+                <li><a class="<%= 'active' if request.fullpath.include?('/categorias') && !request.fullpath.include?('/categorias/') %>" href="/categorias/">Categorías</a></li>
+                <% if tienda_activa.impresion_productos? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/etiquetas_productos') %>" href="/etiquetas_productos">Etiquetas</a></li>
+                <% end %>
+                <% if tienda_activa.maneja_stock? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/stocks') && !request.fullpath.include?('/stocks/') %>" href="/stocks">Stocks</a></li>
+                <% end %>
+                <% if current_user.admin? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/listas_precios') %>" href="/listas_precios">Listas de Precios</a></li>
+                <% end %>
+              </ul>
+            </li>
+
+            <%# ── Administración ── %>
+            <li class="active">
+              <a class="has-arrow titulo-menu" href="javascript:void(0);" aria-expanded="true">
+                <i class="mdi mdi-bank"></i>
+                <span class="hide-menu">Administración</span>
+              </a>
+              <ul aria-expanded="true" class="collapse in">
+                <li><a class="<%= 'active' if request.fullpath.include?('/comprobantes') && !request.fullpath.include?('/comprobantes/') %>" href="/comprobantes">Ventas</a></li>
+                <li><a class="<%= 'active' if request.fullpath.include?('/cobros') && !request.fullpath.include?('/cobros/') %>" href="/cobros">Cobros</a></li>
+                <li><a class="<%= 'active' if request.fullpath.include?('/saldos') && !request.fullpath.include?('/saldos/') %>" href="/saldos">Saldos</a></li>
+                <li><a class="<%= 'active' if request.fullpath.include?('/cuentas_corrientes') && !request.fullpath.include?('/cuentas_corrientes/') %>" href="/cuentas_corrientes">Cuentas Corrientes</a></li>
+              </ul>
+            </li>
+
+            <%# ── Contactos ── %>
+            <li class="active">
+              <a class="has-arrow titulo-menu" href="javascript:void(0);" aria-expanded="true">
+                <i class="mdi mdi-account-multiple"></i>
+                <span class="hide-menu">Contactos</span>
+              </a>
+              <ul aria-expanded="true" class="collapse in">
+                <li><a class="<%= 'active' if request.fullpath.include?('/usuarios') && !request.fullpath.include?('/usuarios/') %>" href="/usuarios">Usuarios</a></li>
+                <li><a class="<%= 'active' if request.fullpath.include?('/clientes') && !request.fullpath.include?('/clientes/') %>" href="/clientes">Clientes</a></li>
+                <% if tienda_activa.multiple_locales? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/locales') && !request.fullpath.include?('/locales/') %>" href="/locales">Locales</a></li>
+                <% end %>
+                <li><a class="<%= 'active' if request.fullpath.include?('/surveys') && !request.fullpath.include?('/surveys/') %>" href="/surveys">Encuestas</a></li>
+                <li><a class="<%= 'active' if request.fullpath.include?('/cupones') %>" href="/cupones">Cupones</a></li>
+                <% if tienda_activa.venta_mostrador? %>
+                  <li><a class="<%= 'active' if request.fullpath.include?('/ventas_mostrador/descuentos') %>" href="/ventas_mostrador/descuentos">Descuentos VM</a></li>
+                <% end %>
+              </ul>
+            </li>
+
+          <% else %>
+            <%# ── Cliente menu ── %>
+            <% if tienda_activa.carrito_de_compras? %>
+              <li>
+                <a class="<%= 'active' if request.fullpath.include?('pedidos') && request.fullpath.include?('edit') && !request.fullpath.include?('cargas_simples') %>" href="/pedidos/<%= @pedido_pendiente.present? ? "#{@pedido_pendiente.id}/edit" : "new" %>">
+                  <i class="mdi mdi-silverware-fork-knife"></i>
+                  <span class="hide-menu">Nuevo Pedido</span>
+                </a>
+              </li>
+              <li>
+                <a class="<%= 'active' if request.fullpath.include?('/pedidos') && !request.fullpath.include?('/pedidos/') && !request.fullpath.include?('cargas_simples') && !request.fullpath.include?('ventas_mostrador') %>" href="/pedidos">
+                  <i class="mdi mdi-calendar-clock"></i>
+                  <span class="hide-menu">Ver Pedidos</span>
+                </a>
+              </li>
+              <% if current_user.cliente&.mostrar_cuentas_corrientes && current_user.cumple_rol?(:administrador_empresa) %>
+                <li>
+                  <a class="<%= 'active' if request.fullpath.include?('/cuentas_corrientes') && !request.fullpath.include?('/cuentas_corrientes/') %>" href="/cuentas_corrientes">
+                    <i class="mdi mdi-bank"></i>
+                    <span class="hide-menu">Cuenta Corriente</span>
+                  </a>
+                </li>
+              <% end %>
+              <% if tienda_activa.video_ayuda.present? %>
+                <li>
+                  <a class="<%= 'active' if request.fullpath.include?('/ayuda') %>" href="/ayuda">
+                    <i class="mdi mdi-help"></i>
+                    <span class="hide-menu">Ayuda</span>
+                  </a>
+                </li>
+              <% end %>
+            <% end %>
+          <% end %>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- Sidebar footer -->
+    <div class="sidebar-footer">
+      <% if current_user.admin? %>
+        <a href="/tiendas" class="link" data-toggle="tooltip" title="Preferencias de Tiendas"><i class="ti-settings"></i></a>
+      <% end %>
+      <%= link_to content_tag(:i, nil, class: 'mdi mdi-power', style: "margin-bottom: -5px;font-size: 24px;margin-left:-5px"), public_path, class: 'link', method: :delete, title: 'Salir', data: {disable: true, toggle: 'tooltip'}, style: "width: #{!current_user.admin? ? '100' : '50'}%;" %>
+    </div>
+  </aside>
+<% end %>

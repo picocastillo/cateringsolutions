@@ -1,0 +1,345 @@
+<% if @pedido.usuario || @pedido.cuenta %>
+  <!-- Main Content Column -->
+  <div class="col-12 col-lg-8">
+    <!-- Stock Warning Alert - Show first if present -->
+    <% if @productos_sin_stock.present? && @pedido.pendiente? %>
+      <div class="alert alert-warning mb-4" style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <h5 class="mb-3" style="color: #856404; font-weight: 600; display: flex; align-items: center;">
+          <i class="fas fa-exclamation-triangle mr-2" style="font-size: 1.2em;"></i>
+          Productos sin stock o con stock insuficiente
+        </h5>
+        <div style="background: white; border-radius: 8px; padding: 15px; margin-top: 10px;">
+          <% @productos_sin_stock.each do |item| %>
+            <div style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+              <div style="flex: 1;">
+                <strong style="color: #333;"><%= item[:producto].nombre %></strong>
+                <br>
+                <small style="color: #666;">
+                  Solicitado: <strong><%= item[:solicitado] %></strong> | 
+                  Disponible: <strong style="color: <%= item[:disponible] == 0 ? '#dc3545' : '#ffc107' %>;"><%= item[:disponible] %></strong>
+                </small>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        <p class="mb-0 mt-3" style="color: #856404; font-size: 0.95em;">
+          <i class="fas fa-info-circle mr-1"></i>
+          Por favor, ajusta las cantidades en tu carrito antes de finalizar el pedido.
+        </p>
+        <div class="mt-3">
+          <% if can?(:re_edit, @pedido) %>
+            <%= link_to 'Modificar pedido', edit_pedido_path(@pedido), class: 'btn btn-warning btn-sm', style: 'color: white; font-weight: 500;' %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Module 1: Order Header -->
+    <%= render 'pedidos/pedidos/pedido_gradient_header', header_id: 'confirmed-title' %>
+
+    <!-- Module 2: Order Details -->
+    <div id="confirmed-status" class="<%= !@pedido.cuenta.cuenta_corriente_habilitada? && @pedido.aceptado? ? 'hide' : '' %>" style="background: #fefefe; border-radius: 0 0 12px 12px; padding: 15px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <div style="display: grid; gap: 4px;">
+        <div style="display: flex; align-items: center; padding: 2px 0;">
+          <i class="mdi mdi-calendar mr-3" style="color: #6366f1; font-size: 1.1em; width: 20px;"></i>
+          <span style="font-weight: 600; color: #4a5568; margin-right: 12px;">Fecha:</span>
+          <span style="color: #2d3748; font-weight: 500;"><%= l(@pedido.fecha, :format => :long) if @pedido.fecha %></span>
+        </div>
+
+        <% if !@pedido.pendiente? || (@pedido.pendiente? && @pedido.cuenta && (@pedido.cuenta.cliente.horarios_de_entrega? || @pedido.cuenta.cliente.permitir_envios_a_domicilio?) && can?(:pagar_mercadopago, @pedido)) %>
+          <% unless @pedido.venta_mostrador? %>
+            <div style="display: flex; align-items: center; padding: 2px 0;">
+              <i class="mdi mdi-map-marker mr-3" style="color: #6366f1; font-size: 1.1em; width: 20px;"></i>
+              <span style="font-weight: 600; color: #4a5568; margin-right: 12px;">Enviar a:</span>
+              <span style="color: #2d3748; font-weight: 500;"><%= @pedido.enviar_a_string %></span>
+            </div>
+          <% end %>
+
+          <% if @pedido.horario.present? && (!current_user.cliente? || (@pedido.cuenta && @pedido.cuenta.cliente.horarios_de_entrega?)) %>
+            <div style="display: flex; align-items: center; padding: 2px 0;">
+              <i class="mdi mdi-clock-outline mr-3" style="color: #6366f1; font-size: 1.1em; width: 20px;"></i>
+              <span style="font-weight: 600; color: #4a5568; margin-right: 12px;">Horario:</span>
+              <span style="color: #2d3748; font-weight: 500;"><%= @pedido.horario %></span>
+            </div>
+          <% end %>
+        <% end %>
+
+        <% if !@pedido.pendiente? || @pedido.venta_mostrador? %>
+          <div style="display: flex; align-items: center; padding: 2px 0;">
+            <i class="mdi mdi-information-outline mr-3" style="color: #6366f1; font-size: 1.1em; width: 20px;"></i>
+            <span style="font-weight: 600; color: #4a5568; margin-right: 12px;">Estado:</span>
+            <span style="color: #2d3748; font-weight: 500;"><%= pedido_estado_label @pedido %></span>
+          </div>
+        <% end %>
+
+        <% if @pedido.tiene_descuento_cupon? || @pedido.tiene_descuento_vm? %>
+          <div style="display: flex; align-items: center; padding: 2px 0;">
+            <i class="fa fa-tag mr-3" style="color: #38a169; font-size: 1.1em; width: 20px;"></i>
+            <span style="font-weight: 600; color: #4a5568; margin-right: 12px;">Descuento:</span>
+            <span style="color: #38a169; font-weight: 500;"><%= @pedido.descuento_descripcion %> (-<%= @pedido.importe_descuento_total %>)</span>
+          </div>
+        <% end %>
+
+        <% if @pedido.en_grupo? %>
+          <% grupo_siblings = @pedido.pedido_multiple.pedidos.where.not(id: @pedido.id).order(:fecha, :id) %>
+          <% if grupo_siblings.any? %>
+            <div style="display: flex; align-items: flex-start; padding: 2px 0;">
+              <i class="mdi mdi-link-variant mr-3" style="color: #6366f1; font-size: 1.1em; width: 20px; flex-shrink: 0;"></i>
+              <span style="font-weight: 600; color: #4a5568; margin-right: 12px; white-space: nowrap;">En grupo:</span>
+              <span style="color: #2d3748; font-weight: 500;">
+                <% grupo_siblings.each do |s| %>
+                  <%= link_to((s.fecha ? l(s.fecha, format: '%d/%m') : '–'), pedido_path(s), data: { turbolinks: false }, style: 'margin-right: 8px; white-space: nowrap;') %>
+                <% end %>
+              </span>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <% if @pedido.pendiente? && (can?(:aceptar, @pedido) || can?(:pagar_mercadopago, @pedido)) && (@pedido.cuenta.cliente.permitir_envios_a_domicilio || @pedido.cuenta.cliente.usuario_puede_elegir_cuenta) %>
+        <%= simple_form_for @pedido, url: '', method: :get do |f| %>
+          <%= f.input :enviar_a_id, 
+                label: 'Enviar a', 
+                as: :select, 
+                collection: @pedido.opciones_de_envio, 
+                prompt: false, 
+                wrapper_html: { class: 'col-12 mt-0 mb-0 text-left', style: 'margin-bottom: 20px !important;' } if @pedido.usuario %>
+          <%= f.input :direccion_envio, 
+                as: :string, 
+                placeholder: 'Ingrese una dirección', 
+                label: false, 
+                required: true, 
+                wrapper_html: { class: "col-md-12 col-sm-12 mt-0 mb-4 #{' hide' unless @pedido.envio_a_domicilio}", id: 'wraper-direccion' } %>
+        <% end %>
+      <% end %>
+
+      <% if can?(:aceptar, @pedido) && @pedido.pendiente? && @pedido.cuenta && @pedido.cuenta.cliente.horarios_de_entrega? && tienda_activa.horarios_de_entrega? %>
+        <%= simple_form_for @pedido, url: '', method: :get do |f| %>
+          <%= f.input :horario_id, 
+                label: 'Horario', 
+                as: :select, 
+                collection: Pedidos::Horario.active, 
+                prompt: true, 
+                selected: @pedido.horario_id, 
+                wrapper_html: { class: 'col-12 mt-0 mb-0 text-left', style: 'margin-bottom: 20px !important;' } %>
+        <% end %>
+      <% end %>
+
+      <% if can?(:pagar_mercadopago, @pedido) && @pedido.pendiente? && @pedido.cuenta && tienda_activa.carrito_de_compras? %>
+        <% turnos_disponibles = @pedido.cuenta.cliente.turnos_activos.to_a %>
+        <% if turnos_disponibles.size == 1 %>
+          <% solo_turno = turnos_disponibles.first %>
+          <% if @pedido.turno_entrega_id != solo_turno.id %>
+            <div data-auto-assign-turno="<%= solo_turno.id %>" data-pedido-id="<%= @pedido.id %>"></div>
+          <% end %>
+        <% elsif turnos_disponibles.size > 1 %>
+          <%= simple_form_for @pedido, url: '', method: :get do |f| %>
+            <%= f.input :turno_entrega_id,
+                  label: 'Turno de Entrega',
+                  as: :select,
+                  collection: turnos_disponibles.map { |t| [t.descripcion_completa, t.id] },
+                  prompt: 'Seleccione un turno...',
+                  selected: @pedido.turno_entrega_id,
+                  wrapper_html: { class: 'col-12 mt-0 mb-0 text-left', style: 'margin-bottom: 20px !important;' },
+                  input_html: { id: 'turno_entrega_selector', data: { pedido_id: @pedido.id } } %>
+          <% end %>
+        <% end %>
+
+        <% if @pedido.turno_entrega_id.present? %>
+          <% turno = Pedidos::TurnoEntrega.find_by(id: @pedido.turno_entrega_id) %>
+          <% if turno && !turno.permite_todas_categorias? %>
+            <div class="alert alert-info" style="margin: 5px 0 0 0; font-size: 0.9em;">
+              <i class="mdi mdi-information-outline mr-1"></i>
+              <strong><%= turno.nombre %>:</strong> Solo están disponibles las categorías
+              <%= turno.categorias_permitidas.pluck(:nombre).join(', ') %>
+            </div>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+    <% cbtes = @pedido.comprobantes.select(&:confirmado?) %>
+    <% if cbtes.present? && (!current_user.cliente? || current_user.cumple_rol?(:administrador_empresa) && current_user.cliente.mostrar_cuentas_corrientes) %>
+      <h6 class="card-subtitle text-left" style="margin-top:-10px; margin-bottom: 10px;">
+        <strong>Comprobantes:</strong> 
+        <%= cbtes.map{|c| link_to(c.to_s, comprobante_path(c))}.join(', ').html_safe %>
+      </h6>
+    <% end %>
+
+    <!-- MercadoPago Payment Details -->
+    <% if @pedido.pagos_electronicos.present? && !current_user.cliente? %>
+      <h6 class="card-subtitle estado text-left" style="margin-top:-10px">
+        <strong style="margin-right:5px">Mercado Pago:</strong> 
+        <%= content_tag(:span, 
+          @pedido.cancelado? ? 'Cancelado' : (@pedido.cobrado? ? 'Pagado' : 'Pendiente'),
+          class: "label estado #{@pedido.cancelado? ? 'cancelado' : (@pedido.cobrado? ? 'aceptado' : 'pendiente')}") %>
+      </h6>
+      
+      <% payment_total = @pedido.pagos_electronicos.sum(:transaction_amount) || 0 %>
+      <% pedido_total = @pedido.importe_total.to_f + @pedido.costo_envio_domicilio.to_f %>
+      <% amount_mismatch = payment_total != pedido_total %>
+      <div class="<%= 'payment-amount-mismatch' if amount_mismatch %>" 
+           <%= "style=\"border: 2px solid #dc3545; border-radius: 6px; padding: 10px; background-color: #f8d7da;\"" if amount_mismatch %>>
+        
+        <% if amount_mismatch %>
+          <div style="background-color: #721c24; color: white; padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; font-size: 12px; font-weight: bold;">
+            <i class="fa fa-exclamation-triangle" style="margin-right: 6px;"></i>
+            Advertencia: Los pagos procesados ($<%= number_with_precision(payment_total, precision: 2, separator: ',', delimiter: '.') %>) no coinciden con el total del pedido ($<%= number_with_precision(pedido_total, precision: 2, separator: ',', delimiter: '.') %>)
+          </div>
+        <% end %>
+        <div class="table-responsive mt-2 mb-3">
+          <table class="table table-sm table-hover" style="margin-bottom: 0;">
+            <thead class="thead-light">
+              <tr style="line-height: 1.1;">
+                <th style="font-size: 11px; padding: 6px 4px;" class="text-left">ID Transacción</th>
+                <th style="font-size: 11px; padding: 6px 4px;" class="text-center">Estado</th>
+                <th style="font-size: 11px; padding: 6px 4px;" class="text-right">Monto</th>
+                <th style="font-size: 11px; padding: 6px 4px;" class="text-left">Método</th>
+                <th style="font-size: 11px; padding: 6px 4px;" class="text-left">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @pedido.pagos_electronicos.each do |pago| %>
+                <tr style="line-height: 1.1;">
+                  <td class="font-weight-bold text-left" style="font-size: 11px; padding: 4px;">
+                    <%= pago.pago_id %>
+                  </td>
+                  <td style="font-size: 11px; padding: 4px;" class="text-center">
+                    <% styles = 'width: 100%;height: 100%;padding: 2px;' %>
+                    <% case pago.status&.downcase %>
+                    <% when 'approved' %>
+                      <span class="badge badge-success" style="<%= styles %>">APROBADO</span>
+                    <% when 'pending' %>
+                      <span class="badge badge-warning" style="<%= styles %>">PENDIENTE</span>
+                    <% when 'rejected', 'cancelled' %>
+                      <span class="badge badge-danger" style="<%= styles %>">RECHAZADO</span>
+                    <% when 'refunded' %>
+                      <span class="badge badge-secondary" style="<%= styles %>">REEMBOLSADO</span>
+                    <% else %>
+                      <span class="badge badge-light" style="<%= styles %>"><%= pago.status&.humanize || '-' %></span>
+                    <% end %>
+                  </td>
+                  <td style="font-size: 11px; padding: 4px;" class="text-right">
+                    <% amount = pago.transaction_amount ? pago.transaction_amount : (-1 * pago.transaction_amount_refunded.to_f) %>
+                    <% if amount.present? && amount > 0 %>
+                      <strong><%= number_to_currency(amount, unit: '$', precision: 2, separator: ',', delimiter: '.') %></strong>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </td>
+                  <td style="font-size: 11px; padding: 4px;" class="text-left">
+                    <% if pago.payment_method_id.present? %>
+                      <%= pago.payment_method_id.humanize %>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </td>
+                  <td style="font-size: 11px; padding: 4px;" class="text-left text-muted">
+                    <% if pago.date_approved.present? %>
+                      <%= pago.date_approved.strftime('%d/%m %H:%M') %>
+                    <% elsif pago.date_created.present? %>
+                      <%= pago.date_created.strftime('%d/%m %H:%M') %>
+                    <% else %>
+                      -
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Medios de Pago (Ventas Mostrador) -->
+    <% if @pedido.venta_mostrador? && @pedido.medios_pago.present? && !current_user.cliente? %>
+      <div style="margin-bottom: 15px;">
+        <h6 class="card-subtitle text-left" style="margin-top:-10px">
+          <strong>Medios de Pago:</strong>
+        </h6>
+        <div>
+          <table class="table table-sm table-hover" style="margin-bottom: 0;">
+            <thead class="thead-light">
+              <tr style="line-height: 1.1;">
+                <th style="font-size: 11px; padding: 6px 4px;" class="text-left">Tipo</th>
+                <th style="font-size: 11px; padding: 6px 4px;" class="text-right">Importe</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @pedido.medios_pago.each do |mp| %>
+                <tr style="line-height: 1.1;">
+                  <td style="font-size: 11px; padding: 4px;" class="text-left"><%= mp.tipo_label %></td>
+                  <td style="font-size: 11px; padding: 4px;" class="text-right font-weight-bold"><%= number_to_currency(mp.importe, unit: '$', precision: 2, separator: ',', delimiter: '.') %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Module 3: Products List -->
+    <%= render 'pedidos/pedidos/productos_list', show_totals: false %>
+
+    <!-- Purchase Limit Warning -->
+    <% if @pedido.pendiente? && @pedido.limite_compra_excedido? %>
+      <div class="alert alert-danger mb-3" style="background: #f8d7da; border: 2px solid #f5c6cb; border-radius: 12px; padding: 15px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <i class="fa fa-exclamation-circle" style="margin-right: 8px; font-size: 1.1em;"></i>
+        <strong><%= @pedido.mensaje_limite_compra_excedido %></strong>
+        <p class="mb-0 mt-2" style="font-size: 0.9em;">Reducí las cantidades o eliminá productos para continuar con la compra.</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Sidebar: Totals + Payment Buttons -->
+  <% if @pedido.productos_solicitados.present? %>
+    <div class="col-12 col-lg-4">
+      <div style="position: sticky; top: 90px;">
+        <%= render 'pedidos/pedidos/pedido_totals' %>
+
+        <% if @pedido.pendiente? %>
+          <div style="margin-top: 15px;">
+            <% if can?(:pagar_mercadopago, @pedido) && @productos_sin_stock.blank? && !@pedido.limite_compra_excedido? %>
+              <div id="preference-container" data-pid="<%= @pedido.id %>" data-turbolinks="false">
+                <button type="submit" class="mercadopago-button-disabled" 
+                        title="Esperando a MercadoPago, aguarde unos instantes por favor." disabled>
+                  Pagar con Mercadopago
+                </button>
+              </div>
+
+              <div id="mp-payment-validation-hint" style="display: none; margin-top: 10px; padding: 10px 15px; background-color: #f8d7da; border: 2px solid #f5c6cb; border-radius: 6px; color: #721c24; font-size: 14px; font-weight: 500; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <i class="fa fa-exclamation-circle" style="margin-right: 8px; font-size: 16px;"></i>
+                <span class="hint-text"></span>
+              </div>
+              
+              <% if !@pedido.cuenta.cuenta_corriente_habilitada? %>
+                <div id="mp-payment-hint-template" style="display: none; margin-top: 10px; padding: 10px 15px; background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 6px; color: #856404; font-size: 14px; font-weight: 500; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  <i class="fa fa-exclamation-triangle" style="margin-right: 8px; font-size: 16px;"></i>
+                  <strong>Pago pendiente:</strong> Presione el botón de MercadoPago para completar su compra.
+                  <br>
+                  <small style="color: #6c757d; font-size: 12px; margin-top: 4px; display: block;">
+                    <i class="fa fa-clock-o" style="margin-right: 4px;"></i>Si ya realizó el pago, el estado se actualizará automáticamente en unos minutos.
+                  </small>
+                </div>
+              <% end %>
+            <% end %>
+            <% if @pedido.cuenta.cuenta_corriente_habilitada? && !@pedido.limite_compra_excedido? %>
+              <%= link_to 'Finalizar Compra', 
+                    finalizar_pedido_path(@pedido), 
+                    class: 'btn btn-success btn-lg btn-block waves-effect waves-light', 
+                    method: :post, 
+                    id: 'confirmar_pedido', 
+                    style: 'border-radius: 12px; font-weight: 600; padding: 12px;',
+                    data: { disable_with: "Procesando..." } %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <!-- Order in Progress -->
+  <div class="col-12" style="background: whitesmoke; padding: 15px; border-radius: 12px;">
+    <h3>Pedido en Curso</h3>
+    <i><h5>Edite el mismo para agregar cosas al carrito.</h5></i>
+  </div>
+<% end %>

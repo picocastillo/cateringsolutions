@@ -1,0 +1,209 @@
+<% content_for :page_id, 'surveys-edit' %>
+
+<div class="container-fluid" style="margin-top: 80px;">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="col-12 d-flex justify-content-between align-items-center" style="padding: 0.75rem 1.25rem !important;">
+          <h4 class="card-title mb-0">
+            <i class="fa fa-edit text-warning"></i>
+            Editar Encuesta: <%= @survey.title %>
+          </h4>
+          <div class="btn-group">
+            <%= link_to survey_path(@survey), class: 'btn btn-info btn-sm' do %>
+              <i class="fa fa-eye"></i>
+              Ver
+            <% end %>
+            <%= link_to surveys_path, class: 'btn btn-secondary btn-sm' do %>
+              <i class="fa fa-arrow-left"></i>
+              Volver
+            <% end %>
+          </div>
+        </div>
+        
+        <div class="card-body">
+          <%= form_with model: @survey, local: true, class: "needs-validation surveys-edit-form", novalidate: true do |form| %>
+            <% if @survey.errors.any? %>
+              <div class="alert alert-danger" role="alert">
+                <h5 class="alert-heading">
+                  <i class="fa fa-exclamation-triangle"></i>
+                  Se encontraron <%= pluralize(@survey.errors.count, "error") %>:
+                </h5>
+                <ul class="mb-0">
+                  <% @survey.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+            
+            <div class="row">
+              <div class="col-md-8">
+                <div class="form-group">
+                  <%= form.label :title, "Título", class: "form-label" %>
+                  <%= form.text_field :title, class: "form-control #{'is-invalid' if @survey.errors[:title].any?}", 
+                                      placeholder: "Ingrese el título de la encuesta", required: true %>
+                  <% if @survey.errors[:title].any? %>
+                    <div class="invalid-feedback">
+                      <%= @survey.errors[:title].first %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label class="form-label">Estado</label>
+                  <div class="form-check">
+                    <%= form.check_box :active, class: "form-check-input", id: "survey_active" %>
+                    <%= form.label :active, "Encuesta activa", class: "form-check-label", for: "survey_active" %>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <%= form.label :description, "Descripción", class: "form-label" %>
+              <%= form.text_area :description, class: "form-control #{'is-invalid' if @survey.errors[:description].any?}", 
+                                 rows: 3, placeholder: "Describa el propósito de la encuesta (opcional)" %>
+              <% if @survey.errors[:description].any? %>
+                <div class="invalid-feedback">
+                  <%= @survey.errors[:description].first %>
+                </div>
+              <% end %>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <%= form.label :fecha_desde, "Fecha de inicio", class: "form-label" %>
+                  <%= form.date_field :fecha_desde, class: "form-control #{'is-invalid' if @survey.errors[:fecha_desde].any?}" %>
+                  <small class="form-text text-muted">Opcional: fecha desde la cual estará disponible</small>
+                  <% if @survey.errors[:fecha_desde].any? %>
+                    <div class="invalid-feedback">
+                      <%= @survey.errors[:fecha_desde].first %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="form-group">
+                  <%= form.label :fecha_hasta, "Fecha de finalización", class: "form-label" %>
+                  <%= form.date_field :fecha_hasta, class: "form-control #{'is-invalid' if @survey.errors[:fecha_hasta].any?}" %>
+                  <small class="form-text text-muted">Opcional: fecha hasta la cual estará disponible</small>
+                  <% if @survey.errors[:fecha_hasta].any? %>
+                    <div class="invalid-feedback">
+                      <%= @survey.errors[:fecha_hasta].first %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">
+                <i class="fa fa-question-circle"></i>
+                Preguntas
+              </h5>
+              <button type="button" class="btn btn-outline-primary btn-sm" id="add-question">
+                <i class="fa fa-plus"></i>
+                Agregar Pregunta
+              </button>
+            </div>
+            
+            <div id="questions-container" data-question-index="<%= @survey.questions.length %>">
+              <%= form.fields_for :questions do |question_form| %>
+                <div class="question-field card mb-3">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                      <h6 class="card-title mb-0">Pregunta</h6>
+                      <button type="button" class="btn btn-outline-danger btn-sm remove-question">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                    
+                    <div class="form-group">
+                      <%= question_form.text_area :text, class: "form-control", 
+                                                  placeholder: "Escriba su pregunta aquí", rows: 2 %>
+                    </div>
+                    
+                    <div class="row">
+                      <div class="col-md-6">
+                        <div class="form-group">
+                          <%= question_form.label :question_type, "Tipo de pregunta", class: "form-label" %>
+                          <%= question_form.select :question_type, 
+                                [['Texto libre', 'text'], ['Opción múltiple', 'multiple_choice'], ['Escala (1-5)', 'scale']], 
+                                {}, { class: "form-control question-type-select" } %>
+                        </div>
+                      </div>
+                      
+                      <div class="col-md-6">
+                        <div class="form-group">
+                          <label class="form-label">Opciones</label>
+                          <div class="form-check">
+                            <%= question_form.check_box :required, class: "form-check-input" %>
+                            <%= question_form.label :required, "Pregunta obligatoria", class: "form-check-label" %>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Answer Options Section (for multiple choice questions) -->
+                    <div class="answers-section" style="<%= question_form.object.question_type == 'multiple_choice' ? 'display: block;' : 'display: none;' %>">
+                      <hr class="my-3">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">
+                          <i class="fa fa-list"></i>
+                          Opciones de Respuesta
+                        </h6>
+                        <button type="button" class="btn btn-outline-success btn-sm add-answer">
+                          <i class="fa fa-plus"></i>
+                          Agregar Opción
+                        </button>
+                      </div>
+                      
+                      <div class="answers-container">
+                        <%= question_form.fields_for :answers do |answer_form| %>
+                          <div class="answer-field input-group mb-2">
+                            <%= answer_form.text_field :text, class: "form-control", 
+                                                      placeholder: "Texto de la opción" %>
+                            <%= answer_form.hidden_field :value %>
+                            <div class="input-group-append">
+                              <button type="button" class="btn btn-outline-danger remove-answer">
+                                <i class="fa fa-trash"></i>
+                              </button>
+                            </div>
+                            <%= answer_form.hidden_field :_destroy, class: "answer-destroy-field" %>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                    
+                    <%= question_form.hidden_field :_destroy %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+            
+            <div class="form-actions mt-4">
+              <div class="d-flex justify-content-between">
+                <%= link_to survey_path(@survey), class: 'btn btn-secondary' do %>
+                  <i class="fa fa-times"></i>
+                  Cancelar
+                <% end %>
+                
+                <%= form.submit "Actualizar Encuesta", class: 'btn btn-primary' do %>
+                  <i class="fa fa-save"></i>
+                  Actualizar Encuesta
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

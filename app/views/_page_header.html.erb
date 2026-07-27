@@ -1,0 +1,15 @@
+<div class="row page-titles">
+    <div class="col-md-8 col-lg-5 col-12 align-self-center">
+        <h3 class="text-themecolor"><%= yield :title %></h3>
+        <ol class="breadcrumb">
+            <% if content_for?(:raiz) %>
+              <li class="breadcrumb-item"><%= yield :raiz %></li>
+              <li class="breadcrumb-item"><%= yield :hojas %></li>
+            <% end %>
+            <% if content_for?(:acciones) %>
+              <li class="hidden-md-up m-l-20"></li><li class="hidden-md-up m-l-20 acciones"><%= yield(:acciones) %></li>
+            <% end %>
+        </ol>
+    </div>
+    <%= yield :actions %>
+</div>

@@ -1,0 +1,8 @@
+$("#pedidos-container").html("<%= j render 'resultados' %>");
+$(":input:focus").select();
+$("#flash-container").html("<%= j render 'flash_messages' %>");
+$('.readmoreable').readmore()
+errors.set(<%= raw @query.errors.full_messages %>);
+$('[data-toggle="tooltip"]').tooltip();
+$('.export-link').attr('href', "<%= pedidos_path(filtered_params.merge(format: :xls)) %>");
+loadFooterAggregates('/pedidos');

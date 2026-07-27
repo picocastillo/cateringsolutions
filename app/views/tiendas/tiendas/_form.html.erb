@@ -1,0 +1,44 @@
+<%= modal 'form-modal', title: @tienda.new_record? ? 'Nueva Tienda' : "Editando Tienda #{@tienda}" do %>
+    <%= simple_nested_form_for @tienda, remote: true do |f| %>
+      <%= f.error_messages %>
+      <%= f.input :nombre, required: true, wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :dominio, required: true, wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :descripcion, wrapper_html: { class: 'col-sm-12' } %>
+      <%= f.input :costo_envio_domicilio, as: :float, label: 'Costo envío a domicilio', wrapper_html: { class: 'col-sm-12' } %>
+      <%= f.input :mensaje_bienvenida, wrapper_html: { class: 'col-sm-12' } %>
+      <%= f.input :mensaje_ingreso_a_carrito, wrapper_html: { class: 'col-sm-12' } %>
+      <%= f.input :video_ayuda, wrapper_html: { class: 'col-sm-12' } %>
+      <%= f.input :domicilio, as: :string, wrapper_html: { class: 'col-sm-4' } %>
+      <%= f.input :telefono, as: :string, wrapper_html: { class: 'col-sm-4' } %>
+      <%= f.input :email, as: :string, wrapper_html: { class: 'col-sm-4' } %>
+      <%= f.input :stock_notifications_email, as: :string, label: 'Email para alertas de stock', hint: 'Email donde se enviarán las alertas diarias de stock bajo', wrapper_html: { class: 'col-sm-12' } %>
+      <%= f.input :carrito_de_compras, as: :boolean, wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :venta_mostrador, as: :boolean, wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :despachos, as: :boolean, wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :horarios_de_entrega, as: :boolean, wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :maneja_stock, as: :boolean, label: 'Gestión de Stock', hint: 'Habilita el control de stock para esta tienda', wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :productos_pesables, as: :boolean, label: 'Productos Pesables', hint: 'Habilita la venta por peso (Kg) en productos', wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :soporta_productos_diarios, as: :boolean, label: 'Nuestras opciones del día', hint: 'Muestra los menú diario de tipo Productos del Día en la venta por carrito.', wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :muestra_mas_productos, as: :boolean, label: 'Más Productos', hint: 'Muestra todos los productos con precio de la tienda en la venta por carrito.', wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :muestra_mas_productos_por_categoria, as: :boolean, label: 'Más Productos por Categoría', hint: 'Si se activa, sobreescribe a "Más Productos" y solo muestra productos cuyas categorías tengan habilitado "Vender en Carrito".', wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :muestra_menus_del_dia, as: :boolean, label: 'Menús del Día', hint: 'Muestra los menú diarios de tipo Menú del Día y productos de categoría Menú del Día, sin fotos.', wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :multiple_locales, as: :boolean, wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :permitir_login_clientes, as: :boolean, label: 'Permitir login de clientes', hint: 'Si está desactivado, los usuarios clientes no podrán iniciar sesión en esta tienda.', wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :local_atencion_carrito_id, collection: @tienda.locales.map { |l| [l.nombre, l.id] }, include_blank: '(Primer local)', label: 'Local para Carrito', hint: 'Local asignado a pedidos del carrito. Si no se selecciona, se usa el primer local.', wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :dark_mode_login, as: :boolean, label: 'Login oscuro', hint: 'Usa fondo oscuro en el panel de login (para logos claros/blancos)', wrapper_html: { class: 'col-sm-6' } %>
+      <%= f.input :color_de_fondo, as: :color, wrapper_html: { class: 'col-sm-3' } %>
+      <%= f.input :color_fondo_logo, as: :color, wrapper_html: { class: 'col-sm-3' } %>
+      <%= f.input :color_de_menu, as: :color, wrapper_html: { class: 'col-sm-3' } %>
+      <%= f.input :color_barra_superior, as: :color, wrapper_html: { class: 'col-sm-3' } %>
+      <%= f.input :color_barra_filtros, as: :color, wrapper_html: { class: 'col-sm-3' } %>
+      <%= f.input :color_links, as: :color, wrapper_html: { class: 'col-sm-3' } %>
+      <%= f.input :color_links_hover, as: :color, wrapper_html: { class: 'col-sm-3' } %>
+      <%= f.input :color_titulo, as: :color, wrapper_html: { class: 'col-sm-3' } %>
+      <%= f.input :documentos, wrapper_html: { class: 'col-md-12' } do %>
+        <%= render '/infraestructura/documentos/drag_and_drop_section', f: f, solo_imagenes: true, max_size: 10 %>
+      <% end %>
+      <div class="col-md-12">
+      <%= f.default_button %>
+      </div>
+  <% end %>
+  <% end %>

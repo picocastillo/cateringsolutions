@@ -1,0 +1,23 @@
+tiempo = parseInt(<%= @timelong %>);
+function sliders(){
+  $('body > .tooltip').remove();
+  initProductSliders();
+  $.onmount();
+};
+if($("#listado-timelong").length == 0 || tiempo > parseInt($("#listado-timelong").data('timelong'))) {
+  $("#listado-de-productos").html("<%= j render 'listado_de_productos' %>");
+  $('#cargar-productos').hide();
+  $('#listado-de-productos').fadeIn(300);
+}
+Promise.all([sliders()]);
+<% if @pedido.busqueda.present? %>
+  keyword = $("#pedido_busqueda").val();
+  $(".inner-details-card").unmark({
+    done: function() {
+      $(".inner-details-card").mark(keyword);
+    }
+  });
+<% end %>
+<% if @pedido.estado.pendiente? && @pedido.usuario && (ped = Pedidos::Pedido.where(usuario_id: @pedido.usuario.id, fecha: @pedido.fecha, estado_id: 2).first).present? %>
+  toast.warning({ html: '<%= "Advertencia: Ya existe el Pedido #{ped.to_s} cargado para la fecha seleccionada #{@pedido.fecha}." %>', duration: 7000 });
+<% end %>

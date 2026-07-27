@@ -1,0 +1,261 @@
+<% page title: 'Detalle de Stock', raiz: 'Productos', hojas: "#{@stock.producto.nombre} - Stock", acciones: [edit_link(@stock, 'Editar'), link_to('Volver', stocks_path)].compact, id: 'show-stock' %>
+
+<div class="row">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h4 class="card-title m-b-0">Información del Stock</h4>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h5>Producto</h5>
+            <p><%= link_to @stock.producto.nombre, @stock.producto %></p>
+            
+            <h5>Categoría</h5>
+            <p><%= @stock.producto.categoria.nombre %></p>
+            
+            <h5>Tienda</h5>
+            <p><%= @stock.tienda.nombre %></p>
+            
+            <h5>Local</h5>
+            <p><%= @stock.local&.nombre || 'Stock Principal' %></p>
+          </div>
+          
+          <div class="col-md-6">
+            <h5>Stock Actual</h5>
+            <p class="h3 text-info"><%= @stock.cantidad_actual.to_i %></p>
+            
+            <h5>Stock Mínimo</h5>
+            <p><%= @stock.cantidad_minima.to_i %></p>
+            
+            <% if @stock.cantidad_maxima.present? %>
+              <h5>Stock Máximo</h5>
+              <p><%= @stock.cantidad_maxima.to_i %></p>
+              
+              <h5>Porcentaje de Stock</h5>
+              <p><%= @stock.porcentaje_stock %>%</p>
+            <% end %>
+            
+            <h5>Estado</h5>
+            <p>
+              <% if @stock.stock_critico? %>
+                <span class="label label-danger">Stock Crítico</span>
+              <% elsif @stock.stock_bajo? %>
+                <span class="label label-warning">Stock Bajo</span>
+              <% elsif @stock.sin_stock? %>
+                <span class="label label-default">Sin Stock</span>
+              <% else %>
+                <span class="label label-success">Stock Normal</span>
+              <% end %>
+            </p>
+          </div>
+        </div>
+        
+        <% if @stock.observaciones.present? %>
+          <div class="row">
+            <div class="col-md-12">
+              <h5>Observaciones</h5>
+              <p><%= simple_format(@stock.observaciones) %></p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h4 class="card-title m-b-0">Ajuste Rápido</h4>
+      </div>
+      <div class="card-body">
+        <%= form_tag ajustar_stock_stock_path(@stock), method: :put, remote: false do %>
+          <div class="form-group">
+            <%= label_tag :nueva_cantidad, 'Nueva Cantidad', class: 'control-label' %>
+            <%= number_field_tag :nueva_cantidad, @stock.cantidad_actual.to_i, class: 'form-control', step: 1, min: 0, required: true %>
+          </div>
+          <div class="form-group">
+            <%= label_tag :motivo, 'Motivo del Ajuste', class: 'control-label' %>
+            <%= text_field_tag :motivo, '', class: 'form-control', placeholder: 'Ej: Inventario, corrección, etc.' %>
+          </div>
+          <%= submit_tag 'Ajustar Stock', class: 'btn btn-primary' %>
+        <% end %>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <h4 class="card-title m-b-0">Acciones</h4>
+      </div>
+      <div class="card-body">
+        <%= link_to 'Ver Movimientos', movimientos_stock_path(@stock), class: 'btn btn-info btn-block', remote: true %>
+        <%= edit_link(@stock, 'Editar Stock', class: 'btn btn-warning btn-block') %>
+        <%= link_to 'Lista de Stocks', stocks_path, class: 'btn btn-default btn-block' %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="movimientos-container" style="display:none;">
+  <!-- Los movimientos se cargarán aquí via AJAX -->
+</div>
+
+<%# Stock vs Demand Chart - Last 3 months %>
+<%
+  chart_desde = 3.months.ago.to_date
+  chart_hasta = Date.current
+
+  # Daily requested quantities from pedidos (confirmado + finalizado)
+  demanda_diaria = Productos::ProductoSolicitado.joins(:pedido)
+    .where(producto_id: @stock.producto_id)
+    .where(pedidos: { tienda_id: @stock.tienda_id, estado_id: [3, 4] })
+    .where(pedidos: { fecha: chart_desde..chart_hasta })
+    .group('pedidos.fecha')
+    .sum(:cantidad)
+
+  # Reconstruct historical stock levels from movements
+  # Start from current stock and work backwards
+  movimientos_por_fecha = @stock.stock_movimientos
+    .where('fecha >= ?', chart_desde.beginning_of_day)
+    .order(fecha: :desc)
+    .to_a
+
+  # Build stock level per day working backwards from today
+  stock_por_dia = {}
+  stock_nivel = @stock.cantidad_actual.to_f
+  fecha_actual = chart_hasta
+
+  while fecha_actual >= chart_desde
+    stock_por_dia[fecha_actual] = stock_nivel.round(0)
+    # Reverse movements that happened on this day (subtract entries, add exits)
+    movimientos_por_fecha.select { |m| m.fecha.to_date == fecha_actual }.each do |mov|
+      stock_nivel -= mov.diferencia
+    end
+    fecha_actual -= 1.day
+  end
+
+  # Build chart data arrays
+  chart_labels = []
+  chart_demanda = []
+  chart_stock = []
+  chart_minimo = []
+
+  (chart_desde..chart_hasta).each do |dia|
+    chart_labels << dia.strftime('%d/%m')
+    chart_demanda << (demanda_diaria[dia] || 0).to_i
+    chart_stock << (stock_por_dia[dia] || 0).to_i
+    chart_minimo << @stock.cantidad_minima.to_i
+  end
+%>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 class="card-title m-b-0">Demanda vs Stock - Últimos 3 meses</h4>
+        <h6 class="card-subtitle">Cantidad diaria solicitada en pedidos vs nivel de stock disponible</h6>
+      </div>
+      <div class="card-body">
+        <%= content_tag :span, nil, id: 'stock-chart-data', data: {
+          labels: chart_labels,
+          demanda: chart_demanda,
+          stock: chart_stock,
+          minimo: chart_minimo
+        } %>
+        <div style="position: relative; height: 350px;">
+          <canvas id="stock-demanda-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(function() {
+  "use strict";
+  var $el = $('#stock-chart-data');
+  if ($el.length && $el.data('labels')) {
+    new Chart(document.getElementById('stock-demanda-chart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: $el.data('labels'),
+        datasets: [{
+          label: 'Demanda Diaria',
+          data: $el.data('demanda'),
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          borderWidth: 2,
+          fill: false,
+          pointRadius: 1,
+          pointHoverRadius: 4,
+          yAxisID: 'y1'
+        }, {
+          label: 'Stock Disponible',
+          data: $el.data('stock'),
+          borderColor: '#009efb',
+          backgroundColor: 'rgba(0, 158, 251, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          pointRadius: 1,
+          pointHoverRadius: 4,
+          yAxisID: 'y'
+        }, {
+          label: 'Stock Mínimo',
+          data: $el.data('minimo'),
+          borderColor: '#ef4444',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [6, 3],
+          fill: false,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          yAxisID: 'y'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            beginAtZero: true,
+            grid: { color: '#eef0f2' },
+            title: { display: true, text: 'Stock' },
+            ticks: {
+              callback: function(value) {
+                return Number.isInteger(value) ? value : '';
+              }
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            beginAtZero: true,
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: 'Demanda Diaria' },
+            ticks: {
+              callback: function(value) {
+                return Number.isInteger(value) ? value : '';
+              }
+            }
+          },
+          x: {
+            grid: { color: '#eef0f2' },
+            ticks: { maxTicksLimit: 15 }
+          }
+        },
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: { mode: 'index', intersect: false }
+        },
+        hover: { mode: 'nearest', intersect: true },
+        interaction: { mode: 'index', intersect: false }
+      }
+    });
+  }
+});
+</script>

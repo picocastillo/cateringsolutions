@@ -1,0 +1,14 @@
+<% if @query_cocina %>
+$("#panel-cocina").show();
+$("#reporte-cocina").html("<%= j render 'reporte_cocina' %>");
+$('.export-link-cocina').attr('href', "<%= inicio_index_path(filtered_params.merge(format: :xls, q: (filtered_params[:q] || {}).merge(venta_mostrador: 'false'))) %>");
+<% else %>
+$("#panel-cocina").hide();
+<% end %>
+<% if @query_vm %>
+$("#panel-vm").show();
+$("#reporte-vm").html("<%= j render 'reporte_vm' %>");
+$('.export-link-vm').attr('href', "<%= inicio_index_path(filtered_params.merge(format: :xls, q: (filtered_params[:q] || {}).merge(venta_mostrador: 'true'))) %>");
+<% else %>
+$("#panel-vm").hide();
+<% end %>

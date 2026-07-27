@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Quick test runner script for parallel execution
+# Usage: ./bin/ptest [unit|system|all|coverage]
+#
+# This is the SINGLE source of truth for running parallel tests.
+# All test commands go through this script — never call parallel_rspec directly.
+
+TYPE=${1:-all}
+
+# Flaky specs that must run in a single worker (not parallelized)
+ISOLATED_SPECS="spec/system/daily_orders_real_time_spec.rb spec/system/pedidos_cocina_spec.rb spec/system/pedidos/pedidos_multiples_options_validation_spec.rb spec/system/pedidos/cart_dropdown_group_edit_spec.rb spec/system/pedidos/cart_dropdown_routing_spec.rb spec/system/pedidos/envio_domicilio_mercadopago_spec.rb"
+
+case $TYPE in
+  unit)
+    echo "🧪 Running unit tests in parallel (20 workers)..."
+    COVERAGE=true bundle exec parallel_rspec -n 20 --exclude-pattern "spec/system/**/*_spec.rb"
+    ;;
+  system)
+    echo "🌐 Running system tests in parallel (10 workers)..."
+    COVERAGE=true SYSTEM_TESTS=true bundle exec parallel_rspec -n 10 --single $ISOLATED_SPECS spec/system/
+    ;;
+  all)
+    echo "🚀 Running ALL tests: unit (20 workers) + system (10 workers)..."
+    COVERAGE=true bundle exec parallel_rspec -n 20 --exclude-pattern "spec/system/**/*_spec.rb"
+    COVERAGE=true SYSTEM_TESTS=true bundle exec parallel_rspec -n 10 --single $ISOLATED_SPECS spec/system/
+    ;;
+  coverage)
+    echo "📊 Running all tests with coverage..."
+    COVERAGE=true bundle exec parallel_rspec -n 20 --exclude-pattern "spec/system/**/*_spec.rb"
+    COVERAGE=true SYSTEM_TESTS=true bundle exec parallel_rspec -n 10 --single $ISOLATED_SPECS spec/system/
+    ;;
+  *)
+    echo "Usage: $0 [unit|system|all|coverage]"
+    echo ""
+    echo "  unit     - Run unit/request tests only (20 workers, ~44s)"
+    echo "  system   - Run system/browser tests only (10 workers, ~3min)"
+    echo "  all      - Run unit + system sequentially (~4min, default)"
+    echo "  coverage - Same as 'all' with coverage report"
+    exit 1
+    ;;
+esac

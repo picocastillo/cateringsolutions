@@ -1,0 +1,44 @@
+<% page title: 'Ver Usuarios', raiz: 'Usuarios', hojas: 'Ver Usuarios', acciones: [link_to('Nuevo', new_usuario_path), link_to_function('Importar', data: {toggle: 'modal', target: '#importar'}), export_link(Usuarios::Usuario, text: 'Exportar')].compact, id: 'index-usuarios' %>
+  <div class="row">
+    <div class="col-12">
+      <div class="card filtros">
+        <div class="bg-info" >
+          <h4 class="text-white card-title">Filtros<div class="card-actions">
+              <a class="" data-action="collapse"><i class="ti-plus"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body collapse">
+          <%= error_messages_for @query %>
+          <%= query_form_for @query, remote: true do |f| %>
+            <%= f.input :login, input_html: { autocomplete: 'off' } %>
+            <%= f.input :nombre, input_html: { autocomplete: 'off' } %>
+            <%= f.input :tipo, as: :select2_local, collection: [[' - Todas - ', nil],['Clientes', 1],['Administradores', 2]], input_html: {multiple: false, autocomplete: 'off'} unless current_user.cliente? %>
+            <%= f.input :dni, label: 'DNI', input_html: { autocomplete: 'off' } %>
+            <%= f.input :legajo, input_html: { autocomplete: 'off' } %>
+            <%= f.input :cliente_ids, label: 'Clientes', as: :select2, input_html: {data: {multiple: true, url: clientes_path(format: :json), pre: @query.cliente_ids.presence && Clientes::Cliente.where(id: @query.cliente_ids)}, autocomplete: 'off'}  unless current_user.cliente? %>
+            <%= f.input :cuenta_ids, label: 'Cuentas', as: :select2, input_html: {data: {multiple: true, minimum_input_length: 1, label: 'cliente_y_nombre', selection: 'cliente_y_nombre', url: cuentas_path(format: :json), pre: @query.cuenta_ids.presence && Clientes::Cuenta.where(id: @query.cuenta_ids.split(',').map(&:to_i))}, autocomplete: 'off'} if current_user.cumple_rol?(:administrador_empresa) || !current_user.cliente? %>
+            <%= f.input :status, as: :status, input_html: { autocomplete: 'off' } %>
+            <%= search_buttons f %>
+          <% end %>
+        </div>
+      </div>
+      <div class="card">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <span id=usuarios-container> <%= render 'resultados' %></span>
+      </div>
+  </div>
+</div>
+
+<%= import_dialog 'Importar Usuarios', import_usuarios_path do %>
+  <p>Para importar usuarios el archivo debe ser formato XLS o XLSX y cumplir las siguientes reglas:</p>
+  <ul>
+    <li>Si ingresa un valor en la columna <b>ID</b>, se actualizará el usuario con con dicho ID.</li>
+    <li>Debe ingresar las columnas <b>Cliente</b> (debe existir previamente creado el Cliente con dicho Nombre), <b>Cuenta</b> (opcional, de ingresarse debe estar creada previamente en el Cliente), <b>Sucursal</b> (opcional, solo ingresar al crear cuentas nuevas),<b>Legajo</b> (opcional),	<b>Nombre</b> (si lo desea puede ingresar en dos columnas separadas Nombre y otra columna Apellido), <b>Contraseña</b> (opcional, de no ingresarse se utilizará el DNI), <b>DNI</b>, <b>Cuit</b> (opcional y de no ingresar DNI se toma del Cuit) y <b>Activo</b> (opcional).</li>
+  </ul>
+<% end %>

@@ -1,0 +1,4 @@
+<%= content_for :div, '', id: 'firebase-config', data: {
+  webapp: AppConfig.firebase.webapp,
+  vapid: AppConfig.firebase.vapid.public_key
+} if AppConfig.firebase %>

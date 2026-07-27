@@ -1,0 +1,23 @@
+<% modo = current_user.vista_productos %>
+<div class="vista-productos-toggle d-flex justify-content-end align-items-center mb-2">
+  <span class="text-muted mr-2" style="font-size: 0.85rem;">Vista:</span>
+  <%= form_with url: cambiar_vista_productos_cuenta_path, method: :patch,
+                local: false,
+                html: { id: 'vista-productos-form', class: 'vista-productos-group d-inline-flex',
+                        'data-remote': true } do |f| %>
+    <button type="submit" name="vista" value="pasadores"
+            class="btn btn-sm vista-productos-btn <%= 'active' if modo == 'pasadores' %>"
+            data-vista="pasadores"
+            title="Vista Pasadores">
+      <i class="fa fa-th-large"></i>
+      <span class="d-none d-sm-inline ml-1">Pasadores</span>
+    </button>
+    <button type="submit" name="vista" value="lista"
+            class="btn btn-sm vista-productos-btn <%= 'active' if modo == 'lista' %>"
+            data-vista="lista"
+            title="Vista Lista">
+      <i class="fa fa-list"></i>
+      <span class="d-none d-sm-inline ml-1">Lista</span>
+    </button>
+  <% end %>
+</div>

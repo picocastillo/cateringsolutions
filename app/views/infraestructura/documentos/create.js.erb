@@ -1,0 +1,5 @@
+<% if @documento.valid? %>
+  $("<%= j render 'fields_documento', documento: @documento, field_name: params[:documento_field_name] %>").hide().appendTo('#documentos').fadeIn('fast')
+<% else %>
+  toast.error({ html: '<%= "#{@documento.documento_file_name}: #{@documento.errors[:documento].to_sentence}" %>', duration: 4000 });
+<% end %>

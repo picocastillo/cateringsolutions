@@ -1,0 +1,6 @@
+$("#etiquetas-container").html("<%= j render 'etiquetas' %>");
+$(":input:focus").select();
+$("#flash-container").html("<%= j render 'flash_messages' %>");
+errors.set(<%= raw @query.errors.full_messages %>);
+$('.export-link').attr('href', "<%= etiquetas_path(filtered_params.merge(format: :xls)) %>");
+$('.export-pdf').attr('href', "<%= etiquetas_path(filtered_params.merge(format: :pdf)) %>");

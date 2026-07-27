@@ -1,0 +1,6 @@
+if ($('#resumen-multiple').length || $('#pedido-container').data('page') === 'opciones') {
+  window.location.reload();
+} else {
+  $("#pedido-container").html("<%= j render 'pedido' %>");
+  toast.success({ title: 'Cupón eliminado', duration: 3000 });
+}

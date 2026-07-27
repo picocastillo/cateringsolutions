@@ -1,0 +1,78 @@
+<div>
+  <%= simple_nested_form_for @usuario do |f| %>
+    <%= f.error_messages %>
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-body">
+        <ul class="nav nav-tabs profile-tab" role="tablist">
+            <li class="nav-item"> <a class="nav-link active" data-toggle="tab" href="#general" role="tab">General</a> </li>
+            <% if current_user.admin? %>
+              <li class="nav-item roles-admin"> <a class="nav-link" data-toggle="tab" href="#roles" role="tab">Roles</a> </li>
+              <li class="nav-item roles-admin"> <a class="nav-link" data-toggle="tab" href="#tiendas" role="tab">Tiendas</a> </li>
+              <li class="nav-item roles-admin"> <a class="nav-link" data-toggle="tab" href="#locales" role="tab">Locales</a> </li>
+            <% end %>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane active form-material" id="general" role="tabpanel">
+              <div class="card-body">
+
+                  <%= f.input :nombre, required: true, wrapper_html: { class: 'col-md-3' } %>
+                  <%= f.input :login, required: true, wrapper_html: { class: 'col-md-3' } %>
+                  <%= f.input :password, required: true, wrapper_html: { class: 'col-md-3' } %>
+                  <%= f.input :password_confirmation, label: 'Confirmación', wrapper_html: { class: 'col-md-3' } %>
+                  <%= f.input :tipo, as: :select2_local, label: 'Tipo Usuario', collection: [['Cliente', 1],['Administrador', 2]], wrapper_html: { class: 'col-md-3' }, input_html: {multiple: false} %>
+                  <% tienda_filter_id = @usuario.tienda_cliente_id || params[:tienda_filter]&.to_i || tienda_activa.id %>
+                  <% if current_user.super_admin? %>
+                    <%= f.input :tienda_cliente_id, collection: Tiendas::Tienda.order(:nombre).all, as: :select, selected: tienda_filter_id, label: 'Tienda del Cliente', label_method: :nombre, value_method: :id, include_blank: false, wrapper_html: { class: 'col-md-3' }, input_html: { id: 'tienda_cliente_selector', data: { url: @usuario.persisted? ? cambiar_tienda_cliente_usuario_path(@usuario) : '' }, onchange: "var url=this.dataset.url;if(url){var tk=$('meta[name=csrf-token]').attr('content');$.post(url,{tienda_cliente_id:this.value,authenticity_token:tk},null,'script')}else{window.location.href=window.location.pathname+'?tienda_filter='+this.value}" } %>
+                  <% end %>
+                  <%= f.input :cuenta_id, collection: Clientes::Cuenta.joins(cliente: :tiendas).where(tiendas: { id: tienda_filter_id }).active.distinct, as: :select, selected: @usuario.cuenta_id, label: 'Cuenta del Cliente', label_method: :cliente_y_nombre, hint: 'En la misma se reflejaran las compras de este usuario.', include_blank: true, wrapper_html: { class: 'col-md-6' } %><span id="roles-cliente"><%= f.input :administrador_de_empresa, label: 'Encargado de Empresa', hint: 'Ve los pedidos de todos sus empleados.', as: :boolean, input_html: { checked: @usuario.cumple_rol?(:administrador_empresa) }, wrapper_html: { class: 'col-md-3' } %> </span>
+
+                  <%= f.input :dni, label: 'DNI', required: true, wrapper_html: { class: 'col-md-3' } %>
+                  <%= f.input :telefono, wrapper_html: { class: 'col-md-4' } %>
+                  <%= f.input :email, label: 'Email', wrapper_html: { class: 'col-md-4' } %>
+                  <%= f.input :cuit, label: 'Cuit', wrapper_html: { class: 'col-md-3' } %>
+                  <%= f.input :legajo, wrapper_html: { class: 'col-md-2' } %>
+                  <%= f.input :sucursal, wrapper_html: { class: 'col-md-2' } %>
+
+                  <%= f.input :documentos, wrapper_html: { class: 'col-md-12' } do %>
+                    <%= render '/infraestructura/documentos/drag_and_drop_section', f: f, solo_imagenes: true, max_size: 10 %>
+
+                    <%= f.input :solicitar_cambio_contrasena, label: 'Solicitar cambio contraseña', as: :boolean, input_html: { checked:false}, wrapper_html: { class: 'col-md-12', style: 'padding-top: 45px' } %>
+                  <% end %>
+            </div>
+          </div>
+          <div class="tab-pane form-material" id="notificaciones" role="tabpanel">
+            <div class="card-body">
+              <div id="fields-notificaciones">
+                <%= render 'usuarios/perfiles/fields_notificaciones' if false %>
+              </div>
+            </div>
+          </div>
+          <% if current_user.admin? %>
+            <div class="tab-pane form-material" id="roles" role="tabpanel">
+              <div class="card-body roles-configurables">
+                <%= render 'fields_roles', f: f %>
+              </div>
+            </div>
+          
+          <div class="tab-pane" id="tiendas" role="tabpanel">
+            <div class="card-body">
+              <% pds = Tiendas::Tienda.order(:nombre).all %>
+              <%= f.input :tienda_ids, collection: pds.map{ |m| [m.nombre, m.id, {:data => {:subtext => "#{m.dominio if m.dominio.present? }"}}] }, label: false, input_html: { class: 'selectpicker-tiendas', data: { style: 'btn-info' }, multiple: true }, hint: ' - Debe seleccionar al menos una Tienda.' %>
+            </div>
+          </div>
+          <div class="tab-pane" id="locales" role="tabpanel">
+            <div class="card-body">
+              <%= f.input :local_id, collection: Locales::Local.where(tienda_id: current_user.tienda_activa.id).order(:nombre).all, as: :select, selected: @usuario.local_id, label: 'Local', label_method: :nombre_y_domicilio, include_blank: true  %>
+            </div>
+          </div>
+        <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-12">
+  <%= f.default_button %>
+  </div>
+<% end %>
+</div>

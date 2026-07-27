@@ -1,0 +1,45 @@
+<% @ct = @pedido.cuenta || (@pedido.usuario && @pedido.usuario.cuenta)%>
+<span id="pedido-vm-id" data-id="<%= @pedido.id %>" style="display:none"></span>
+<%= simple_nested_fields_for @pedido do |f| %>
+  <div class="vm-pos-layout">
+    <%= render 'buscador_productos', f: f %>
+    <div class="row vm-pos-body">
+      <div class="col-lg-6 vm-controls-col">
+        <div class="vm-medios-pago" id="medio-pago-selector">
+          <label class="vm-section-label">Medios de Pago</label>
+          <table class="table table-sm table-bordered mb-1">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Importe</th>
+                <th class="vm-mp-actions"><%= f.icon_to_add :medios_pago, "data-target" => "#medios-pago-rows" %></th>
+              </tr>
+            </thead>
+            <tbody id="medios-pago-rows">
+              <%= f.fields_for :medios_pago do |mp| %>
+                <tr class="fields">
+                  <td><%= mp.select :tipo, Pedidos::MedioPago::TIPOS.map { |k, v| [v, k] }, {}, class: 'form-control form-control-sm medio-pago-tipo' %></td>
+                  <td><%= mp.text_field :importe, class: 'form-control form-control-sm medio-pago-importe text-right', value: mp.object.importe.to_f.positive? ? ('%.2f' % mp.object.importe) : '' %></td>
+                  <td class="vm-mp-actions"><%= mp.icon_to_remove "menos" %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        <% if tienda_activa.multiple_locales? %>
+          <div class="vm-local-select mb-2">
+            <label class="vm-section-label">Local</label>
+            <%= f.select :local_id, tienda_activa.locales.map { |l| [l.nombre, l.id] }, {}, class: 'form-control form-control-sm' %>
+          </div>
+        <% end %>
+        <div class="vm-action-buttons">
+          <%= f.default_button_vm %>
+          <a name="button" type="button" class="btn btn-default ml-1" href="/ventas_mostrador/pedidos/<%= @pedido.id %>/limpiar.js" data-remote="true" data-method="post" data-confirm="Cancelará el pedido. Está seguro?" data-disable-with="Procesando.." id="boton-cancelar-vm">Cancelar (F8)</a>
+        </div>
+      </div>
+      <div class="col-lg-6 vm-cart-col">
+        <%= render 'fields_productos_solicitados', f: f %>
+      </div>
+    </div>
+  </div>
+<% end if @pedido.fecha && @ct %>

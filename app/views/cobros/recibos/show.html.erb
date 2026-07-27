@@ -1,0 +1,38 @@
+<% page title: @recibo.to_s, raiz: 'Cobros', hojas: 'Detalles', id: 'show-comprobante', acciones: [link_to('Lista', recibos_path)].compact %>
+<div class="row">
+  <div class="col-md-12" id="comprobante-container">
+    <div class="card">
+      <div class="card-body">
+        <div class="col-12"style="background: whitesmoke;padding: 15px 0 5px 0;">
+          <div class="col-sm-6 col-md-5 col-lg-4">
+            <h4 class="card-title text-left" style="margin-bottom: -10px;"><%= link_to(discontinuado(@recibo.cuenta.cliente, @recibo.cuenta.cliente.nombre), cliente_path(@recibo.cuenta.cliente))  %></h4>
+            <hr>
+            <% if @recibo.autor %>
+            <h6 class="card-subtitle  mb-3 text-left" style="margin-top:-10px"><strong>Autor:</strong> <%= current_user.cliente? ? "#{@recibo.autor}" : link_to(discontinuado(@recibo.autor, "#{@recibo.autor}"), usuario_path(@recibo.autor))  %></h6>
+            <% end %>
+            <% if @recibo.fecha_emision %>
+            <h6 class="card-subtitle text-left" style="margin-top:-10px"><strong>Fecha Emisión:</strong> <%= @recibo.fecha_emision %></h6>
+            <% end %>
+            <h6 class="card-subtitle estado text-left" style="margin-top:-10px"><strong style="margin-right:5px">Estado:</strong> <%= pedido_estado_label @recibo %></h6>
+            <h6 class="card-title  mb-3 text-left" style="margin-top:-10px"><%= @recibo.medios_pago.map(&:tipo_e_importe).join(' ') %></h6>
+            <h5 class="card-title  text-left" style="margin-top:-10px">Total <%= @recibo.total %>
+            </h5>
+            <hr>
+          </div>
+          <div class="col-12">
+            <% if @recibo.afectaciones.present? %>
+            <h6 class="card-subtitle text-left" style="margin-top:-5px"><strong>Cancela:</strong> <%= @recibo.afectaciones.map(&:afectado).compact.map{|c| link_to(c.to_s, comprobante_path(c))}.join(', ').html_safe %></h6>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-12">
+    <div>
+      <%= button_to('Confirmar', confirmar_recibo_path(@recibo),
+          method: :put, class: 'btn btn-success waves-effect waves-light m-r-10', data: { confirm: 'Está seguro que desea cobrar el recibo?', disable_with: 'Procesando...' }) if can? :confirmar, @recibo %>
+    </div>
+  </div>
+</div>

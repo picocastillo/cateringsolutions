@@ -1,0 +1,154 @@
+<% page title: 'Nuevo Cliente', raiz: 'Clientes', hojas: 'Crear', id: 'new-cliente' %>
+
+<%# Step 9 follow-up: search-first UX. Force the admin to look up the CUIT
+    before filling out the rest of the form so we never end up with duplicate
+    cliente rows across tiendas. The cliente form is hidden until the lookup
+    either confirms there is no existing match (reveal the form) or the admin
+    chooses to vincular/edit an existing cliente (redirect away). %>
+<div class="col-md-12">
+  <div class="card" id="cuit-buscar-card">
+    <div class="card-body">
+      <h4 class="card-title">Buscar o Crear cliente</h4>
+      <p class="text-muted">Ingresá el CUIT antes de cargar el resto de los datos. Si ya existe, te ofrecemos vincularlo a esta tienda en vez de duplicarlo.</p>
+      <div class="row form-material">
+        <div class="form-group col-sm-6">
+          <label class="control-label" for="cuit-buscar-input">CUIT</label>
+          <input type="text" id="cuit-buscar-input" class="form-control" placeholder="20-12345678-9" autocomplete="off" autofocus />
+          <small class="form-text text-muted">11 dígitos. Aceptamos guiones.</small>
+        </div>
+        <div class="form-group col-sm-6 d-flex align-items-end">
+          <button type="button" id="cuit-buscar-btn" class="btn btn-info waves-effect waves-light m-r-10">
+            <i class="fa fa-search"></i> Buscar o Crear
+          </button>
+          <span id="cuit-buscar-status" class="text-muted"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="cliente-form-wrapper" style="display: none;">
+  <%= render 'form' %>
+</div>
+
+<%= javascript_tag nonce: true do %>
+  // CUIT lookup: when the admin types a CUIT into the new-cliente form, we
+  // ping the backend to check whether a cliente with that CUIT already exists
+  // anywhere in the system. If it does, we offer to attach the current tienda
+  // onto that cliente (HABTM clientes_tiendas) instead of creating a duplicate
+  // row — see Step 9 of the clientes-shared migration.
+  (function () {
+    var input = document.getElementById('cuit-buscar-input');
+    var btn = document.getElementById('cuit-buscar-btn');
+    var status = document.getElementById('cuit-buscar-status');
+    var wrapper = document.getElementById('cliente-form-wrapper');
+    var card = document.getElementById('cuit-buscar-card');
+    if (!input || !btn || !wrapper) return;
+
+    var lookupUrl = "<%= j lookup_by_cuit_clientes_path %>";
+    var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    function digits(v) { return (v || '').replace(/\D/g, ''); }
+
+    function setStatus(msg, cls) {
+      status.textContent = msg || '';
+      status.className = cls || 'text-muted';
+    }
+
+    function revealForm(cuitDigits, arca) {
+      wrapper.style.display = 'block';
+      card.classList.add('cuit-buscar-done');
+      var formCuit = document.getElementById('cliente_cuit');
+      if (formCuit) {
+        formCuit.value = cuitDigits;
+        formCuit.readOnly = true;
+      }
+      // Prefill from ARCA padrón when available. We only fill empty
+      // inputs so the admin's typing always wins.
+      if (arca) {
+        var fill = function (id, value) {
+          if (!value) return;
+          var el = document.getElementById(id);
+          if (el && !el.value) el.value = value;
+        };
+        fill('cliente_nombre', arca.nombre);
+        fill('cliente_domicilio', arca.domicilio);
+      }
+      var nombre = document.getElementById('cliente_nombre');
+      if (nombre) nombre.focus();
+    }
+
+    function postVincular(url) {
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = url;
+      if (token) {
+        var t = document.createElement('input');
+        t.type = 'hidden';
+        t.name = 'authenticity_token';
+        t.value = token;
+        form.appendChild(t);
+      }
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+    function doLookup() {
+      var d = digits(input.value);
+      if (d.length !== 11) {
+        setStatus('Ingresá los 11 dígitos del CUIT.', 'text-danger');
+        return;
+      }
+
+      setStatus('Buscando...', 'text-muted');
+      btn.disabled = true;
+
+      fetch(lookupUrl + '?cuit=' + encodeURIComponent(d), {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          btn.disabled = false;
+
+          if (!data.exists) {
+            if (data.arca && data.arca.nombre) {
+              setStatus('CUIT disponible. Datos cargados desde ARCA.', 'text-success');
+            } else {
+              setStatus('CUIT disponible. Completá los datos.', 'text-success');
+            }
+            revealForm(d, data.arca);
+            return;
+          }
+
+          if (data.ya_vinculado) {
+            setStatus('Cliente existente en esta tienda.', 'text-warning');
+            if (confirm('Ya existe el cliente "' + data.nombre + '" en esta tienda con ese CUIT. ¿Querés editarlo?')) {
+              window.location.href = data.edit_url;
+            }
+            return;
+          }
+
+          setStatus('Cliente existente en otra tienda.', 'text-warning');
+          var msg = 'Ya existe el cliente "' + data.nombre + '" con ese CUIT en otra tienda (' +
+                    data.tiendas.join(', ') + ').\n\n' +
+                    '¿Querés vincularlo a esta tienda y editarlo en lugar de crear un duplicado?';
+          if (!confirm(msg)) return;
+
+          postVincular(data.vincular_url);
+        })
+        .catch(function () {
+          btn.disabled = false;
+          setStatus('No pudimos verificar el CUIT. Probá de nuevo.', 'text-danger');
+        });
+    }
+
+    btn.addEventListener('click', doLookup);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doLookup();
+      }
+    });
+  })();
+<% end %>

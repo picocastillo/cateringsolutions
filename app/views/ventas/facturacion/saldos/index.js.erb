@@ -1,0 +1,6 @@
+$("#saldos-container").html("<%= j render 'resultados' %>");
+$(":input:focus").select();
+$("#flash-container").html("<%= j render 'flash_messages' %>");
+errors.set(<%= raw @query.errors.full_messages %>);
+$('[data-toggle="tooltip"]').tooltip();
+$('.export-link').attr('href', "<%= saldos_path(filtered_params.merge(format: :xls)) %>");

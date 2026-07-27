@@ -1,0 +1,20 @@
+<% page title: @usuario.nombre, raiz: 'Cuenta', hojas: 'Detalles', id: 'show-usuario', acciones: [link_to('Editar', '/cuenta/edit')] %>
+
+<div class="row">
+                    <!-- Column -->
+                    <div class="col-lg-4 col-xlg-3 col-md-5">
+                        <div class="card">
+                            <div class="card-body">
+                                <center class="m-t-30"> <img src="<%= @usuario.foto_safe %>" class="img-rounded" width="150">
+                                    <h2 class="card-title m-t-10 m-b-0"><%= @usuario.nombre %></h2>
+                                    <% if @usuario.cliente %>
+                                      <h3 class="card-subtitle"><%= @usuario.cliente %></h3>
+                                      <h5 class="card-subtitle mb-4" style="margin-top: -15px"><%= @usuario.cuenta.nombre %></h5>
+                                    <% end %>
+                                    <h6 class="card-subtitle"><%= @usuario.cliente ? "Usuario Cliente#{' Administrador de Empresa' if @usuario.cumple_rol?(:administrador_empresa)}" : ( @usuario.admin? ? 'Administrador' : 'Operador') %></h6>
+                                    <h6 class="card-subtitle">Login: <%= @usuario.login %></h6>
+                                </center>
+                            </div>
+                        </div>
+                    </div>
+                </div>

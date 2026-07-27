@@ -1,0 +1,17 @@
+<% content_for :styles do %>
+  @page {
+    size: 50mm 30mm;
+    margin: 0;
+  }
+
+  body {
+    font-family: Calibri;
+  }
+<% end %>
+
+<% page id: 'pedidos-etiquetas' %>
+<% primero = true %>
+  <% @etiquetas.each do |et| %>
+    <%= render partial: '/pedidos/etiquetas/etiqueta_williner', locals: { et: et, primero: primero } %>
+    <% primero = false %>
+<% end %>

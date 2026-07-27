@@ -1,0 +1,21 @@
+<% content_for :styles do %>
+  @page {
+    size: 50mm 30mm;
+    margin: 0;
+  }
+
+  body {
+    font-family: Calibri;
+  }
+<% end %>
+
+<% page id: 'pedidos-etiquetas' %>
+<% primero = true %>
+<% @despachos.group('pedidos.cuenta_id', :producto_id).sort_by{|x| [x.pedido.envio_a_domicilio ? 1 : 0, x.pedido.cuenta.cliente.nombre, x.pedido.cuenta.nombre, x.producto.categoria.codigo, x.producto.nombre]}.each do |pr| %>
+  <% @despachos.where(producto_id: pr.producto.id).where('pedidos.cuenta_id =?', pr.pedido.cuenta_id).each do |pss| %>
+    <% pss.cantidad.times do |i| %>
+      <%= render partial: '/pedidos/despachos/etiquetas/etiqueta_producto', locals: { ps: pss, primero: primero } %>
+      <% primero = false %>
+    <% end %>
+  <% end %>
+<% end %>

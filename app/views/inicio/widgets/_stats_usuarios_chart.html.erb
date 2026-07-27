@@ -1,0 +1,64 @@
+<%
+  # Aggregated monthly in SQL (was daily + Ruby group_by since 2020-07-01).
+  # Cached briefly in Redis so concurrent dashboard hits don't redo the scan.
+  local_id_cache = current_user.tienda_activa.multiple_locales ? current_user.local_activo&.id : nil
+  financiero_flag = current_user.admin_financiero? ? 1 : 0
+  cache_key = ['stats_usuarios_chart_v2', tienda_activa.id, local_id_cache, financiero_flag, Date.current.to_s].join('/')
+  expires_in = (Time.zone.tomorrow.beginning_of_day - Time.zone.now).to_i
+  datos = Rails.cache.fetch(cache_key, expires_in: expires_in) do
+    scope = Productos::ProductoSolicitado.joins(pedido: :autor)
+            .where(pedidos: { tienda_id: tienda_activa.id, estado_id: [3, 4] })
+            .where('pedidos.fecha > ?', '2020-07-01')
+            .where('pedidos.fecha <= ?', 1.day.ago)
+    scope = scope.where('pedidos.local_id = ?', current_user.local_activo.id) if current_user.tienda_activa.multiple_locales && current_user.local_activo
+    rows = scope.group(Arel.sql("DATE_FORMAT(pedidos.fecha, '%Y-%m')"))
+                .order(Arel.sql("DATE_FORMAT(pedidos.fecha, '%Y-%m') ASC"))
+                .pluck(Arel.sql("DATE_FORMAT(pedidos.fecha, '%Y-%m'),
+                                 SUM(IF(usuarios.cuenta_id IS NULL, productos_solicitados.cantidad, 0)),
+                                 SUM(IF(usuarios.cuenta_id IS NULL, 0, productos_solicitados.cantidad)),
+                                 SUM(productos_solicitados.cantidad)"))
+    rows.map do |ym, catering, clientes, totales|
+      first_of_month = Date.parse("#{ym}-01")
+      { y: first_of_month.strftime('%m/%Y'), catering: catering.to_i, clientes: clientes.to_i, totales: totales.to_i, label: first_of_month }
+    end
+  end
+%>
+<% cache(['stats_usuarios_chart_html_v2', tienda_activa.id, local_id_cache, financiero_flag, Date.current.to_s]) do %>
+<% if datos.present? %>
+  <div class="card">
+    <div class="card-body">
+      <h3 class="card-title">Productos por Mes</h3>
+      <h6 class="card-subtitle">Cargados mensualmente según el tipo de usuario</h6>
+      <%= content_tag :span, nil, id: 'segun-usuarios', data: { datos: datos } %>
+      <div style="position: relative; height: 300px;"><canvas id="usuarios-line-chart"></canvas></div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      if (!$('#segun-usuarios').data('datos')) return;
+      var chartData = $('#segun-usuarios').data('datos');
+      var labels = chartData.map(function(item) { return moment(item.label).format('MM/YYYY'); });
+      new Chart(document.getElementById('usuarios-line-chart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Totales',                       data: chartData.map(function(i) { return i.totales; }),  borderColor: '#009efb', backgroundColor: 'rgba(0, 158, 251, 0.1)', borderWidth: 2, fill: false },
+            { label: '<%= j tienda_activa.nombre %>', data: chartData.map(function(i) { return i.catering; }), borderColor: '#02af1f', backgroundColor: 'rgba(2, 175, 31, 0.1)', borderWidth: 2, fill: false },
+            { label: 'Clientes',                      data: chartData.map(function(i) { return i.clientes; }), borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderWidth: 2, fill: false }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: function(v) { var p = v.toString().split('.'); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ','); return p.join('.'); } }, grid: { color: '#eef0f2' } },
+            x: { grid: { color: '#eef0f2' } }
+          },
+          plugins: { legend: { display: true, position: 'top' }, tooltip: { mode: 'index', intersect: false } },
+          hover: { mode: 'nearest', intersect: true }
+        }
+      });
+    })();
+  </script>
+<% end %>
+<% end %>

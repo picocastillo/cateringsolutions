@@ -1,0 +1,183 @@
+<%= cache "cliente-stats-#{@cliente.id}-#{tienda_activa.id}-#{current_user.local_activo&.id}-#{Time.zone.today}", skip_digest: true do %>
+<% cuenta_ids = @cliente.cuentas.map(&:id) %>
+<% filtrar_local = current_user.tienda_activa.multiple_locales && current_user.local_activo %>
+<% local_activo_id = current_user.local_activo&.id %>
+<% pedidos_scope = Pedidos::Pedido.where(cuenta_id: cuenta_ids) %>
+<% pedidos_scope = pedidos_scope.where(local_id: local_activo_id) if filtrar_local %>
+
+<div class="row">
+  <%# Chart 1: Top Productos Promedios por Día (last 30 days) %>
+  <% tat = Productos::ProductoSolicitado.joins(:pedido)
+    .where('productos_solicitados.menu_diario_id is null and pedidos.cuenta_id in (?) and (pedidos.estado_id = 3 || pedidos.estado_id = 4) and pedidos.fecha > ?', cuenta_ids, 31.days.ago)
+    .group(:producto_id)
+    .select('productos_solicitados.*, (sum(cantidad)/22) as total')
+    .order('total desc')
+    .includes(:producto) %>
+  <% tat = tat.where('pedidos.local_id = ?', local_activo_id) if filtrar_local %>
+  <% tat = tat.limit(5).to_a %>
+  <% datos = tat.map { |t| t.total.to_f.round(0) } %>
+  <% if datos.present? %>
+    <div class="col-12 col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <div class="row">
+            <%= content_tag :span, nil, id: 'cliente-top-productos', data: { labels: tat.map { |t| t.producto.to_s }, datos: datos } %>
+            <div class="col-12">
+              <h3 class="card-title">Top Productos Promedios por Día</h3>
+              <h6 class="card-subtitle">Cantidad promedio diario de los últimos 30 días</h6>
+            </div>
+            <div class="col-12">
+              <div style="position: relative; height: 160px;"><canvas id="cliente-top-productos-chart"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Chart 2: Promedios por Día - Menús Diarios %>
+  <% tat2 = Productos::ProductoSolicitado.joins(:pedido)
+    .where('pedidos.estado_id <> 1 and productos_solicitados.menu_diario_id is not null and pedidos.fecha > ? and pedidos.cuenta_id in (?) and (pedidos.estado_id = 3 || pedidos.estado_id = 4)', 31.days.ago, cuenta_ids)
+    .group(:producto_id)
+    .select('productos_solicitados.*, sum(cantidad/22) total')
+    .order('sum(cantidad) desc')
+    .includes(:producto) %>
+  <% tat2 = tat2.where('pedidos.local_id = ?', local_activo_id) if filtrar_local %>
+  <% tat2 = tat2.limit(5).to_a %>
+  <% datos2 = tat2.map { |t| t.total.round(0) } %>
+  <% if datos2.present? %>
+    <div class="col-12 col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <div class="row">
+            <%= content_tag :span, nil, id: 'cliente-top-productos2', data: { labels: tat2.map { |t| t.producto.to_s }, datos: datos2 } %>
+            <div class="col-12">
+              <h3 class="card-title">Promedios por Día</h3>
+              <h6 class="card-subtitle">Cantidad promedio de menús diarios de los últimos 30 días</h6>
+            </div>
+            <div class="col-12">
+              <div style="position: relative; height: 160px;"><canvas id="cliente-top-productos2-chart"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Chart 3: Productos por Mes — aggregated in SQL to avoid loading all rows into Ruby %>
+  <% datos_mes = Productos::ProductoSolicitado.joins(:pedido)
+    .where('pedidos.cuenta_id in (?) and pedidos.estado_id in (3, 4) and pedidos.fecha > ? and pedidos.fecha <= ?',
+           cuenta_ids, '2020-07-01', 1.day.ago)
+  %>
+  <% datos_mes = datos_mes.where('pedidos.local_id = ?', local_activo_id) if filtrar_local %>
+  <% datos_mes = datos_mes
+    .group("DATE_FORMAT(pedidos.fecha, '%m/%Y')")
+    .order(Arel.sql('MIN(pedidos.fecha) asc'))
+    .pluck(Arel.sql("DATE_FORMAT(pedidos.fecha, '%m/%Y'), SUM(productos_solicitados.cantidad), MAX(pedidos.fecha)"))
+    .map { |mes, totales, label| { y: mes, totales: totales.to_i, label: label } } %>
+  <% if datos_mes.present? %>
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex flex-wrap">
+            <div class="col-12">
+              <h3 class="card-title">Productos por Mes</h3>
+              <h6 class="card-subtitle">Cantidad total de productos por mes</h6>
+            </div>
+          </div>
+          <%= content_tag :span, nil, id: 'cliente-segun-mes', data: { datos: datos_mes } %>
+          <div style="position: relative; height: 300px;"><canvas id="cliente-productos-mes-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+</div><%# close main .row %>
+
+<script>
+$(function () {
+  "use strict";
+
+  function renderBarChart(dataId, canvasId, color, borderColor) {
+    var $el = $('#' + dataId);
+    if ($el.data('labels')) {
+      new Chart(document.getElementById(canvasId).getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: $el.data('labels'),
+          datasets: [{
+            label: 'Cantidad Promedio',
+            data: $el.data('datos'),
+            backgroundColor: color,
+            borderColor: borderColor,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#eef0f2' } },
+            x: { grid: { color: '#eef0f2' } }
+          }
+        }
+      });
+    }
+  }
+
+  function renderLineChart(dataId, canvasId) {
+    var $el = $('#' + dataId);
+    if ($el.data('datos')) {
+      var chartData = $el.data('datos');
+      var labels = chartData.map(function(item) {
+        return moment(item.label).format('MM/YYYY');
+      });
+
+      new Chart(document.getElementById(canvasId).getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Totales',
+            data: chartData.map(function(item) { return item.totales; }),
+            borderColor: '#009efb',
+            backgroundColor: 'rgba(0, 158, 251, 0.1)',
+            borderWidth: 2,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  var parts = value.toString().split(".");
+                  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                  return parts.join(".");
+                }
+              },
+              grid: { color: '#eef0f2' }
+            },
+            x: { grid: { color: '#eef0f2' } }
+          },
+          plugins: {
+            legend: { display: true, position: 'top' },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          hover: { mode: 'nearest', intersect: true }
+        }
+      });
+    }
+  }
+
+  // Main cliente charts
+  renderBarChart('cliente-top-productos', 'cliente-top-productos-chart', 'rgba(0, 158, 251, 0.6)', '#009efb');
+  renderBarChart('cliente-top-productos2', 'cliente-top-productos2-chart', 'rgba(2, 175, 31, 0.6)', '#02af1f');
+  renderLineChart('cliente-segun-mes', 'cliente-productos-mes-chart');
+});
+</script>
+<% end %>

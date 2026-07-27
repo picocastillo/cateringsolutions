@@ -1,0 +1,22 @@
+<div class="table-responsive ajax-data-container">
+  <% ultima_pagina = @movimientos.current_page == @movimientos.total_pages %>
+  <% @movimientos.group_by{|x| x.cuenta}.each do |cuenta, movimientos| %>
+      <div style="background: whitesmoke;padding: 10px 10px 1px 10px;margin-top: 5px;">
+        <h4><%= link_to(cuenta.cliente.to_s, cliente_path(cuenta.cliente)) %></h4>
+        <h5 class="card-subtitle"><%= movimientos.first.cuenta.to_s == cuenta.cliente.to_s ? 'Cuenta Principal' : movimientos.first.cuenta.to_s %></h6>
+      </div>
+  <%= table_for movimientos, id: 'movimientos' do |t|
+    t.column(:usuario, class: 'hidden-md-down') { |m| (current_user.cliente? ? m.comprobante.pedido.para_to_s_vertical : (m.comprobante.pedido.usuario ? link_to(discontinuado(m.comprobante.pedido.usuario, m.comprobante.pedido.to_s_vertical), usuario_path(m.comprobante.pedido.usuario)) : link_to(discontinuado(m.comprobante.pedido.cuenta, m.comprobante.pedido.para_to_s_vertical), cliente_path(m.comprobante.pedido.cuenta.cliente)))) if m.comprobante.pedido }
+    t.column(:fecha_emision, class: 'text-center') { |m| current_user.cliente? ? m.comprobante.fecha_emision.to_s.split(' ')[0] : m.comprobante.fecha_emision.to_s.split(' ').join('<br>').html_safe }
+    t.column(:comprobante) { |m| [link_to_cbte_de_mov(m.comprobante), (link_to("P #{m.comprobante.pedido.to_s}", pedido_path(m.comprobante.pedido)) if m.comprobante.pedido)].compact.join('<br>').html_safe }
+    t.column(:saldo, class: 'text-right hidden-md-down', header: 'Saldo Factura') { |m| m.comprobante.saldo unless m.comprobante.is_a?(Cobros::Recibo) || m.comprobante.is_a?(Entregas::Pago)}
+    t.column(:estado, header: 'Estado Cobro', class: 'text-center estado') { |m| estado_label m unless m.comprobante.is_a?(Cobros::Recibo) }
+    t.column(:vencimiento, class: 'hidden-md-down text-center') { |m| m.vencimiento.to_s.split(' ').join('<br>').html_safe }
+    t.column(:imputado, class: 'hidden-md-down') { |m| link_to_cbte_de_mov m.imputado }
+    t.column(:debe)
+    t.column(:haber)
+    t.column(:saldo) { |m| number_to_currency m.saldo_cuenta }
+  end %>
+<% end %>
+</div>
+<%= paginador @movimientos, ajax: true %>

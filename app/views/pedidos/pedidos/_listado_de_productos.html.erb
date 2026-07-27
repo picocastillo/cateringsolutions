@@ -1,0 +1,24 @@
+<div class="listado-eliminable pt-4">
+
+<span id="listado-timelong" data-timelong="<%= @timelong || Time.current.to_ms %>"></span>
+<% if @cuenta_activa %>
+  <% if @favs.present? || @prs.present? %>
+    <% if @favs.present? %>
+      <div class="row" >
+        <%= render 'panel_productos', precios: [@favs.sort_by{ |x| [(x.producto.nuevo? ? 0 : 1), (x.producto.nuevo? ? -x.producto.mostrar_como_nuevo_hasta.to_time.to_i : 0), x.producto.nombre] }, 'Favoritos'] %>
+      </div>
+    <% end %>
+    <span id="panels-later-container">
+      <%= render 'later_pannels' %>
+    </span>
+  <% else %>
+    <div class="mt-4">
+      <div class="col-12" style="text-align: center;background: whitesmoke;padding: 10px 10px 5px 10px"><h4><%= @pedido.busqueda.present? ? "No se encontraron resultados." : 'No hay productos en estas categorías.' %></h4></div>
+    </div>
+  <% end %>
+<% else %>
+  <div class="mt-4">
+    <div class="col-12" style="text-align: center;background: whitesmoke;padding: 10px 10px 5px 10px"><h4>No hay productos en estas categorías.</h4></div>
+  </div>
+<% end %>
+</div>

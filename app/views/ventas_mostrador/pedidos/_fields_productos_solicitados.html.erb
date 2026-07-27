@@ -1,0 +1,65 @@
+<% if @pedido.productos_solicitados_venta_mostrador.present? %>
+  <div class="vm-cart-container">
+    <div class="vm-cart-header">
+      <i class="ti-shopping-cart mr-1"></i> Carrito
+      <span class="badge badge-pill badge-info ml-1"><%= @pedido.productos_solicitados_venta_mostrador.sum(&:cantidad).to_i %></span>
+    </div>
+    <table class="table-responsive productos_solicitados_venta_mostrador mb-0" style="padding: 6px;">
+      <thead>
+        <tr>
+          <th width="45%"></th>
+          <th width="20%" class="text-right pr-2">Precio</th>
+          <% if tienda_activa.productos_pesables? %>
+            <th width="10%" class="text-right">Peso (Kg)</th>
+          <% end %>
+          <th width="<%= tienda_activa.productos_pesables? ? '5%' : '10%' %>" class="text-right">Cant.</th>
+          <th width="10%" class="text-right pr-2">Total</th>
+          <th width="5%"></th>
+        </tr>
+      </thead>
+      <tbody>
+      <% posicion = 0 %>
+      <%= f.fields_for :productos_solicitados_venta_mostrador do |fi| %>
+        <tr class="fields<%= ' impar' unless posicion.odd? %>">
+          <%= fi.hidden_field :producto_id, value: fi.object.producto.id %>
+          <td>
+            <h6 style="margin-bottom: -5px;"><span class="muted mr-2"><%= fi.object.producto.codigo.to_s.rjust(3, '0') %></span><%= fi.object.nombre_carrito %><small class="text-muted hidden-md-down ml-2" ><%= " Cód. Ext. #{fi.object.producto.codigos_externos}" if fi.object.producto.codigos_externos.present? %></small></h6><small class="text-muted" ><%= fi.object.producto.categoria %></small>
+          </td>
+          <td class="text-right pr-2">
+            <%= fi.object.precio_por_unidad %><%= '<small class="text-muted">/Kg</small>'.html_safe if tienda_activa.productos_pesables? && fi.object.peso.present? %>
+          </td>
+          <% if tienda_activa.productos_pesables? %>
+          <td>
+            <% if fi.object.peso.present? %>
+              <%= fi.input :peso, as: :string, label: false, wrapper_html: { class: "mb-1"}, input_html: { class: 'peso-input', data: { productoid: fi.object.id }, style: 'width: 84px;', value: fi.object.peso } %>
+            <% else %>
+              <span class="text-muted">-</span>
+            <% end %>
+          </td>
+          <% end %>
+          <td>
+            <% if tienda_activa.productos_pesables? && fi.object.peso.present? %>
+              <span class="text-muted" style="padding: 6px 12px; display: inline-block;">1</span>
+              <%= fi.hidden_field :cantidad, value: 1 %>
+            <% else %>
+              <%= fi.input :cantidad, as: :integer, label: false, wrapper_html: { class: "mb-1"}, input_html: { class: 'adicionador', data: { productoid: fi.object.id }, style: 'width: 84px;' } %>
+            <% end %>
+          </td>
+          <td class="text-right pr-2" id="importe-renglon-<%= fi.object.id %>">
+            <%= fi.object.importe_total %>
+          </td>
+          <td style="padding-top: 19px;">
+            <%= fi.icon_to_remove "menos" %>
+          </td>
+          <% posicion = posicion + 1  %>
+        </tr>
+      <% end %>
+      </tbody>
+    </table>
+  </div>
+<% else %>
+  <div class="vm-cart-empty text-center text-muted">
+    <i class="ti-shopping-cart" style="font-size: 48px; opacity: 0.3;"></i>
+    <p class="mt-2 mb-0">Agregue productos con el buscador</p>
+  </div>
+<% end %>

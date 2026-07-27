@@ -1,0 +1,44 @@
+<%
+    local_id_cache = current_user.tienda_activa.multiple_locales ? current_user.local_activo&.id : nil
+    cache_key = ['stats_top_productos_v2', tienda_activa.id, local_id_cache, Date.current.to_s].join('/')
+    expires_in = (Time.zone.tomorrow.beginning_of_day - Time.zone.now).to_i
+    datos, tat = Rails.cache.fetch(cache_key, expires_in: expires_in) do
+      scope = Productos::ProductoSolicitado.joins(:pedido)
+        .where('productos_solicitados.menu_diario_id is null and pedidos.tienda_id = ? and (pedidos.estado_id = 3 || pedidos.estado_id = 4) and pedidos.fecha > ?', tienda_activa.id, 31.days.ago)
+        .group(:producto_id)
+        .select('productos_solicitados.*, (sum(cantidad)/22) as total')
+        .order('total desc')
+        .includes(:producto)
+      scope = scope.where('pedidos.local_id = ?', current_user.local_activo.id) if current_user.tienda_activa.multiple_locales && current_user.local_activo
+      tat = scope.limit(5).to_a
+      [tat.map { |t| t.total.to_f.round(0) }, tat]
+    end
+%>
+<% cache(['stats_top_productos_html_v2', tienda_activa.id, local_id_cache, Date.current.to_s]) do %>
+<% if datos.present? %>
+  <div class="card">
+    <div class="card-body">
+      <div class="row">
+        <%= content_tag :span, nil, id: 'top-productos', data: { labels: tat.map { |t| t.producto.to_s }, datos: datos, max: datos.max, min: datos.max - datos.min } %>
+        <div class="col-12">
+          <h3 class="card-title">Top Productos Promedios por Día</h3>
+          <h6 class="card-subtitle">La cantidad promedio diario de productos de los últimos 30 días</h6>
+        </div>
+        <div class="col-12">
+          <div style="position: relative; height: 160px;"><canvas id="top-productos-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      if (!$('#top-productos').data('labels')) return;
+      new Chart(document.getElementById('top-productos-chart').getContext('2d'), {
+        type: 'bar',
+        data: { labels: $('#top-productos').data('labels'), datasets: [{ label: 'Cantidad Promedio', data: $('#top-productos').data('datos'), backgroundColor: 'rgba(0, 158, 251, 0.6)', borderColor: '#009efb', borderWidth: 1 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#eef0f2' } }, x: { grid: { color: '#eef0f2' } } } }
+      });
+    })();
+  </script>
+<% end %>
+<% end %>

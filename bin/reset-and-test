@@ -1,0 +1,114 @@
+#!/bin/bash
+
+# Reset & Run All Parallel Tests
+# This script handles the full cycle: docker reset, DB rebuild, run tests
+# Usage: ./bin/reset-and-test [unit|system|all|coverage]
+
+set -e
+
+# Safety check: never run in production
+if [ "$RAILS_ENV" = "production" ] || [ "$RACK_ENV" = "production" ]; then
+  echo -e "\033[0;31m❌ ABORT: Cannot run in production environment!\033[0m"
+  exit 1
+fi
+
+MODE="${1:-coverage}"
+MYSQL_OPTS="-u root -pmysqlroot -h 127.0.0.1 -P 3306"
+DB_COUNT=20
+
+# Auto-detect docker command (native docker or docker.exe for WSL2)
+if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+  COMPOSE="docker compose -f docker-compose.parallel.yml"
+elif command -v docker.exe &>/dev/null; then
+  COMPOSE="docker.exe compose -f docker-compose.parallel.yml"
+else
+  echo -e "\033[0;31m❌ ABORT: Docker not found. Install Docker or start Docker Desktop.\033[0m"
+  exit 1
+fi
+
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "${YELLOW}=== Kiosk: Reset & Run Tests (mode: ${MODE}) ===${NC}"
+echo ""
+
+# Step 1: Restart Docker containers
+echo -e "${YELLOW}[1/4] Restarting Docker containers...${NC}"
+$COMPOSE down 2>/dev/null || true
+$COMPOSE up -d 2>&1
+echo -e "${GREEN}  ✅ Containers started${NC}"
+
+# Step 2: Wait for MariaDB
+echo -e "${YELLOW}[2/4] Waiting for MariaDB...${NC}"
+for i in $(seq 1 30); do
+  if mysql $MYSQL_OPTS -e "SELECT 1" &>/dev/null; then
+    echo -e "${GREEN}  ✅ MariaDB ready${NC}"
+    break
+  fi
+  if [ "$i" -eq 30 ]; then
+    echo -e "${RED}  ❌ MariaDB not ready after 60s${NC}"
+    exit 1
+  fi
+  sleep 2
+done
+
+# Step 3: Dump fresh structure & rebuild test databases
+echo -e "${YELLOW}[3/4] Rebuilding ${DB_COUNT} test databases...${NC}"
+
+# Dump structure from development database
+echo "  Dumping structure from kiosk_development..."
+mysqldump $MYSQL_OPTS --no-data kiosk_development > db/structure.sql 2>/dev/null
+echo -e "  ${GREEN}structure.sql updated ($(wc -l < db/structure.sql) lines)${NC}"
+
+# Drop, create, and load all test databases
+for i in $(seq 1 $DB_COUNT); do
+  if [ "$i" -eq 1 ]; then
+    DB_NAME="kiosk_test"
+  else
+    DB_NAME="kiosk_test${i}"
+  fi
+  mysql $MYSQL_OPTS -e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET latin1 COLLATE latin1_swedish_ci;" 2>/dev/null
+  mysql $MYSQL_OPTS "${DB_NAME}" < db/structure.sql 2>/dev/null
+done
+echo -e "${GREEN}  ✅ ${DB_COUNT} databases ready${NC}"
+
+# Step 4: Verify Selenium Grid
+echo -e "${YELLOW}[4/4] Checking Selenium Grid...${NC}"
+for i in $(seq 1 15); do
+  if curl -sSf http://localhost:4444/status &>/dev/null; then
+    NODES=$(curl -sSf http://localhost:4444/status 2>/dev/null | python3 -c "import sys,json; print(len(json.load(sys.stdin)['value']['nodes']))" 2>/dev/null || echo "?")
+    echo -e "${GREEN}  ✅ Grid ready (${NODES} nodes)${NC}"
+    break
+  fi
+  if [ "$i" -eq 15 ]; then
+    echo -e "${RED}  ⚠️  Grid might not be ready yet (continuing anyway)${NC}"
+  fi
+  sleep 2
+done
+
+# Run tests
+echo ""
+echo -e "${YELLOW}=== Running tests: ${MODE} ===${NC}"
+echo ""
+
+case "$MODE" in
+  unit)
+    bundle exec rake parallel:unit
+    ;;
+  system)
+    bundle exec rake parallel:system
+    ;;
+  all)
+    bundle exec rake parallel:coverage_all
+    ;;
+  coverage)
+    bundle exec rake parallel:coverage_all
+    ;;
+  *)
+    echo -e "${RED}Unknown mode: ${MODE}${NC}"
+    echo "Usage: $0 [unit|system|all|coverage]"
+    exit 1
+    ;;
+esac

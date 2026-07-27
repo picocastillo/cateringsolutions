@@ -1,0 +1,62 @@
+services:
+  mariadb:
+    image: mariadb:10.11.9
+    container_name: mariadb_10_11_9
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: mysqlroot
+      MYSQL_USER: root
+      MYSQL_PASSWORD: mysqlroot
+      # Allow root to connect from any host
+      MYSQL_ROOT_HOST: '%'
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./mariadb_conf/my_custom.cnf:/etc/mysql/conf.d/my_custom.cnf:ro
+
+  redis:
+    image: redis:latest
+    container_name: redis_local
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - redis_data:/data
+
+  selenium:
+    image: selenium/standalone-chrome:4.9.0
+    container_name: selenium_chrome
+    restart: unless-stopped
+    ports:
+      - "4444:4444"  # Selenium WebDriver
+      - "7900:7900"  # VNC Server (noVNC web interface)
+      - "5900:5900"  # VNC Server (standard VNC client)
+    environment:
+      - SE_SCREEN_WIDTH=1600
+      - SE_SCREEN_HEIGHT=900
+      - VNC_NO_PASSWORD=1
+      - JAVA_OPTS=-Xmx2g -Xms1g
+      - SE_NODE_MAX_INSTANCES=10
+      - SE_NODE_MAX_SESSIONS=10
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /dev/shm:/dev/shm
+    shm_size: 4gb
+    mem_limit: 6g
+    memswap_limit: 6g
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 2G
+
+volumes:
+  mariadb_data:
+    driver: local
+  redis_data:
+    driver: local

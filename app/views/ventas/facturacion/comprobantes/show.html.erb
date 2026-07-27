@@ -1,0 +1,7 @@
+<% page title: @comprobante.to_s, raiz: 'Ventas', hojas: 'Detalles', id: 'show-comprobante', acciones: [link_to('Lista', comprobantes_path)].compact %>
+<div class="row">
+    <!-- Column -->
+    <div class="col-md-12" id="comprobante-container">
+        <%= render 'comprobante' %>
+    </div>
+</div>

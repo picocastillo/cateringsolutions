@@ -1,0 +1,47 @@
+<%# Doughnut churn breakdown chart. %>
+<% c = @analytics[:churn_counts] %>
+<% data = [c['activo'], c['en_riesgo'], c['inactivo'], c['perdido'], c['sin_pedidos']] %>
+<div class="card">
+  <div class="card-body">
+    <h3 class="card-title">Estado de Clientes</h3>
+    <h6 class="card-subtitle">Distribución según último pedido</h6>
+    <% if data.sum > 0 %>
+      <%= content_tag :span, nil, id: 'inicio-analytics-churn', data: {
+            labels: ['Activos', 'En Riesgo', 'Inactivos', 'Perdidos', 'Sin Pedidos'],
+            datos: data,
+            colors: ['#02af1f', '#ffc107', '#ff4d4d', '#343a40', '#adb5bd']
+          } %>
+      <div style="position: relative; height: 250px;"><canvas id="inicio-analytics-churn-chart"></canvas></div>
+      <script>
+        (function() {
+          var $churn = $('#inicio-analytics-churn');
+          if (!$churn.data('labels')) return;
+          new Chart(document.getElementById('inicio-analytics-churn-chart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+              labels: $churn.data('labels'),
+              datasets: [{ data: $churn.data('datos'), backgroundColor: $churn.data('colors'), borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: {
+                legend: { display: true, position: 'right' },
+                tooltip: {
+                  callbacks: {
+                    label: function(ctx) {
+                      var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                      var pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                      return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+                    }
+                  }
+                }
+              }
+            }
+          });
+        })();
+      </script>
+    <% else %>
+      <p class="text-muted text-center py-4">Sin clientes registrados.</p>
+    <% end %>
+  </div>
+</div>

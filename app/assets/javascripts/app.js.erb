@@ -1,0 +1,145 @@
+var Settings = function(app) {
+  this.app = app;
+};
+Settings.prototype.prefix = function() {
+  return "/settings/" + this.app.currentUser() + "/";
+};
+
+var AppURL = function() {};
+AppURL.prototype.updateWithParams = function(params, url) {
+  if (url === undefined) { url = location.pathname; }
+  history.replaceState({turbolinks: true}, null, $.param.querystring(url, params));
+};
+AppURL.prototype.updateWithFilters = function(container) {
+  if (container === undefined) { container = document; }
+  var page = $('.paginator .current', container).text();
+  var pageParam = page.length ? "page=" + page + "&" : "";
+  this.updateWithParams(pageParam + $('#new_q', container).serializeClosestForm());
+};
+AppURL.prototype.goTo = function(url) {
+  window.location = url;
+};
+
+// Tracks in-flight POSTs that mutate the cart, keyed by productoid. When the
+// same product is updated again before the previous request resolves, the
+// previous one is aborted and the new one supersedes it — so the server only
+// ever sees the latest desired quantity. The last params per productoid are
+// retained so we can fire a sendBeacon backstop on navigation/unload.
+var CartXhrTracker = function() {
+  this.xhrs = {};   // { productoid: jqXHR }
+  this.last = {};   // { productoid: { url, data } }
+};
+CartXhrTracker.prototype.send = function(productoid, url, data, doneCb) {
+  var self = this;
+  var prev = this.xhrs[productoid];
+  if (prev && prev.readyState !== 4) { try { prev.abort(); } catch (e) {} }
+  this.last[productoid] = { url: url, data: data };
+  var xhr = $.ajax({ url: url, type: 'POST', dataType: 'script', data: data });
+  this.xhrs[productoid] = xhr;
+  xhr.done(function() {
+    delete self.last[productoid];
+    if (typeof doneCb === 'function') { try { doneCb(); } catch (e) {} }
+  });
+  xhr.always(function() {
+    if (self.xhrs[productoid] === xhr) { delete self.xhrs[productoid]; }
+  });
+  return xhr;
+};
+CartXhrTracker.prototype.hasPending = function() {
+  for (var k in this.xhrs) { if (this.xhrs.hasOwnProperty(k)) return true; }
+  return false;
+};
+CartXhrTracker.prototype.flushAll = function(cb) {
+  var pending = [];
+  for (var k in this.xhrs) { if (this.xhrs.hasOwnProperty(k)) pending.push(this.xhrs[k]); }
+  if (!pending.length) { if (cb) cb(); return; }
+  // 3s safety cap so a stuck XHR never blocks navigation forever
+  var timer = setTimeout(function() { if (cb) { cb(); cb = null; } }, 3000);
+  $.when.apply($, pending).always(function() {
+    clearTimeout(timer);
+    if (cb) { cb(); cb = null; }
+  });
+};
+CartXhrTracker.prototype.beaconAll = function() {
+  if (!navigator.sendBeacon) return;
+  for (var pid in this.last) {
+    if (!this.last.hasOwnProperty(pid)) continue;
+    var entry = this.last[pid];
+    try {
+      var blob = new Blob([entry.data], { type: 'application/x-www-form-urlencoded' });
+      navigator.sendBeacon(entry.url, blob);
+    } catch (e) {}
+  }
+};
+
+var AppK = function() {
+  this.settings = new Settings(this);
+  this.url = new AppURL();
+  this.cartXhr = new CartXhrTracker();
+};
+
+AppK.prototype.onMount = function(selector, cb) {
+  $.onmount(selector, function() { cb.apply($(this)); });
+};
+
+AppK.prototype.init = function() {
+  $(document).on('turbolinks:before-render', function() {
+    $('script[data-client-info-name="MercadoPago-SDK-Javascript"]').remove();
+    $('#preference-container').remove();
+    $('.left-sidebar .slimScrollDiv').removeClass('slimScrollDiv').addClass('scroll-sidebar');
+    $('.select2-drop .select2-drop-mask, .form-group.select2 .select2-container, .form-group.select2_local .select2-container, .select2-hidden-accessible, .select2-drop-mask').remove();
+    $('.form-group.select2 input').removeClass('select2-offscreen');
+  });
+
+  $(document).on('turbolinks:before-cache', function() {
+    $('script[data-client-info-name="MercadoPago-SDK-Javascript"]').remove();
+    $('#preference-container').remove();
+  });
+
+  // Hold turbolinks navigation until in-flight cart writes finish, so a user
+  // who clicks +/- and immediately taps "Ir al Carrito" doesn't navigate before
+  // the last update lands on the server.
+  $(document).on('turbolinks:before-visit', function(event) {
+    if (!window.App.cartXhr.hasPending()) return;
+    var url = event.originalEvent && event.originalEvent.data && event.originalEvent.data.url;
+    if (!url) return;
+    event.preventDefault();
+    window.App.cartXhr.flushAll(function() { Turbolinks.visit(url); });
+  });
+
+  // Backstop for full reloads / data-turbolinks="false" links / tab close /
+  // mobile background: fire any in-flight cart writes as fire-and-forget via
+  // sendBeacon. The server's advisory lock + unique index makes this idempotent.
+  $(window).on('pagehide beforeunload', function() {
+    window.App.cartXhr.beaconAll();
+  });
+
+  $(document).on('turbolinks:load nested:fieldAdded', $.onmount);
+  $(document).on('show.bs.modal', '#form-modal', $.onmount);
+
+  // Fallback: when a link uses data-turbolinks="false" the new page is loaded
+  // by the browser as a full document. In production the deferred app bundle
+  // sometimes finishes parsing AFTER turbolinks:load has already fired, so the
+  // `$.onmount` binding above misses the initial mount and lazy-loaded panels
+  // (e.g. #opciones-del-dia, gbs-tabs, sliders) never initialise. Calling
+  // $.onmount() once on DOMContentLoaded (and again as a safety net on window
+  // load) guarantees handlers fire on every full reload. $.onmount tracks
+  // already-mounted DOM nodes internally so re-runs are idempotent.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { $.onmount(); });
+  } else {
+    $.onmount();
+  }
+  $(window).on('load', function() { $.onmount(); });
+};
+
+AppK.prototype.env = "<%= Rails.env %>";
+AppK.prototype.isTestEnv = function() { return this.env === 'test'; };
+AppK.prototype.onTestEnv = function(onTestValue, normalValue) {
+  return this.isTestEnv() ? onTestValue : normalValue;
+};
+AppK.prototype.currentUser = function() {
+  return $('#current_user').data('login');
+};
+
+window.App = new AppK();

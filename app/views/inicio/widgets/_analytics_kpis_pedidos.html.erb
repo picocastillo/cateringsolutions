@@ -1,0 +1,10 @@
+<%# Total Pedidos KPI tile (non-financiero admins only see this version). %>
+<% unless @analytics[:es_admin_financiero] %>
+<div class="card">
+  <div class="card-body text-center p-3">
+    <h6 class="text-muted mb-1" style="font-size: 11px;">Total Pedidos</h6>
+    <h3 class="mb-0" style="color: #009efb;"><%= @analytics[:total_pedidos] %></h3>
+    <small class="text-muted">confirmados + finalizados</small>
+  </div>
+</div>
+<% end %>

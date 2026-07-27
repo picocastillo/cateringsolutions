@@ -1,0 +1,48 @@
+<% if @validation_errors_by_pedido.present? %>
+  // Per-pedido option validation failed — show inline hints, disable MP button.
+  $("#preference-container-multiple").html('<button type="submit" class="mercadopago-button-disabled" disabled>Pagar con Mercado Pago</button>');
+
+  // Clear all hints first, then show errors only on the failing pedidos.
+  $('[id^="mp-payment-validation-hint-"]').hide().find('.hint-text').text('');
+
+  <% @validation_errors_by_pedido.each do |pid, errs| %>
+    var $h<%= pid %> = $('#mp-payment-validation-hint-<%= pid %>');
+    if ($h<%= pid %>.length) {
+      $h<%= pid %>.find('.hint-text').text(<%= raw errs.join(' ').to_json %>);
+      $h<%= pid %>.show();
+    }
+  <% end %>
+
+  // Show top-level summary alert above payment buttons.
+  if ($('#mp-multiple-validation-summary').length === 0) {
+    $('#preference-container-multiple').before(
+      '<div id="mp-multiple-validation-summary" class="alert alert-danger" style="background:#f8d7da;border:2px solid #f5c6cb;border-radius:8px;padding:10px 14px;font-size:0.88rem;color:#721c24;margin-bottom:10px;">' +
+      '<i class="fa fa-exclamation-circle mr-1"></i>Hay pedidos con datos incompletos. Revisalos antes de pagar.' +
+      '</div>'
+    );
+  }
+<% else %>
+  $('#mp-multiple-validation-summary').remove();
+  $("#preference-container-multiple").html("<%= j render 'pedidos/pedidos/mercado_button' %>");
+
+  if($('#mp-boton-container').length > 0) {
+    var pid = $('#mp-boton-container').data('pid');
+    var pk  = $('#mp-boton-container').data('pk');
+    if(pid.length > 0 && pk.length > 0) {
+      // Show processing state immediately — the MP checkout opens automatically
+      // via autoOpen:true so the user does not need to click a second button.
+      $('#mp-boton-container').html(
+        '<div style="text-align:center;padding:10px;font-weight:600;color:#6366f1;">' +
+        '<i class="mdi mdi-loading mdi-spin mr-2"></i>Redirigiendo a MercadoPago...</div>'
+      );
+      // Set testable flag BEFORE instantiating MercadoPago so specs can verify
+      // autoOpen behaviour regardless of whether the CDN SDK actually loads.
+      window.mpCheckoutAutoOpened = true;
+      var mp = new MercadoPago(pk, { locale: 'es-AR' });
+      mp.checkout({
+        preference: { id: pid },
+        autoOpen: true   // Opens checkout immediately — no second click needed
+      });
+    }
+  }
+<% end %>

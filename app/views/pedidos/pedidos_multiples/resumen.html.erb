@@ -1,0 +1,456 @@
+<%= content_for(:head, "<script src='https://sdk.mercadopago.com/js/v2'></script>".html_safe) %>
+<%
+  _ultimo_pedido_pendiente = @pedidos.select(&:pendiente?).last
+%>
+<% page title: "Resumen del grupo", id: 'resumen-multiple', raiz: 'Pedidos', hojas: 'Resumen',
+   acciones: [_ultimo_pedido_pendiente && edit_pedido_link(_ultimo_pedido_pendiente, 'Modificar', false)].compact %>
+
+<style>
+  #resumen-multiple .rm-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px 12px 0 0;
+    padding: 16px 20px;
+    color: #fff;
+  }
+  #resumen-multiple .rm-header *, #resumen-multiple .rm-header a { color: #fff !important; }
+  #resumen-multiple .rm-section {
+    background: #fefefe;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+  }
+  #resumen-multiple .rm-pedido-header {
+    border-radius: 8px 8px 0 0;
+    padding: 10px 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+  #resumen-multiple .rm-pedido-body {
+    border-radius: 0 0 8px 8px;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+  }
+  #resumen-multiple .rm-sidebar-total {
+    background: #fefefe;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 20px 25px;
+    margin-bottom: 16px;
+  }
+  #resumen-multiple .rm-dup-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 2px solid #fcd34d;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(245,158,11,0.12);
+  }
+  #resumen-multiple .rm-dup-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  #resumen-multiple .rm-dup-title {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: #92400e;
+    margin-bottom: 3px;
+  }
+  #resumen-multiple .rm-dup-body {
+    font-size: 0.83rem;
+    color: #b45309;
+    line-height: 1.45;
+  }
+</style>
+
+<div class="row">
+  <!-- Left: pedidos list -->
+  <div class="col-12 col-lg-8">
+    <!-- Group header (gradient, same as pedido show) -->
+    <%
+      primer_pedido = @pedidos.first
+      pedido_usuario = primer_pedido&.usuario
+      pedido_cuenta  = primer_pedido&.cuenta || @grupo.cuenta
+      pedido_cliente = pedido_cuenta&.cliente
+    %>
+    <% if pedido_usuario || pedido_cuenta %>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-bottom: none; border-radius: 12px 12px 0 0; padding: 10px 20px; display: flex; align-items: center; gap: 14px;">
+        <i class="mdi mdi-account-circle" style="font-size: 1.6rem; color: #6366f1; flex-shrink: 0;"></i>
+        <div style="line-height: 1.4;">
+          <% if pedido_usuario %>
+            <div style="font-weight: 700; font-size: 0.95rem; color: #1e293b;"><%= pedido_usuario.nombre_normalizado %></div>
+            <% cu = pedido_cuenta || pedido_usuario.cuenta %>
+            <% if cu %>
+              <div style="font-size: 0.78rem; color: #64748b;">
+                <%= cu.nombre %>
+                <% if pedido_cliente && cu.nombre != pedido_cliente.nombre %>
+                  &mdash; <%= pedido_cliente.nombre %>
+                <% end %>
+              </div>
+            <% end %>
+          <% elsif pedido_cuenta %>
+            <div style="font-weight: 700; font-size: 0.95rem; color: #1e293b;"><%= pedido_cuenta.nombre %></div>
+            <% if pedido_cliente && pedido_cuenta.nombre != pedido_cliente.nombre %>
+              <div style="font-size: 0.78rem; color: #64748b;"><%= pedido_cliente.nombre %></div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    <div class="rm-header d-flex align-items-center" style="margin-bottom: 0; border-radius: <%= (pedido_usuario || pedido_cuenta) ? '0' : '12px 12px 0 0' %>">
+      <i class="mdi mdi-calendar-multiple mr-3" style="font-size: 2.2rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);"></i>
+      <div style="line-height: 1.3;">
+        <h5 class="mb-0 font-weight-bold" style="font-size: 1.4rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+          Pedidos del grupo
+        </h5>
+        <span style="opacity: 0.85; font-size: 0.9rem; font-weight: 300;">
+          <%= @pedidos.count %> pedido<%= 's' if @pedidos.count != 1 %> &mdash;
+          <%= number_to_currency(@grupo.total, unit: '$', separator: ',', delimiter: '.') %> en total
+        </span>
+      </div>
+    </div>
+    <div class="rm-section">
+      <div style="padding: 16px 20px;">
+        <%
+          fechas_dup = @pedidos.map(&:fecha).compact.group_by(&:itself).select { |_, v| v.size > 1 }.keys
+        %>
+        <% if fechas_dup.any? %>
+          <div class="rm-dup-alert" role="alert">
+            <div class="rm-dup-icon">⚠️</div>
+            <div>
+              <div class="rm-dup-title">Hay pedidos con la misma fecha</div>
+              <div class="rm-dup-body">
+                Tenés más de un pedido para
+                <% fechas_dup.each do |f| %><strong><%= I18n.l(f, format: :long) %></strong><% end %>.
+                Si no es lo que deseás, revisá el grupo.
+              </div>
+            </div>
+          </div>
+        <% end %>
+        <% @pedidos.each do |pedido| %>
+          <% fecha_duplicada = fechas_dup.include?(pedido.fecha) %>
+          <%
+            tienda_color = pedido.tienda.color_barra_filtros.presence || '#667eea'
+            fecha_label  = pedido.fecha ? I18n.l(pedido.fecha, format: :long) : 'Sin fecha'
+          %>
+          <div style="border: <%= fecha_duplicada ? '2px solid #fcd34d' : '1px solid #e2e8f0' %>; border-radius: 10px; margin-bottom: 12px; overflow: hidden;">
+            <!-- Pedido header row -->
+            <div class="rm-pedido-header d-flex align-items-center justify-content-between"
+                 style="background: <%= fecha_duplicada ? 'linear-gradient(90deg, #fef3c755, #fffdf0)' : "linear-gradient(90deg, #{tienda_color}22, #fff)" %>;"
+                 data-toggle="collapse" data-target="#rm-acc-<%= pedido.id %>">
+              <div class="d-flex align-items-center" style="gap: 10px;">                <% if fecha_duplicada %>
+                  <span style="background: #f59e0b; color: #fff; border-radius: 6px; padding: 2px 7px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.03em;" title="Fecha duplicada">⚠ Dup.</span>
+                <% end %>                <span style="background: <%= tienda_color %>; color: #fff; border-radius: 6px; padding: 2px 8px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;" title="<%= pedido.tienda.nombre %>" data-toggle="tooltip">
+                  <%= pedido.tienda.iniciales %>
+                </span>
+                <span style="font-weight: 600; color: #2d3748; font-size: 0.95rem;">
+                  <i class="mdi mdi-calendar mr-1" style="color: #6366f1;"></i><%= fecha_label %>
+                </span>
+                <% if pedido.turno_entrega %>
+                  <span class="badge badge-light" style="font-size: 0.72rem;"><%= pedido.turno_entrega.nombre %></span>
+                <% end %>
+              </div>
+              <div class="d-flex align-items-center" style="gap: 12px;">
+                <span style="font-weight: 700; color: #2d3748; font-size: 1rem;">
+                  <%= number_to_currency(pedido.importe_total, unit: '$', separator: ',', delimiter: '.') %>
+                </span>
+                <i class="mdi mdi-chevron-down" style="color: #718096;"></i>
+              </div>
+            </div>
+
+            <!-- Pedido body (collapsible) -->
+            <div id="rm-acc-<%= pedido.id %>" class="collapse show rm-pedido-body">
+              <div style="padding: 12px 16px;">
+                <%
+                  turnos_disponibles = pedido.cuenta&.cliente&.turnos_activos&.to_a || []
+                %>
+                <% if turnos_disponibles.any? %>
+                  <% if turnos_disponibles.size == 1 %>
+                    <% solo_turno = turnos_disponibles.first %>
+                    <% if pedido.turno_entrega_id != solo_turno.id %>
+                      <div data-auto-assign-turno="<%= solo_turno.id %>" data-pedido-id="<%= pedido.id %>"></div>
+                    <% end %>
+                  <% else %>
+                    <div class="mb-3 rm-option-row" style="display: flex; align-items: flex-end; gap: 8px;">
+                      <div style="flex: 1;">
+                        <%= simple_form_for pedido, url: '', method: :get do |f| %>
+                          <%= f.input :turno_entrega_id, label: 'Turno de Entrega',
+                                as: :select,
+                                collection: turnos_disponibles.map { |t| [t.descripcion_completa, t.id] },
+                                prompt: 'Seleccione un turno...',
+                                selected: pedido.turno_entrega_id,
+                                wrapper_html: { class: 'col-12 mt-0 mb-0 text-left' },
+                                input_html: { id: "turno_entrega_selector_#{pedido.id}", data: { pedido_id: pedido.id } } %>
+                        <% end %>
+                      </div>
+                      <% if @pedidos.size > 1 && pedido.turno_entrega_id.present? %>
+                        <button type="button" class="rm-copy-to-all btn btn-sm btn-outline-secondary"
+                                data-field="turno_entrega_id" data-pedido-id="<%= pedido.id %>"
+                                title="Copiar este turno a todos los pedidos del grupo"
+                                style="white-space: nowrap; padding: 4px 8px; font-size: 0.75rem;">
+                          <i class="mdi mdi-content-copy mr-1"></i>Aplicar a todos
+                        </button>
+                      <% end %>
+                    </div>
+                  <% end %>
+                <% end %>
+
+                <% if pedido.cuenta&.cuenta_corriente_habilitada? && pedido.cuenta&.cliente&.horarios_de_entrega? && pedido.tienda.horarios_de_entrega? %>
+                  <div class="mb-3 rm-option-row" style="display: flex; align-items: flex-end; gap: 8px;">
+                    <div style="flex: 1;">
+                      <%= simple_form_for pedido, url: '', method: :get do |f| %>
+                        <%= f.input :horario_id, label: 'Horario',
+                              as: :select,
+                              collection: Pedidos::Horario.active,
+                              prompt: true,
+                              selected: pedido.horario_id,
+                              wrapper_html: { class: 'col-12 mt-0 mb-0 text-left' },
+                              input_html: { id: "horario_selector_#{pedido.id}", data: { pedido_id: pedido.id } } %>
+                      <% end %>
+                    </div>
+                    <% if @pedidos.size > 1 && pedido.horario_id.present? %>
+                      <button type="button" class="rm-copy-to-all btn btn-sm btn-outline-secondary"
+                              data-field="horario_id" data-pedido-id="<%= pedido.id %>"
+                              title="Copiar este horario a todos los pedidos del grupo"
+                              style="white-space: nowrap; padding: 4px 8px; font-size: 0.75rem;">
+                        <i class="mdi mdi-content-copy mr-1"></i>Aplicar a todos
+                      </button>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <% if pedido.cuenta&.cliente&.permitir_envios_a_domicilio? || pedido.cuenta&.cliente&.usuario_puede_elegir_cuenta? %>
+                  <div class="mb-2">
+                    <div class="rm-option-row" style="display: flex; align-items: flex-end; gap: 8px;">
+                      <div style="flex: 1;">
+                        <%= simple_form_for pedido, url: '', method: :get do |f| %>
+                          <%= f.input :enviar_a_id, label: 'Enviar a', as: :select,
+                                collection: pedido.opciones_de_envio,
+                                prompt: false,
+                                wrapper_html: { class: 'col-12 mt-0 mb-0 text-left' },
+                                input_html: { id: "enviar_a_selector_#{pedido.id}", data: { pedido_id: pedido.id } } if pedido.usuario %>
+                        <% end %>
+                      </div>
+                      <% if @pedidos.size > 1 && pedido.usuario %>
+                        <button type="button" class="rm-copy-to-all btn btn-sm btn-outline-secondary"
+                                data-field="enviar_a_id" data-pedido-id="<%= pedido.id %>"
+                                title="Copiar este destino a todos los pedidos del grupo"
+                                style="white-space: nowrap; padding: 4px 8px; font-size: 0.75rem;">
+                          <i class="mdi mdi-content-copy mr-1"></i>Aplicar a todos
+                        </button>
+                      <% end %>
+                    </div>
+                    <div id="direccion-envio-wrap-<%= pedido.id %>" style="<%= pedido.envio_a_domicilio ? '' : 'display:none;' %> padding: 0 15px;">
+                      <input type="text"
+                             id="direccion_envio_<%= pedido.id %>"
+                             class="form-control form-control-sm"
+                             placeholder="Dirección de envío a domicilio"
+                             data-pedido-id="<%= pedido.id %>"
+                             value="<%= pedido.direccion_envio %>">
+                    </div>
+                  </div>
+                <% end %>
+
+                <%# Inline per-pedido validation hint (populated by generar_pago_ml_multiple JS response) %>
+                <div id="mp-payment-validation-hint-<%= pedido.id %>"
+                     style="display: none; margin: 8px 0 4px; padding: 8px 12px;
+                            background-color: #f8d7da; border: 2px solid #f5c6cb; border-radius: 6px;
+                            color: #721c24; font-size: 13px; font-weight: 500;">
+                  <i class="fa fa-exclamation-circle" style="margin-right: 6px;"></i>
+                  <span class="hint-text"></span>
+                </div>
+
+                <table class="table table-sm mb-0" style="font-size: 0.88rem;">
+                  <thead>
+                    <tr style="border-bottom: 2px solid #e2e8f0;">
+                      <th style="font-weight: 600; color: #4a5568;">Producto</th>
+                      <th class="text-center" style="font-weight: 600; color: #4a5568;">Cant.</th>
+                      <th class="text-right" style="font-weight: 600; color: #4a5568;">Precio</th>
+                      <th class="text-right" style="font-weight: 600; color: #4a5568;">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% pedido.productos_solicitados.each do |ps| %>
+                      <tr>
+                        <td style="color: #2d3748;"><%= ps.nombre_carrito %></td>
+                        <td class="text-center" style="color: #4a5568;"><%= ps.cantidad %></td>
+                        <td class="text-right" style="color: #4a5568;"><%= number_to_currency(ps.precio_efectivo, unit: '$', separator: ',', delimiter: '.') %></td>
+                        <td class="text-right font-weight-bold" style="color: #2d3748;"><%= number_to_currency(ps.precio_efectivo * ps.cantidad, unit: '$', separator: ',', delimiter: '.') %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="3" class="text-right" style="font-weight: 700; color: #4a5568; border-top: 2px solid #e2e8f0; padding-top: 8px;">Total del día</td>
+                      <td class="text-right" style="font-weight: 800; color: #6366f1; border-top: 2px solid #e2e8f0; padding-top: 8px; font-size: 1rem;"><%= number_to_currency(pedido.importe_total, unit: '$', separator: ',', delimiter: '.') %></td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                <%# ── Stock insuficiente ── %>
+                <% _sin_stock = (@productos_sin_stock || {})[pedido.id] || [] %>
+                <% if _sin_stock.any? %>
+                  <div class="alert alert-warning mt-3 mb-2" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 15px;">
+                    <div style="font-weight: 600; color: #856404; font-size: 0.88rem; margin-bottom: 8px;">
+                      <i class="fas fa-exclamation-triangle mr-1"></i>Stock insuficiente
+                    </div>
+                    <% _sin_stock.each do |item| %>
+                      <div style="font-size: 0.82rem; color: #856404; padding: 3px 0; border-bottom: 1px solid #ffeeba;">
+                        <strong><%= item[:producto].nombre %></strong>
+                        &mdash; Solicitado: <strong><%= item[:solicitado] %></strong> |
+                        Disponible: <strong style="color: <%= item[:disponible] == 0 ? '#dc3545' : '#e07b00' %>;"><%= item[:disponible] %></strong>
+                      </div>
+                    <% end %>
+                    <% if can?(:re_edit, pedido) %>
+                      <div class="mt-2">
+                        <%= link_to 'Modificar pedido', edit_pedido_path(pedido), class: 'btn btn-warning btn-sm', style: 'font-size: 0.8rem;' %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <%# ── Límite de compra excedido ── %>
+                <% if pedido.pendiente? && pedido.limite_compra_excedido? %>
+                  <div class="alert alert-danger mt-2 mb-2" style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 15px; font-size: 0.88rem;">
+                    <i class="fa fa-exclamation-circle mr-1"></i>
+                    <strong><%= pedido.mensaje_limite_compra_excedido %></strong>
+                    <p class="mb-0 mt-1" style="font-size: 0.82em;">Reducí las cantidades o eliminá productos para continuar.</p>
+                  </div>
+                <% end %>
+
+                <%# ── Cupón ── %>
+                <% if pedido.pendiente? %>
+                  <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e0;">
+                    <% if pedido.cupon.present? %>
+                      <div style="display: flex; align-items: center; justify-content: space-between; background: #f0fff4; padding: 8px 12px; border-radius: 8px; border: 1px solid #c6f6d5;">
+                        <span style="color: #38a169; font-weight: 500; font-size: 0.88rem;">
+                          <i class="fa fa-check-circle mr-1"></i>
+                          Cupón <strong><%= pedido.cupon.codigo %></strong> aplicado (<%= pedido.cupon.descuento_descripcion %>)
+                        </span>
+                        <a href="#" class="rm-quitar-cupon-btn" data-pedido-id="<%= pedido.id %>" style="color: #e53e3e; font-size: 0.85em; text-decoration: none; font-weight: 500;">
+                          <i class="fa fa-times mr-1"></i>Eliminar
+                        </a>
+                      </div>
+                    <% else %>
+                      <div style="display: flex; align-items: flex-end; gap: 8px;">
+                        <div style="flex: 1;">
+                          <label style="font-size: 0.8em; color: #718096; margin-bottom: 3px; display: block;">
+                            <i class="fa fa-tag mr-1"></i>Código de cupón
+                          </label>
+                          <input type="text" id="cupon_codigo_input_<%= pedido.id %>" placeholder="Código..." maxlength="20"
+                            style="width: 100%; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.88em; text-transform: uppercase;">
+                        </div>
+                        <button type="button" class="rm-aplicar-cupon-btn btn btn-sm btn-outline-success"
+                                data-pedido-id="<%= pedido.id %>"
+                                style="padding: 6px 12px; border-radius: 6px; font-weight: 500; white-space: nowrap;">
+                          Aplicar
+                        </button>
+                      </div>
+                      <div id="cupon-error-<%= pedido.id %>" style="display: none; color: #e53e3e; font-size: 0.82em; margin-top: 4px;"></div>
+                    <% end %>
+                  </div>
+                <% end %>
+
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right sidebar: total + payment -->
+  <div class="col-12 col-lg-4">
+    <div style="position: sticky; top: 90px;">
+      <!-- Total breakdown -->
+      <div class="rm-sidebar-total">
+        <h5 style="font-weight: 700; color: #2d3748; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+          <i class="mdi mdi-receipt" style="color: #6366f1;"></i>Total del grupo
+        </h5>
+        <% @pedidos.each do |p| %>
+          <div class="d-flex justify-content-between" style="font-size: 0.9rem; margin-bottom: 8px; color: #4a5568;">
+            <span style="display: flex; align-items: center; gap: 5px;">
+              <i class="mdi mdi-calendar" style="color: #6366f1; font-size: 0.8rem;"></i>
+              <%= I18n.l(p.fecha, format: '%a %-d %b').delete('.').titleize if p.fecha %>
+              <span style="background: <%= p.tienda.color_barra_filtros.presence || '#667eea' %>; color: #fff; border-radius: 4px; padding: 1px 5px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.03em;"><%= p.tienda.iniciales %></span>
+            </span>
+            <span style="font-weight: 600; color: #2d3748;"><%= number_to_currency(p.importe_total, unit: '$', separator: ',', delimiter: '.') %></span>
+          </div>
+        <% end %>
+        <%
+          _total_descuentos = @pedidos.sum { |p|
+            if p.tiene_descuento_cupon?
+              p.importe_descuento_cupon.to_f
+            elsif p.tiene_descuento_vm?
+              p.importe_descuento_vm.to_f
+            else
+              0.0
+            end
+          }
+        %>
+        <% if _total_descuentos > 0 %>
+          <div class="d-flex justify-content-between" style="font-size: 0.88rem; margin-bottom: 8px; color: #38a169;">
+            <span><i class="fa fa-tag mr-1" style="font-size: 0.8rem;"></i>Descuentos</span>
+            <span style="font-weight: 600;">-<%= number_to_currency(_total_descuentos, unit: '$', separator: ',', delimiter: '.') %></span>
+          </div>
+        <% end %>
+        <div style="border-top: 2px solid #e2e8f0; margin: 12px 0 10px;"></div>
+        <div class="d-flex justify-content-between">
+          <span style="font-weight: 700; font-size: 1.1rem; color: #2d3748;">Total</span>
+          <span style="font-weight: 800; font-size: 1.3rem; color: #6366f1;"><%= number_to_currency(@grupo.total, unit: '$', separator: ',', delimiter: '.') %></span>
+        </div>
+      </div>
+
+      <!-- Payment actions -->
+      <div id="preference-container-multiple">
+        <% pedidos_pendientes = @pedidos.select(&:pendiente?) %>
+        <% _hay_sin_stock = (@productos_sin_stock || {}).any? { |pid, items| pedidos_pendientes.map(&:id).include?(pid) && items.any? } %>
+        <% _hay_limite_excedido = pedidos_pendientes.any?(&:limite_compra_excedido?) %>
+        <% if @grupo.abierto? && pedidos_pendientes.any? %>
+          <% if _hay_sin_stock || _hay_limite_excedido %>
+            <div class="alert alert-warning mb-3" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; color: #856404;">
+              <i class="fas fa-exclamation-triangle mr-1"></i>
+              <% if _hay_sin_stock %>Hay productos sin stock suficiente.<% end %>
+              <% if _hay_limite_excedido %>Se superó el límite de compra en algún pedido.<% end %>
+              Revisá los pedidos antes de finalizar.
+            </div>
+          <% end %>
+          <% if pedidos_pendientes.any? { |p| can?(:pagar_mercadopago, p) } && !_hay_sin_stock %>
+            <%= button_to generar_pago_ml_multiple_pedido_multipl_path(@grupo),
+                  method: :post,
+                  remote: true,
+                  class: 'btn btn-success btn-lg btn-block waves-effect waves-light',
+                  style: 'border-radius: 12px; font-weight: 600; padding: 12px; margin-bottom: 8px;',
+                  data: { disable_with: 'Generando pago...' } do %>
+              <i class="mdi mdi-credit-card-outline mr-2"></i>Pagar con Mercado Pago
+            <% end %>
+          <% end %>
+          <% if pedidos_pendientes.any? { |p| p.cuenta&.cuenta_corriente_habilitada? } && !_hay_limite_excedido %>
+            <%= button_to finalizar_multiple_pedido_multipl_path(@grupo),
+                  method: :post,
+                  class: 'btn btn-primary btn-lg btn-block waves-effect waves-light',
+                  style: 'border-radius: 12px; font-weight: 600; padding: 12px;',
+                  data: { confirm: '¿Finalizar todos los pedidos del grupo?', disable_with: 'Finalizando...' } do %>
+              <i class="mdi mdi-check-circle-outline mr-2"></i>Finalizar todos
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+
+      <!-- MP payment hint (shown by JS after MP preference loads) -->
+      <div id="mp-payment-hint-template" style="display: none; margin-top: 10px; padding: 10px 15px; background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 6px; color: #856404; font-size: 14px; font-weight: 500; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <i class="fa fa-exclamation-triangle" style="margin-right: 8px; font-size: 16px;"></i>
+        <strong>Pago pendiente:</strong> Presione el botón de MercadoPago para completar su compra.
+        <br>
+        <small style="color: #6c757d; font-size: 12px; margin-top: 4px; display: block;">
+          <i class="fa fa-clock-o" style="margin-right: 4px;"></i>Si ya realizó el pago, el estado se actualizará automáticamente en unos minutos.
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+

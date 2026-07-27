@@ -1,0 +1,20 @@
+<% if @productos_favoritos.present? %>
+  <div class="m-t-20" style="padding: 0 15px;">
+    <h4 class="card-title">Productos favoritos históricos</h4>
+    <div style="position: relative; height: <%= [@productos_favoritos.size * 45 + 60, 140].max %>px;">
+      <canvas id="chart-productos-favoritos"
+        data-labels="<%= @productos_favoritos.map(&:first).to_json %>"
+        data-datos="<%= @productos_favoritos.map { |_, qty| qty.to_i }.to_json %>"></canvas>
+    </div>
+  </div>
+<% end %>
+<% if @productos_favoritos_3m.present? %>
+  <div class="m-t-20" style="padding: 0 15px;">
+    <h4 class="card-title">Productos favoritos últimos 3 meses</h4>
+    <div style="position: relative; height: <%= [@productos_favoritos_3m.size * 45 + 60, 140].max %>px;">
+      <canvas id="chart-productos-favoritos-3m"
+        data-labels="<%= @productos_favoritos_3m.map(&:first).to_json %>"
+        data-datos="<%= @productos_favoritos_3m.map { |_, qty| qty.to_i }.to_json %>"></canvas>
+    </div>
+  </div>
+<% end %>

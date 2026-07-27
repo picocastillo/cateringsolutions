@@ -1,0 +1,17 @@
+<%= modal 'form-modal', title: @categoria.new_record? ? 'Nuevo Categoría' : "Editando Categoría #{@categoria}" do %>
+  <%= simple_form_for @categoria, remote: true do |f| %>
+    <%= f.error_messages %>
+    <%= f.hidden_field :tienda_id %>
+    <%= f.input :menu_diario, as: :boolean, wrapper_html: { class: 'col-sm-6' }, input_html: { class: 'confirmado-finalizado', checked: @categoria.menu_diario }, hint: 'Utilizado para crear Menús Diarios' if tienda_activa.carrito_de_compras? %>
+    <%= f.input :nombre, as: :string, wrapper_html: { class: tienda_activa.carrito_de_compras? ? 'col-sm-6' : 'col-sm-12' } %>
+    <%= f.input :descripcion, as: :string, wrapper_html: { class: 'col-sm-12' } %>
+    <%= f.input :stock_activo, as: :boolean, wrapper_html: { class: 'col-sm-12' }, hint: 'Si está activo, se incluirá en la gestión de stock' %>
+    <%= f.input :vender_en_carrito, as: :boolean, wrapper_html: { class: 'col-sm-12' }, hint: 'Si está activo, los productos de esta categoría se muestran en el panel "Más Productos" del carrito.' if tienda_activa.carrito_de_compras? && tienda_activa.muestra_mas_productos_por_categoria? %>
+    <div class="col-md-12">
+      <%= f.submit (@categoria.new_record? ? 'Crear' : "Guardar"), class: "btn btn-success waves-effect waves-light m-r-10" %>
+      <%= link_to('Eliminar', categoria_path(@categoria), class: "btn btn-danger waves-effect waves-light m-r-10", method: :delete, remote: true, data: {confirm: "Está seguro que desea eliminar el categoria '#{@categoria}'?", toggle: 'tooltip', "original-title" => 'Eliminar' }) if !@categoria.new_record? && can?(:destroy, @categoria)  %>
+      <%= link_to('Cerrar', nil, class: "btn btn-default waves-effect waves-light m-r-10", data: {dismiss: 'modal'}) %>
+    </div>
+  <% end %>
+
+<% end %>

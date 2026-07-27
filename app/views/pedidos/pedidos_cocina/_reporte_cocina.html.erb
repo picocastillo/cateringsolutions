@@ -1,0 +1,53 @@
+<div class="message-box contact-box ajax-data-container">
+    <div class="message-widget contact-widget">
+      <% if @pedidos_a_cocinar.present? %>
+        <% grouped_by_cliente = @pedidos_a_cocinar.group_by{|x| x.cuenta.cliente}.sort_by{|cliente, pedidos| cliente.to_s} %>
+        
+        <table class="table table-sm stylish-table mb-0">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Cuentas</th>
+              <th class="text-center">Pedidos</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% grouped_by_cliente.each do |cliente, pedidos_cliente| %>
+              <% pedidos_por_cuenta = pedidos_cliente.group_by(&:cuenta).sort_by{|cuenta, _| cuenta.nombre} %>
+              <% single_cuenta = pedidos_por_cuenta.count == 1 && pedidos_por_cuenta.first.first.nombre == cliente.nombre %>
+              <tr>
+                <td<%= " rowspan=#{pedidos_por_cuenta.count}".html_safe if !single_cuenta && pedidos_por_cuenta.count > 1 %>>
+                  <strong><%= cliente.nombre %></strong>
+                </td>
+                <% if single_cuenta %>
+                  <td></td>
+                  <td class="text-center"><%= pedidos_cliente.count %></td>
+                <% else %>
+                  <td><%= pedidos_por_cuenta.first.first.nombre %></td>
+                  <td class="text-center"><%= pedidos_por_cuenta.first.second.count %></td>
+                <% end %>
+              </tr>
+              <% unless single_cuenta %>
+                <% pedidos_por_cuenta.drop(1).each do |cuenta, pedidos_cuenta| %>
+                  <tr>
+                    <td><%= cuenta.nombre %></td>
+                    <td class="text-center"><%= pedidos_cuenta.count %></td>
+                  </tr>
+                <% end %>
+              <% end %>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2"><strong>Total de pedidos</strong></td>
+              <td class="text-center"><strong><%= @pedidos_a_cocinar.to_a.count %></strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      <% else %>
+        <div style="text-align:center">
+          <h5>No hay pedidos.</h5>
+        </div>
+      <% end %>
+    </div>
+</div>

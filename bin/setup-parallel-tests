@@ -1,0 +1,93 @@
+#!/bin/bash
+
+# Parallel Testing Setup Script for Kiosk
+# This script sets up everything needed for parallel test execution
+
+set -e
+
+echo "🚀 Kiosk Parallel Testing Setup"
+echo "================================"
+echo ""
+
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Check if bundle is available
+if ! command -v bundle &> /dev/null; then
+    echo -e "${RED}❌ Bundler not found. Please install bundler first.${NC}"
+    exit 1
+fi
+
+echo -e "${YELLOW}📦 Step 1: Installing gems (including parallel_tests)...${NC}"
+bundle install
+
+echo ""
+echo -e "${YELLOW}🐳 Step 2: Starting Selenium Grid with 10 Chrome nodes...${NC}"
+docker-compose -f docker-compose.parallel.yml up -d
+
+echo ""
+echo -e "${YELLOW}⏳ Waiting for Selenium Grid to be ready...${NC}"
+sleep 15
+
+# Check if hub is ready
+if curl -sSf http://localhost:4444/status > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Selenium Grid is ready!${NC}"
+else
+    echo -e "${RED}⚠️  Warning: Selenium Grid might not be fully ready yet${NC}"
+fi
+
+echo ""
+echo -e "${YELLOW}🗄️  Step 3: Dropping and recreating 40 test databases...${NC}"
+
+# Drop ALL test databases (including extras)
+echo "Cleaning up all existing test databases..."
+for i in {1..50}; do
+  if [ $i -eq 1 ]; then
+    DB_NAME="kiosk_test"
+  else
+    DB_NAME="kiosk_test${i}"
+  fi
+  mysql -u root -h localhost -e "DROP DATABASE IF EXISTS \`${DB_NAME}\`;" 2>/dev/null || true
+done
+
+echo ""
+echo "Creating fresh databases..."
+for i in {1..40}; do
+  if [ $i -eq 1 ]; then
+    DB_NAME="kiosk_test"
+  else
+    DB_NAME="kiosk_test${i}"
+  fi
+  mysql -u root -h localhost -e "CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || true
+  echo "Created ${DB_NAME}"
+done
+
+echo ""
+echo "Loading structure into all databases..."
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+  if [ $i -eq 1 ]; then
+    export TEST_ENV_NUMBER=""
+  else
+    export TEST_ENV_NUMBER=$i
+  fi
+  echo "Loading structure into kiosk_test${TEST_ENV_NUMBER}..."
+  RAILS_ENV=test bundle exec rake db:structure:load 2>&1 | grep -v "^$" > /dev/null || true
+done
+
+echo ""
+echo -e "${GREEN}✅ Parallel testing setup complete!${NC}"
+echo ""
+echo "📊 Available commands:"
+echo "  rake parallel:spec                 - Run all tests (20 workers)"
+echo "  rake parallel:unit                 - Run unit tests only (20 workers)"
+echo "  rake parallel:system               - Run system tests only (10 workers)"
+echo "  rake parallel:coverage_all         - Run all tests with coverage"
+echo "  rake parallel:docker:status        - Check Selenium Grid status"
+echo "  rake parallel:docker:logs          - View Selenium Grid logs"
+echo ""
+echo "🌐 Selenium Grid Console: http://localhost:4444/ui"
+echo ""
+echo -e "${GREEN}Happy testing! 🎉${NC}"

@@ -1,0 +1,12 @@
+<div class="modern-primary-button">
+<% if @pedido.en_grupo? && @pedido.pedido_multiple.pedidos.count > 1 %>
+  <%= link_to resumen_pedido_multipl_path(@pedido.pedido_multiple),
+        class: "boton-aceptar-pedido btn btn-success full-width confirmar",
+        style: "white-space: nowrap;",
+        data: { disable_with: "Procesando..." } do %>
+    Ver grupo &amp; Pagar <i class="fa fa-angle-right"></i>
+  <% end %>
+<% else %>
+  <a class="boton-aceptar-pedido btn btn-success full-width confirmar<%= ' disabled' unless (can?(:pagar_mercadopago, @pedido) || can?(:aceptar, @pedido))  %>" href="/pedidos/<%= @pedido.id %>/comprar" style="white-space: nowrap;"  data-disable-with="Procesando...">Ir al Carrito <i class="fa fa-angle-right"></i> </a>
+<% end %>
+</div>

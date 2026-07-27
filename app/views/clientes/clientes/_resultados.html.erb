@@ -1,0 +1,16 @@
+<div class="card-body collapse show">
+  <div class="table-responsive">
+    <%= table_for @clientes, id: 'clientes' do |t| %>
+      <% t.column(:nombre) { |t| link_to discontinuado(t, t.nombre), t } %>
+      <% t.column('Corte Cliente', class: 'hidden-md-down') { |t|
+        activas = t.cuentas_activas
+        todas_override = activas.present? && activas.all? { |c| c.horario_corte_pedidos.present? }
+        todas_override ? content_tag(:s, t.horario_corte_pedidos) : t.horario_corte_pedidos
+      } %>
+      <% t.column('Corte Cuentas', class: 'hidden-md-down') { |t| t.cuentas_activas.map { |c| "#{c.nombre}: #{c.hora_corte_efectiva}" }.join(', ') } %>
+      <% t.column(:activo, class: 'center hidden-md-down')  { |t| etiqueta_activo t }%>
+      <% t.actions { |t| [edit_link(t, 'Editar'), link_to_activate(t)]} %>
+    <% end %>
+  </div>
+</div>
+<%= paginador @clientes %>

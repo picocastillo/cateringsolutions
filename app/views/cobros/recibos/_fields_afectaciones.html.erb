@@ -1,0 +1,40 @@
+<% if @recibo.cuenta_id %>
+  <% if @recibo.afectaciones.any? %>
+    <%= simple_nested_fields_for @recibo do |f| %>
+      <div class="cuerpo">
+        <div style="max-height: 400px;overflow-y:scroll;" class="mbn">
+          <table class="table-responsive afectaciones">
+            <thead>
+              <tr>
+                <th width="30%">Cuenta</th>
+                <th width="20%">Comprobante</th>
+                <th width="20%">Vencimiento</th>
+                <th width="15%" class="text-right">Saldo Comprobante</th>
+                <th width="15%" class="text-right">Importe Imputado</th>
+                <th width="15%" class="text-right">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+            <%= f.fields_for :afectaciones do |fi| %>
+              <% a = fi.object.afectado %>
+              <tr class="<%= 'vencido' if a.vencido? %>">
+                <%= fi.hidden_field :afectado_id %>
+                <td><%= link_to(a.cuenta, cliente_path(a.cuenta.cliente)) %></td>
+                <td><%= link_to(a, comprobante_path(a)) %></td>
+                <td class="text-center"><%= a.fecha_vencimiento %></td>
+                <td class="text-right"><%= a.total %></td>
+                <td class="text-right"><%= fi.object.importe %></td>
+                <td class="text-right saldo"><%= a.saldo - fi.object.importe %><%= fi.hidden_field :importe, size: 5 %></td>
+              </tr>
+            <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    No se encontraron comprobantes pendientes para esta cuenta.
+  <% end %>
+<% else %>
+  Seleccione una cuenta antes de afectar comprobantes.
+<% end %>

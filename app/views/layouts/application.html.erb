@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<% inside = (logged_in? && !current_page?(new_session_path) && current_user) %>
+<html>
+  <head>
+    <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
+    <link rel="shortcut icon" href="/<%= tienda_activa ? tienda_activa.dominio : 'favicon' %>.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <title><%= content_for?(:title) ? "#{yield(:title)} - " : '' %><%= tienda_activa ? tienda_activa.nombre : 'Catering Solutions' %></title>
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <% operador = current_user && !current_user.cliente? %>
+    <%= stylesheet_link_tag 'fonts/themify-icons', media: 'all', 'data-turbolinks-track': 'reload' if current_user %>
+    <%= stylesheet_link_tag 'fonts/simple-line-icons', media: 'all', 'data-turbolinks-track': 'reload' if operador %>
+    <%= stylesheet_link_tag 'swiper', media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= stylesheet_link_tag 'temas/claro', media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= stylesheet_link_tag 'temas/sidebar_modern', media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= stylesheet_link_tag 'temas/adds_on', media: 'all', 'data-turbolinks-track': 'reload' if operador %>
+    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
+    <%= javascript_include_tag 'adds_on', 'data-turbolinks-track': 'reload', defer: true if operador %>
+
+    <%= yield :head %>
+    <%= turbolinks_cache_control_meta_tag %>
+  </head>
+<% if tienda_activa %>
+  <style>
+  <% if tienda_activa.color_barra_superior.present? %>
+    .barra-superior {
+      background:<%= tienda_activa.color_barra_superior %>!important;
+    }
+  <% end %>
+  <% if tienda_activa.id == 1 || tienda_activa.id == 3 %>
+    .light-logo {
+      max-width: 150px;
+      margin-top: -5px;
+    }
+  <% end %>
+  <% if tienda_activa.id == 2 %>
+    .light-logo {
+      max-width: 100px;
+      margin-top: -5px;
+    }
+  <% end %>
+
+    <% if tienda_activa.id != 1 %>
+    .topbar .navbar-light .navbar-nav .nav-item > a.nav-link {
+      color: #ffffff !important;
+    }
+  <% end %>
+
+  <% if tienda_activa.color_links.present? %>
+      .page-wrapper a:not(.btn):not(.acciones-buttons a):not(.adds-buttons a) {
+          color: <%= tienda_activa.color_links %>;
+        }
+    <% end %>
+    <% if tienda_activa.color_links_hover.present? %>
+      .page-wrapper a:not(.btn):not(.acciones-buttons a):not(.adds-buttons a):hover {
+        color: <%= tienda_activa.color_links_hover %>;
+      }
+    <% end %>
+    <% if tienda_activa.color_titulo.present? %>
+      .text-themecolor {
+        color: <%= tienda_activa.color_titulo %>!important;
+      }
+    <% end %>
+    <% if tienda_activa.color_de_menu.present? %>
+      .sidebar-nav ul li a.active::before {
+        background: <%= tienda_activa.color_de_menu %>!important;
+      }
+      .sidebar-nav ul li a.active i {
+        color: <%= tienda_activa.color_de_menu %>!important;
+      }
+      .sidebar-nav.user-sidebar-nav > ul > li > a:hover > i,
+      .sidebar-nav.user-sidebar-nav > ul > li > a.active > i {
+        color: <%= tienda_activa.color_de_menu %>!important;
+      }
+    <% end %>
+
+    <% if tienda_activa.color_barra_filtros.present? %>
+      .bg-info {
+        background: <%= tienda_activa.color_barra_filtros %>!important;
+      }
+    <% end %>
+  </style>
+<% end %>
+
+
+  <body class="fix-header fix-sidebar card-no-border mini-sidebar resizable" id="<%= yield :page_id %>" <% if tienda_activa.color_de_fondo.present? %>style="background:<%= tienda_activa.color_de_fondo %>!important"<% end %> <% if current_user && !current_user.cliente? %>data-servicio-impresion="<%= current_user.servicio_de_impresion.name %>"<% end %>>
+    <% if inside %>
+    <% if session.delete(:print_on_load) %>
+      <div id="print_on_load_required">
+      <% if ai = session.delete(:print_on_load_id) %>
+        <div id="print_on_load_id" data-a-imprimir="<%= ai %>">
+        </div>
+      <% end %>
+      </div>
+    <% end %>
+
+    <%= render '/layouts/menu_admin' %>
+    <div id="main-wrapper" <% if tienda_activa.color_de_fondo.present? %>style="background:<%= tienda_activa.color_de_fondo %>!important"<% end %>>
+      <div class="page-wrapper" id="page" <% if tienda_activa.color_de_fondo.present? %>style="background:<%= tienda_activa.color_de_fondo %>!important"<% end %>>
+        <div class="container-fluid">
+            <%= render 'firebase' %>
+            <%= render '/page_header' if current_user && content_for?(:title) && !content_for?(:oculto) %>
+            <div id="growl-container"></div>
+            <div id="flash-container"><%= render 'flash_messages' %></div>
+          <%= yield %>
+            <footer class="footer center" title="Desarrollador Sebastián Chavarini">
+            © <%= Time.current.year %> <%= tienda_activa.nombre %>
+            </footer>
+        </div>
+      </div>
+    </div>
+    <% else %>
+      <%= yield %>
+    <% end %>
+  </body>
+</html>

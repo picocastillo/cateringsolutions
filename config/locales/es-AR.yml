@@ -1,0 +1,186 @@
+"es-AR":
+  datetime:
+    distance_in_words:
+      half_a_minute: "medio minuto"
+      less_than_x_seconds:
+        one: "menos de 1 segundo"
+        other: "menos de %{count} segundos"
+      x_seconds:
+        one: "1 segundo"
+        other: "%{count} segundos"
+      less_than_x_minutes:
+        one: "menos de 1 minuto"
+        other: "menos de %{count} minutos"
+      x_minutes:
+        one: "1 minuto"
+        other: "%{count} minutos"
+      about_x_hours:
+        one: "cerca de 1 hora"
+        other: "cerca de %{count} horas"
+      x_days:
+        one: "1 día"
+        other: "%{count} días"
+      about_x_months:
+        one: "cerca de 1 mes"
+        other: "cerca de %{count} meses"
+      x_months:
+        one: "1 mes"
+        other: "%{count} meses"
+      about_x_years:
+        other: "cerca de %{count} años"
+        one: "cerca de 1 año"
+      over_x_years:
+        one: "más de 1 año"
+        other: "más de %{count} años"
+
+  number:
+    percentage:
+      format:
+        precision: 1
+    currency:
+      format:
+        precision: 2
+        format: "%u%n"
+        unit: "$"
+    format:
+      precision: 3
+      delimiter: .
+      separator: ","
+
+  errors: &errors
+    template:
+      header:
+        other: ""
+        one: ""
+      body: ""
+    messages:
+      not_a_date: "no es una fecha"
+      after: "tiene que ser posterior a %{date}"
+      after_or_equal_to: "tiene que ser posterior o igual a %{date}"
+      before: "tiene que ser antes de %{date}"
+      before_or_equal_to: "tiene que ser antes o igual a %{date}"
+      too_short: es demasiado corto (no menos de %{count} caracteres)
+      required: no puede estar en blanco
+      blank: no puede estar en blanco
+      odd: debe ser par
+      greater_than: debe ser mayor a %{count}
+      too_long: "es demasiado largo (no más de %{count} caracteres)"
+      confirmation: "no coincide con la confirmación"
+      even: debe ser impar
+      record_invalid: "Error de validación: %{errors}"
+      greater_than_or_equal_to: debe ser mayor o igual a %{count}
+      inclusion: "no está incluido en la lista"
+      equal_to: debe ser igual a %{count}
+      empty: "no puede estar vacío"
+      less_than: debe ser menor que %{count}
+      accepted: debe ser aceptado
+      invalid: "no es válido"
+      wrong_length: no tiene la longitud correcta (debe ser de %{count} caracteres)
+      exclusion: "no está disponible"
+      less_than_or_equal_to: debe ser menor o igual que %{count}
+      not_a_number: "no es un número"
+      taken: ya existe
+      other_than: debe ser distinto de %{count}
+
+  activerecord:
+    models:
+      menus_diarios/menu_diario: Menú Diario
+    attributes:
+      clientes/cliente:
+      ventas/facturacion/comprobante:
+        fecha_emision: Fecha Emisión
+      productos/producto:
+        descripcion: Descripción
+      productos/categoria:
+        menu_diario: Menú Diario
+
+      procesos/proceso:
+        id: '#'
+        run_at: 'Ejecutar el'
+        duracion: 'Restante/Duración'
+      usuarios/usuario:
+        password_confirmation: Contraseña
+      errors:
+      <<: *errors
+
+  activemodel:
+    errors:
+      <<: *errors
+
+  helpers:
+    select:
+      prompt: "-- Seleccione una opción --"
+
+    submit:
+      create: 'Crear'
+      update: 'Guardar'
+      submit: 'Guardar'
+
+  support:
+    array:
+      two_words_connector: " y "
+      last_word_connector: " y "
+      words_connector: ", "
+
+  date:
+    abbr_day_names: [Dom, Lun, Mar, Mie, Jue, Vie, Sab]
+    abbr_month_names: [~, Ene, Feb, Mar, Abr, May, Jun, Jul, Ago, Sep, Oct, Nov, Dic]
+    day_names: [Domingo, Lunes, Martes, Miércoles, Jueves, Viernes, Sábado]
+    month_names: [~, Enero, Febrero, Marzo, Abril, Mayo, Junio, Julio, Agosto, Septiembre, Octubre, Noviembre, Diciembre]
+    formats:
+      default: "%d/%m/%Y"
+      long: "%A %e de %B de %Y"
+      short: "%e %b"
+      supershort: "%d/%m"
+      file: "%y%m%d"
+      my: '%b%y'
+      m: '%b'
+      day: '%A'
+    order:
+      - :day
+      - :month
+      - :year
+
+  time:
+    pm: pm
+    am: am
+    datetime:
+      formats:
+        default: "%d/%m/%Y-%dT%H:%M:%S%Z"
+    formats:
+      only_second: "%S"
+      short: "%e %b %H:%M"
+      long: "%d/%m/%Y %H:%M:%S"
+      default: "%d/%m/%Y %H:%M"
+      time: "%H:%M hs"
+      short_time: "%H:%M"
+      fed: "%A %e de %B"
+      notificacion: "%d/%m %H:%M"
+
+  interval:
+    today: El día de hoy
+    this_month: Este mes
+    this_year: Este año
+    previous_month: El mes pasado
+    last_30_days: Los últimos 30 días
+    last_90_days: Los últimos 90 días
+    last_180_days: Los últimos 180 días
+    all_history: Cualquier período
+    custom: Otro período
+
+  flash:
+    actions:
+      create:
+        notice: Registro creado correctamente.
+      update:
+        notice: Registro actualizado correctamente.
+      destroy:
+        notice: Registro eliminado correctamente.
+    auth_result:
+      wrong_credentials: Usuario y/o contraseña incorrecta
+      inactive_user: Su cuenta ha sido desactivada
+      tienda_no_autorizada: No tiene acceso a esta tienda
+
+
+  will_paginate:
+    page_gap: '...'

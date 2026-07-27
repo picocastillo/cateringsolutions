@@ -1,0 +1,18 @@
+<% opciones = {solo_imagenes: !!defined?(solo_imagenes), max_size: defined?(max_size) ? max_size : 0} %>
+
+<% field_name = "#{f.object_name}[documento_ids][]" %>
+<%= hidden_field_tag :documento_field_name, field_name %>
+
+<%= content_tag :div, class: 'drag-and-drop-documentos-section', data: opciones do %>
+  <div class="leyenda">
+    <%= image_tag 'paperclip.png' %>
+    Arrastre archivos a esta zona o <a href="JavaScript:void(0);" class="upload-link">clickee aquí para seleccionar</a>.
+    <input type="file" name="file" class="upload-input" multiple="true" />
+    <%= loading_indicator %>
+  </div>
+
+  <ul id="documentos" class="thumbnails">
+    <%= hidden_field_tag field_name, nil %>
+    <%= render partial: '/infraestructura/documentos/fields_documento', collection: f.object.documentos, as: :documento, locals: {field_name: field_name} %>
+  </ul>
+<% end %>

@@ -1,0 +1,8 @@
+$("#flash-container").html("<%= j render 'flash_messages' %>");
+$("#listado-pedidos").html("<%= j render 'form_completo' %>");
+$.each($('.select2-remote:not(.selectado)'), function() {
+  $(this).addClass('selectado');
+  $(this).remoteSelect2($(this).data());
+});
+$("#buscador-vr #codigo").focus();
+toast.info({ message: 'Pedido Cancelado.', duration: 5000 });

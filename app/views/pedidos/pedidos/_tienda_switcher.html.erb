@@ -1,0 +1,26 @@
+<%# Cliente-facing tienda switcher — shown only when the cliente belongs to >1 tienda.
+    Renders a square-cornered segmented radio-button group (UI prefs).
+    POST to /tiendas/cambiar_tienda_activa goes through the same endpoint admins
+    use; the controller branches on current_user.cliente? and cross-domain redirects. %>
+<% tiendas = current_user.tiendas_disponibles.to_a %>
+<% if tiendas.size > 1 %>
+  <div class="cliente-tienda-switcher card mb-3">
+    <div class="card-body p-2">
+      <div class="d-flex align-items-center flex-wrap" style="gap: 0.5rem;">
+        <small class="text-muted me-2 fw-bold">Tienda activa:</small>
+        <div class="btn-group" role="group" aria-label="Cambiar tienda activa">
+          <% tiendas.each do |t| %>
+            <% active = t == current_user.tienda_activa %>
+            <%= button_to t.nombre,
+                          cambiar_tienda_activa_tiendas_path(tienda_activa_id: t.id),
+                          method: :post,
+                          class: "btn btn-sm #{active ? 'btn-primary' : 'btn-outline-primary'}",
+                          style: 'border-radius: 0;',
+                          form: { style: 'display: inline-block; margin: 0;', data: { turbolinks: false } },
+                          disabled: active %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

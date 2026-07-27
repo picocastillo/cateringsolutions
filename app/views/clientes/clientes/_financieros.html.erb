@@ -1,0 +1,258 @@
+<%= cache "cliente-financieros-#{@cliente.id}-#{tienda_activa.id}-#{current_user.local_activo&.id}-#{Time.zone.today}-#{current_user.admin_financiero?}", skip_digest: true do %>
+<%
+  cuenta_ids = @cliente.cuentas.map(&:id)
+  tienda = @cliente.tienda
+  filtrar_local = current_user.tienda_activa.multiple_locales && current_user.local_activo
+  local_activo_id = current_user.local_activo&.id
+
+  # Monthly comprobante data (last 24 months) - facturas and notas de crédito
+  fecha_desde = 24.months.ago.beginning_of_month.to_date
+  fecha_hasta = Date.current
+
+  # Aggregate totals and monthly data in SQL (single query, no Ruby iteration)
+  monthly_rows = Ventas::Facturacion::Comprobante
+    .where(cuenta_id: cuenta_ids)
+    .where(estado_id: [2, 3])
+    .where('fecha_emision >= ?', fecha_desde.beginning_of_day)
+    .where('fecha_emision <= ?', fecha_hasta.end_of_day)
+  monthly_rows = monthly_rows.where(local_id: local_activo_id) if filtrar_local
+  monthly_rows = monthly_rows
+    .group(Arel.sql("DATE_FORMAT(fecha_emision, '%m/%Y'), type"))
+    .order(Arel.sql("MIN(fecha_emision) asc"))
+    .pluck(Arel.sql("DATE_FORMAT(fecha_emision, '%m/%Y'), type, SUM(total)"))
+
+  # Bulk load cotizaciones for the period
+  cotizaciones = Cotizaciones::Dolar
+    .where(fecha: fecha_desde..fecha_hasta)
+    .pluck(:fecha, :precio_venta)
+    .to_h
+
+  # Helper to get dollar rate for a date (in-memory first, DB fallback, memoized)
+  cotiz_cache = {}
+  get_cotiz = ->(fecha) {
+    fecha = fecha.to_date
+    cotiz_cache[fecha] ||= cotizaciones[fecha] || Cotizaciones::Dolar.precio_para_fecha(fecha)
+  }
+
+  # For USD conversion of summary totals, we need per-month average cotización
+  # Load monthly average rates in a single query
+  monthly_cotiz = Cotizaciones::Dolar
+    .where(fecha: fecha_desde..fecha_hasta)
+    .group(Arel.sql("DATE_FORMAT(fecha, '%m/%Y')"))
+    .pluck(Arel.sql("DATE_FORMAT(fecha, '%m/%Y'), AVG(precio_venta)"))
+    .to_h
+
+  # Build summary totals and monthly chart data from SQL-aggregated rows
+  total_facturas_pesos = 0.0
+  total_nc_pesos = 0.0
+  total_facturas_usd = 0.0
+  total_nc_usd = 0.0
+  monthly_hash = {}
+
+  monthly_rows.each do |mes, type, total_pesos|
+    total_pesos = total_pesos.to_f
+    cotiz = monthly_cotiz[mes] || Cotizaciones::Dolar.precio_hoy || 0
+    total_usd = cotiz&.positive? ? total_pesos / cotiz : 0
+
+    if type == 'Ventas::Facturacion::Factura'
+      total_facturas_pesos += total_pesos
+      total_facturas_usd += total_usd
+      monthly_hash[mes] ||= { facturas_pesos: 0.0, nc_pesos: 0.0, facturas_usd: 0.0, nc_usd: 0.0 }
+      monthly_hash[mes][:facturas_pesos] += total_pesos
+      monthly_hash[mes][:facturas_usd] += total_usd
+    elsif type == 'Ventas::Facturacion::NotaCredito'
+      total_nc_pesos += total_pesos
+      total_nc_usd += total_usd
+      monthly_hash[mes] ||= { facturas_pesos: 0.0, nc_pesos: 0.0, facturas_usd: 0.0, nc_usd: 0.0 }
+      monthly_hash[mes][:nc_pesos] += total_pesos
+      monthly_hash[mes][:nc_usd] += total_usd
+    end
+  end
+
+  neto_pesos = total_facturas_pesos - total_nc_pesos
+  neto_usd = total_facturas_usd - total_nc_usd
+
+  # Deuda pendiente (saldo != 0) in pesos
+  deuda_pesos = Contabilidad::SaldosMovimientosQuery.new(
+    user: current_user,
+    clientes_ids: @cliente.id.to_s,
+    csv_dias_numericos: '0'
+  ).totales.saldo_total.to_f
+
+  # Deuda in dollars (from movimientos with pending saldo, using comprobante date)
+  movimientos_pendientes = Contabilidad::Movimiento
+    .joins(:comprobante)
+    .joins('INNER JOIN cuentas ON cuentas.id = movimientos_cbles.cuenta_id')
+    .where('cuentas.cliente_id = ?', @cliente.id)
+    .where('movimientos_cbles.saldo > 0')
+    .select('movimientos_cbles.saldo, comprobantes.fecha_emision')
+    .to_a
+
+  deuda_usd = movimientos_pendientes.sum do |m|
+    cotiz = get_cotiz.call(m.fecha_emision)
+    cotiz&.positive? ? m.saldo.to_f / cotiz : 0
+  end
+
+  # Monthly data for chart (already aggregated from SQL)
+  datos_mensuales = monthly_hash.map do |mes, vals|
+    {
+      label: mes,
+      facturas_pesos: vals[:facturas_pesos].round(2),
+      nc_pesos: vals[:nc_pesos].round(2),
+      neto_pesos: (vals[:facturas_pesos] - vals[:nc_pesos]).round(2),
+      neto_usd: (vals[:facturas_usd] - vals[:nc_usd]).round(2)
+    }
+  end
+
+  precio_dolar_hoy = Cotizaciones::Dolar.precio_hoy
+%>
+
+<div class="row">
+  <!-- Summary Cards -->
+  <div class="col-6 col-md-3">
+    <div class="card border-left-primary" style="border-left: 4px solid #009efb;">
+      <div class="card-body py-3 px-3">
+        <small class="text-muted">Facturado (24m)</small>
+        <h5 class="mb-0"><%= number_to_currency(total_facturas_pesos, unit: '$', separator: ',', delimiter: '.') %></h5>
+        <small class="text-success">US$ <%= number_with_precision(total_facturas_usd, precision: 2, delimiter: '.', separator: ',') %></small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card" style="border-left: 4px solid #f59e0b;">
+      <div class="card-body py-3 px-3">
+        <small class="text-muted">Notas de Crédito</small>
+        <h5 class="mb-0"><%= number_to_currency(total_nc_pesos, unit: '$', separator: ',', delimiter: '.') %></h5>
+        <small class="text-warning">US$ <%= number_with_precision(total_nc_usd, precision: 2, delimiter: '.', separator: ',') %></small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card" style="border-left: 4px solid #02af1f;">
+      <div class="card-body py-3 px-3">
+        <small class="text-muted">Neto Facturado</small>
+        <h5 class="mb-0"><%= number_to_currency(neto_pesos, unit: '$', separator: ',', delimiter: '.') %></h5>
+        <small class="text-success">US$ <%= number_with_precision(neto_usd, precision: 2, delimiter: '.', separator: ',') %></small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card" style="border-left: 4px solid #c0392b;">
+      <div class="card-body py-3 px-3">
+        <small class="text-muted">Deuda Pendiente</small>
+        <h5 class="mb-0"><%= number_to_currency(deuda_pesos, unit: '$', separator: ',', delimiter: '.') %></h5>
+        <small class="text-danger">US$ <%= number_with_precision(deuda_usd, precision: 2, delimiter: '.', separator: ',') %></small>
+      </div>
+    </div>
+  </div>
+
+  <% if precio_dolar_hoy&.positive? %>
+  <div class="col-12">
+    <p class="text-muted text-right" style="font-size: 0.8em; margin-top: -10px;">
+      Cotización actual: $<%= '%.2f' % precio_dolar_hoy %> | Importes en USD calculados con cotización del día de emisión
+    </p>
+  </div>
+  <% end %>
+
+  <!-- Monthly Chart -->
+  <% if datos_mensuales.present? %>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title">Facturación Mensual</h3>
+        <h6 class="card-subtitle">Neto facturado en pesos y dólares (últimos 24 meses)</h6>
+        <%= content_tag :span, nil, id: 'cliente-facturacion-mensual', data: { datos: datos_mensuales } %>
+        <div style="position: relative; height: 300px;"><canvas id="cliente-facturacion-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <% end %>
+</div>
+
+<script>
+$(function () {
+  "use strict";
+
+  if ($('#cliente-facturacion-mensual').data('datos')) {
+    var data = $('#cliente-facturacion-mensual').data('datos');
+    var labels = data.map(function(item) { return item.label; });
+
+    new Chart(document.getElementById('cliente-facturacion-chart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          type: 'bar',
+          label: 'Neto ARS',
+          data: data.map(function(item) { return item.neto_pesos; }),
+          backgroundColor: 'rgba(0, 158, 251, 0.4)',
+          borderColor: '#009efb',
+          borderWidth: 1,
+          yAxisID: 'y',
+          order: 2
+        }, {
+          type: 'line',
+          label: 'Neto USD',
+          data: data.map(function(item) { return item.neto_usd; }),
+          borderColor: '#02af1f',
+          backgroundColor: 'rgba(2, 175, 31, 0.1)',
+          borderWidth: 2,
+          fill: false,
+          yAxisID: 'y1',
+          order: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            beginAtZero: true,
+            title: { display: true, text: 'ARS $' },
+            ticks: {
+              callback: function(value) {
+                return '$ ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+              }
+            },
+            grid: { color: '#eef0f2' }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            beginAtZero: true,
+            title: { display: true, text: 'USD $' },
+            ticks: {
+              callback: function(value) {
+                return 'US$ ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+              }
+            },
+            grid: { drawOnChartArea: false }
+          },
+          x: { grid: { color: '#eef0f2' } }
+        },
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              label: function(context) {
+                var prefix = context.datasetIndex === 0 ? '$ ' : 'US$ ';
+                var value = context.parsed.y.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                return context.dataset.label + ': ' + prefix + value;
+              }
+            }
+          }
+        },
+        hover: { mode: 'nearest', intersect: true }
+      }
+    });
+  }
+});
+</script>
+<% end %>

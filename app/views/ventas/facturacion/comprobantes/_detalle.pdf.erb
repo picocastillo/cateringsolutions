@@ -1,0 +1,18 @@
+<table class="datatable mtn detalle-comprobante" style="width:100%">
+  <thead>
+    <tr>
+      <th class="descripcion"  style="width: 70%">Producto</th>
+      <th class="center">C</th>
+      <th style="width: 20%" class="right">Importe</th>
+    </tr>
+  </thead>
+  <tbody>
+  <% renglones.each do |renglon| %>
+    <tr>
+      <td style="width: 70%"><%= renglon.descripcion_ticket %></td>
+      <td class="center cantidad" style="white-space: nowrap;">x <%= renglon.cantidad %></td>
+      <td style="width: 20%" class="right"><%= renglon.precio_total %></td>
+    </tr>
+  <% end %>
+  </tbody>
+</table>

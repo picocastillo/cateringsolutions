@@ -1,0 +1,38 @@
+<div class="vm-search-row mini-form" id="buscador-vr">
+    <%= text_field_tag :codigo, nil, class: 'form-control vm-codigo-input', placeholder: 'Código', autocomplete: false %>
+    <div class="vm-product-select-wrap">
+      <%= text_field_tag :producto_id, nil, class: 'select2-remote vm-product-select', data: {multiple: false, placeholder: 'Buscar producto por nombre', label: 'nombre_y_precio', selection: 'nombre_corto_y_precio', url: precios_path(format: :json, fecha: @pedido.fecha, cuenta_id: @pedido.cuenta_id)} %>
+    </div>
+    <%= link_to "Agregar", nil, class: 'btn btn-primary vm-agregar-btn', id: 'agregar-producto-vr' %>
+    <span id="importe-total-vm">
+      <%= render 'importe_total' %>
+    </span>
+</div>
+
+<% if tienda_activa.productos_pesables? %>
+<!-- Modal para ingresar peso de producto pesable -->
+<div class="modal fade" id="peso-modal" tabindex="-1" role="dialog" aria-labelledby="peso-modal-label" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="peso-modal-label">Ingresar Peso</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="peso-modal-producto-id" value="">
+        <p id="peso-modal-producto-nombre" style="font-weight: 600;"></p>
+        <div class="form-group">
+          <label for="peso-modal-input">Peso (Kg)</label>
+          <input type="number" class="form-control" id="peso-modal-input" step="0.001" min="0.001" placeholder="Ej: 0.500" autofocus>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="peso-modal-confirmar">Agregar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>

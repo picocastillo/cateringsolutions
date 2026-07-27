@@ -1,0 +1,18 @@
+<% churn_counts = @analytics[:churn_counts] %>
+<div class="card">
+  <div class="card-body text-center p-3">
+    <h6 class="text-muted mb-1" style="font-size: 11px;">Retención de Clientes</h6>
+    <div class="d-flex justify-content-around mb-1">
+      <span class="badge badge-success" title="Activos (≤30 días)"><%= churn_counts['activo'] %></span>
+      <span class="badge badge-warning" title="En riesgo (31-60 días)"><%= churn_counts['en_riesgo'] %></span>
+      <span class="badge badge-danger" title="Inactivos (61-90 días)"><%= churn_counts['inactivo'] %></span>
+      <span class="badge badge-dark" title="Perdidos (>90 días)"><%= churn_counts['perdido'] %></span>
+    </div>
+    <small class="text-muted">
+      <span class="badge badge-success">&nbsp;</span> Activos
+      <span class="badge badge-warning">&nbsp;</span> Riesgo
+      <span class="badge badge-danger">&nbsp;</span> Inact.
+      <span class="badge badge-dark">&nbsp;</span> Perd.
+    </small>
+  </div>
+</div>

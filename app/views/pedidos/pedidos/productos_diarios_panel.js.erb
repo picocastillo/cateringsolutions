@@ -1,0 +1,30 @@
+// Lazy-loaded "Nuestras opciones del día" panel. Mirrors late_pannels.js.erb:
+// inject HTML, re-init swiper sliders (idempotent via :not(.swiper-initialized)),
+// and re-fire onmount so any handlers attached to the new DOM (panel toggles,
+// favoritos, etc.) bind correctly. Turbolinks-safe: $.onmount() is the same
+// hook used everywhere else after AJAX content swaps.//
+// Pin #pedido_fecha viewport position across this second content swap too
+// (spinner → real content). Same rAF + overflow-anchor technique as
+// cambiar_cuenta.js.erb to prevent the second-phase scroll-back jitter.
+(function() {
+  var __el = document.getElementById('pedido_fecha');
+  if (!__el) return;
+  var __docY = window.scrollY + __el.getBoundingClientRect().top;
+  document.documentElement.style.overflowAnchor = 'none';
+  requestAnimationFrame(function() {
+    var __el2 = document.getElementById('pedido_fecha');
+    document.documentElement.style.overflowAnchor = '';
+    if (!__el2) return;
+    var __newDocY = window.scrollY + __el2.getBoundingClientRect().top;
+    var __shift = __newDocY - __docY;
+    if (Math.abs(__shift) > 1) {
+      window.scrollBy({ top: __shift, left: 0, behavior: 'instant' });
+    }
+  });
+})();$('#opciones-del-dia-loader').remove();
+$('#opciones-del-dia').html("<%= j render 'productos_diarios_panels' %>");
+if (typeof initProductSliders === 'function') {
+  $('body > .tooltip').remove();
+  initProductSliders();
+}
+$.onmount();

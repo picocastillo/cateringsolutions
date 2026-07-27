@@ -1,0 +1,9 @@
+<% if @pedido.cargando_inicial? || @pedido.valid? %>
+  $("#productos-rapidos").html("<%= j render 'productos_rapidos' %>");
+<% else %>
+  toast.error({ html: '<%= "#{@pedido.to_s}: #{@pedido.errors.full_messages.to_sentence}" %>', duration: 7000 });
+<% end %>
+$.each($('.productos_solicitados .select2-remote:not(.selectado)'), function() {
+  $(this).addClass('selectado');
+  $(this).remoteSelect2($(this).data());
+});

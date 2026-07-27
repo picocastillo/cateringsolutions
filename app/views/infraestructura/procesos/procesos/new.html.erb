@@ -1,0 +1,7 @@
+<% title 'Importar Planilla' %>
+
+<%= form_for :planilla, :url => @post_url, :html => { :multipart => true } do |f| %>
+  <%= f.error_messages %>
+  <%= f.file_field :xls %> <%= f.submit "Importar" %>
+  <%= hidden_field_tag :de, params[:de] %>
+<% end %>

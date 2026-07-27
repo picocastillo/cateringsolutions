@@ -1,0 +1,45 @@
+
+  <div class="mt-8">
+
+    <div class="col-12" id="reportes-diarios">
+          <div class="card pedidos-boxs">
+              <div class="card-body bg-info row" style="margin: 0;padding: 1.25rem 0rem;">
+                  <div class="col-4 col-12">
+                    <h4 class="text-white card-title">Pedidos listos para Cocinar</h4>
+                  </div>
+                  <div style="float:right;display: contents" class="col-12">
+                    <%= query_form_for @query, url: find_pedidos_pedidos_cocina_path, html: { style: 'float: right;margin-right: -5px;', id: 'pedidos-cocina-form'} do |f| %>
+                            <%= f.input :cliente_ids, label: false, as: :select2, input_html: { placeholder: 'Clientes..', data: {multiple: true, url: clientes_path(format: :json, active: true), pre: @query.cliente_ids.presence && Clientes::Cliente.disponibles_en(tienda_activa).where(id: @query.cliente_ids)}, class: 'seleccion-cliente', style: 'width: 100%!important;'}, wrapper_html: { class: 'col-12 col-sm-6', style: 'width: 100%!important;' } %>
+                            <%= f.input :cuentas_ids, label: false, as: :select2, input_html: { placeholder: 'Cuentas..', data: {multiple: true, minimum_input_length: 1, label: 'cliente_y_nombre', selection: 'cliente_y_nombre', url: cuentas_path(format: :json, active: true), pre: @query.cuentas_ids.presence && Clientes::Cuenta.where(id: @query.cuentas_ids)}, class: 'seleccion-cliente', style: 'width: 100%!important;'}, wrapper_html: { class: 'col-12 col-sm-6', style: 'width: 100%!important;' } %>
+                            <%= f.input :fecha_desde, as: :string, required: false, label: false, input_html: { class: 'singledate', style: 'float: right;text-align: right', placeholder: 'Desde'}, wrapper_html: { class: 'col-8 col-sm-6 col-md-3 col-lg-4', style: 'float: right;max-width: max-content;' } %>
+                            <%= f.input :fecha_hasta, as: :string, required: false, label: false, input_html: { class: 'singledate', style: 'float: right;text-align: right;', placeholder: 'Hasta'}, wrapper_html: { class: 'col-8 col-sm-6 col-md-3 col-lg-4', style: 'float: right;max-width: max-content;' } %>
+                            <%= f.input :horarios_de_corte_ids, as: :select2_local, collection: Clientes::Cuenta.horarios_corte_efectivos(tienda_activa.id), selected: @query.horarios_de_corte_ids, label: false, label_method: :to_s, include_blank: true, input_html: {multiple: true, placeholder: 'Horario de corte', style: 'min-width: 80px;'}, wrapper_html: { class: "col-8 col-sm-6 col-md-3 col-lg-2"} %>
+                            <div class="form-actions ml-4 pl-4">
+                              <input type="submit" name="commit" value="Buscar" class="btn btn-primary search-btn ml-4" data-disable-with="Buscar" onclick="makeFormRemote()">
+                              <input type="submit" name="commit" value="Crear" class="btn btn-success search-btn ml-4" data-disable-with="Crear" onclick="makeFormNormal()">
+                            </div>
+                   <% end %>
+                 </div>
+              </div>
+
+              <div class="card-body">
+                <span id="reporte-cocina">
+                  <%= render 'reporte_cocina' %>
+                </span>
+              </div>
+          </div>
+    <div class="col-md-12">
+    </div>
+  </div>
+
+<script>
+function makeFormRemote() {
+  const form = document.getElementById('pedidos-cocina-form');
+  form.setAttribute('data-remote', 'true');
+}
+
+function makeFormNormal() {
+  const form = document.getElementById('pedidos-cocina-form');
+  form.removeAttribute('data-remote');
+}
+</script>

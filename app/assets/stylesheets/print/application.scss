@@ -1,0 +1,167 @@
+$separatorBorder: 1px solid #ddd;
+
+@import "*";
+
+@page {
+  size: A4;
+  margin: 5mm 8mm;
+}
+
+body {
+  font-family: Calibri;
+  font-size: 11pt;
+}
+
+a { color: black; text-decoration: none; }
+.mtn { margin-top: 0.8em; }
+.mbn { margin-bottom: 0.8em; }
+.right { text-align: right; }
+.center { text-align: center; }
+.top { vertical-align: top; }
+.strong { font-weight: bold; }
+.nowrap { white-space: nowrap }
+.nowrap-min { white-space: nowrap; width: 1px }
+p { margin: 0; margin-bottom: 10px; }
+
+.page { page-break-before: always; position: relative; }
+.importe { text-align: right; white-space: nowrap; width: 1px }
+
+.muted { color: #aaa; font-weight: normal }
+
+.sep { border-top: $separatorBorder; margin-top: 10px; padding-top: 11px }
+hr { height: 0; border: 0; border-bottom: $separatorBorder; margin-top: 10px; margin-bottom: 11px; padding: 0 }
+
+.hide { display: none }
+
+table { border-collapse: collapse; }
+table td { padding: 0; }
+table tr { page-break-inside: avoid; }
+
+.cleartable {
+  width: 100%; border-spacing: 0;
+  th { font-weight: normal; background-color: #eee; border-top: 1px solid #aaa }
+  th, td { padding: 0.25em 5pt; border-bottom: 1px solid #aaa }
+  tfoot th { border-top: 0 }
+}
+
+table.datatable {
+  width: 100%;
+  th, td { padding: 2px 5px; }
+  tfoot td { font-weight: bold; }
+}
+
+.table-with-borders {
+  thead th { border-bottom: 1px solid #aaa }
+  tfoot td { border-top: 1px solid #aaa }
+  tbody td { border-bottom: 1px solid #eee }
+}
+
+
+#page-pedidos-etiquetas {
+  margin: 0;
+  .etiqueta {
+    height: 85.05pt;
+    overflow: hidden;
+    .row {
+      padding: 0px 5px 0px 5px;
+      height: 61pt!important;
+    }
+
+    .nombre {
+      border-bottom: 2px solid black!important;
+      color: black!important;
+      text-align: center!important;
+      margin: -2px -5px 0px -5px!important;
+      padding: 3px 4px 5px 4px!important;
+      height: 15pt!important;
+      overflow: hidden;
+    }
+    .producto {
+      max-height: 15pt!important;
+      overflow: hidden;
+    }
+    .barcode {
+      text-align: center;
+    }
+
+    .vencimiento {
+      font-size: 6.5pt;
+      margin-top: 0px;
+    }
+
+    .precio {
+      margin-top: -1px;
+    }
+
+    .barcode-text, .titulo {
+      color: black;
+      text-align: center;
+      font-size: 8pt;
+      line-height: 8pt;
+      font-weight: bold;
+      padding: 0;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .cliente {
+      margin-top: -1px;
+    }
+
+    .codigo-externo {
+      margin-top: -1px;
+    }
+
+    .producto-w {
+      line-height: 7pt;
+    }
+
+    .cliente-w {
+      margin-top: 1px;
+    }
+
+    .resumen {
+      margin-top: -2px;
+    }
+
+    .muted {
+      @extend .titulo;
+      font-size: 8.4pt;
+      line-height: 8pt;
+      color: black;
+      line-height: 11px;
+      .cliente {
+        height: 12px;
+        overflow: hidden;
+      }
+    }
+    .muted-bold {
+      @extend .muted;
+      line-height: 10px;
+      font-size: 8.2pt;
+      line-height: 8pt;
+    }
+  }
+
+  .etiqueta.williner {
+    .row {
+      height: 53pt!important;
+    }
+    .nombre {
+      padding: 5px 3px 5px 3px!important;
+      font-size: 10pt;
+      line-height: 8pt;
+      line-height: 14px;
+    }
+    .barcode-text {
+      margin-top:-7px;
+      color: black;
+      text-align: center;
+      font-size: 9pt;
+      line-height: 8pt;
+      font-weight: bold;
+    }
+  }
+}

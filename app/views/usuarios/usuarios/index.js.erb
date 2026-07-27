@@ -1,0 +1,5 @@
+$("#usuarios-container").html("<%= j render 'resultados' %>");
+$(":input:focus").select();
+$("#flash-container").html("<%= j render 'flash_messages' %>");
+$('.export-link').attr('href', "<%= usuarios_path(filtered_params.merge(format: :xls)) %>");
+errors.set(<%= raw @query.errors.full_messages %>);

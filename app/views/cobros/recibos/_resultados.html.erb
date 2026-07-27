@@ -1,0 +1,14 @@
+<div class="card-body collapse show ajax-data-container">
+  <div class="table-responsive">
+    <%= table_for @recibos, id: 'recibos' do |t| %>
+      <% t.column(:nro)  { |r| link_to(r.nro ? r.nro : 'Por Asignar', recibo_path(r)) } %>
+      <% t.column(:fecha_emision, header: 'Fecha') %>
+      <% t.column(:estado, class: 'text-center') { |c| estado_label c } %>
+      <% t.column(:cuenta, header: 'Cuenta') { |t| link_to discontinuado(t.cuenta.cliente, t.cuenta), t.cuenta.cliente } %>
+      <% t.column(:afectados, header: 'Cancela a') { |t| t.afectados.map{ |a| link_to a.to_s, factura_path(a) }.join(',').html_safe } %>
+      <% t.column(:total, class: 'text-right', footer: "<span style='font-weight: bold'>Total: #{Danconia::Money.new(@query.relation.sum('comprobantes.total'))}</span> ".html_safe) %>
+      <% t.actions { |t| [edit_link(t, 'Editar')]} %>
+    <% end %>
+  </div>
+</div>
+<%= paginador @recibos  %>

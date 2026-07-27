@@ -1,0 +1,11 @@
+firebase:
+  server_key: AAAASvX9Ijo:APA91bHMurIfeQ7pzAGZqd0XbgkRyo6Fjs8oYZg7lqpbeQ1gX0EyTJJUduWI-yz7KZskq_vwFhPXoIkGd3O8tQzCYgVtmOIqhwdLd53D6NQ3Ijv2tOIewQHqqnU8IvQa6WNHF0XHmlnJ
+  webapp:
+    apiKey: AIzaSyAsUYo_fVpjwpists5GF4rmr_8TOq0fzJg
+    authDomain: kiosk-78a88.firebaseapp.com
+    databaseURL: https://kiosk-78a88.firebaseio.com
+    projectId: kiosk-78a88
+    storageBucket:
+    messagingSenderId: '321954587194'
+  vapid:
+    public_key: BHPBFtIO-iKIhK5MHXgpaEMqSkELi1oyGE_YtC1J84Uj2FbXhhyyf43B_8y_VAwoMkW8bY8rVs36OS_ahvLY0JE

@@ -1,0 +1,104 @@
+.comprobante-false {
+  font-family: Arial;
+  font-size: 10.0pt;
+
+  .datatable {
+    border-top: 2px solid;
+    border-bottom: 2px solid;
+    border-right: 2px solid;
+    border-left: 2px solid;
+    border-collapse: collapse;
+    td, th {
+      padding: 0.3em 0.2em;
+      vertical-align: top;
+    }
+    td.cantidad {
+      border-right: 2px solid;
+      border-left: 2px solid;
+    }
+    th {
+      border-right: 2px solid;
+      border-left: 2px solid;
+      border-bottom: 2px solid;
+      text-transform: uppercase;
+      background-color: #ddd;
+      font-weight: normal;
+      font-size: 85%;
+      padding: 0.2em 0.5em;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .descripcion { width: 60%; }
+  }
+
+  #encabezado {
+    margin-bottom: 20px;
+    width: 100%;
+    .nro { font-size: 180%; font-weight: bold; margin-bottom: 2px; white-space: nowrap; }
+    .letra {
+      margin: 4px 18px;
+      div { font-size: 300%; font-weight: bold; border: 1px solid; }
+    }
+    .codigo-tipo { font-size: 85%; }
+    .pedido {
+      vertical-align: bottom;
+      text-align: center;
+      width: 140px;
+      font-size: 85%;
+      padding-bottom: 9px;
+    }
+  }
+
+  .contacto {
+    margin-top: -5px;
+    text-align: center;
+    line-height: 80%;
+  }
+
+  .comprador {
+    width: 100%;
+    th { width: 10%; text-align: left; vertical-align: bottom; }
+    td, th { border-bottom: 1px solid #ddd; }
+  }
+
+  .detalle-comprobante {
+    width: 100%;
+    tbody td { padding-top: 3px; line-height: 100%; }
+  }
+  .detalle-comprobante .referencia-despacho { float: right; }
+  &.encogido {
+    .detalle-comprobante { font-size: 8pt }
+  }
+  &.super-encogido {
+    .detalle-comprobante { font-size: 7pt }
+  }
+  .referencia, .referencia-despacho { color: #333; font-size: 90% }
+  .referencia { margin-bottom: 3mm; margin-top: -1mm }
+
+  #obs_totales {
+    width: 100%;
+    td { vertical-align: top; }
+    .barcode {
+      text-align: center;
+      img { width: 400px; height: 30px }
+    }
+  }
+  .barcode-container {
+    margin-top: 10px;
+  }
+  .totales { float: right; height: 1cm; margin: 0 0 0 1em; }
+  .totales td { white-space: nowrap; min-width: 5.5em; }
+  .totales .label_total { min-width: 12em; }
+  .totales .total td { font-size: 16pt; }
+  .totales td {
+    padding: 0.1em 0.3em;
+    border-right: 2px solid;
+    border-left: 2px solid;
+  }
+  .totales th {
+    border-right: 2px solid;
+    border-left: 2px solid;
+  }
+  #obs_totales .total td { vertical-align: bottom; }
+  #obs_totales .subtotal_gravado { display: none; }
+}

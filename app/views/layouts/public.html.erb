@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<% @outside_private = (current_user && logged_in? && current_page?('/')) %>
+  <head>
+    <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
+    <title><%= tienda_activa ? tienda_activa.nombre : 'Catering Solutions' %></title>
+    <%= csrf_meta_tags %>
+    <link rel="shortcut icon" href="/<%= tienda_activa ? tienda_activa.dominio : 'favicon' %>.ico" type="image/x-icon">
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag 'application',  media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= stylesheet_link_tag 'temas/public',  media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= stylesheet_link_tag 'temas/claro',  media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload', 'data-turbolinks-eval': false %>
+
+  </head>
+  <% ct = tienda_activa %>
+
+  <script>
+  $( document ).ready(function() {
+    $('.oculta-public').removeClass('oculta-public');
+  });
+  </script>
+  <style>
+  <% if ct.id == 1 || ct.id == 3 %>
+    .light-logo {
+      max-width: 150px!important;
+    }
+    ::-webkit-scrollbar
+        {
+          width: 10px;  /* for vertical scrollbars */
+          height: 10px; /* for horizontal scrollbars */
+        }
+
+        ::-webkit-scrollbar-track
+        {
+          background: #7b7b7b;
+        }
+
+        ::-webkit-scrollbar-thumb
+        {
+          background: rgb(104 104 119);;
+        }
+  <% end %>
+
+  .navbar-header {
+      width: 240px!important;
+  }
+
+  <% if ct.id == 2 %>
+    .light-logo {
+      max-width: 100px!important;
+      margin-top: -5px!important;
+    }
+
+    #show-public .bienvenida { color: #ffffff; }
+    ::-webkit-scrollbar
+        {
+          width: 10px;  /* for vertical scrollbars */
+          height: 10px; /* for horizontal scrollbars */
+        }
+
+        ::-webkit-scrollbar-track
+        {
+          background: #2bc13f52;
+        }
+
+        ::-webkit-scrollbar-thumb
+        {
+          background: <%= ct.color_barra_superior %>;
+        }
+  <% end %>
+
+  .site-wrapper .masthead {
+    overflow: visible;
+  }
+
+  <% if ct.color_barra_superior %>
+    .topbar, .navbar-header {
+      background: <%= ct.color_barra_superior %>!important;
+    }
+  <% end %>
+
+  <% if ct.id == 1 %>
+    .topbar, .navbar-header {
+      background: #f2f2f2!important;
+    }
+  <% end %>
+  </style>
+  <body class="fix-header fix-sidebar card-no-border mini-sidebar <%= 'resizable' if true %>" id="<%= yield :page_id %>">
+    <%= render '/layouts/menu_admin' %>
+    <div id="main-wrapper">
+      <div>
+        <div>
+          <div id="growl-container"></div>
+          <%= yield %>
+        </div>
+      </div>
+    </div>
+    <div class="container-fluid">
+      <div class="row-fluid" id="page-footer">
+        <center><small>© <%= Time.current.year %> <%= tienda_activa.to_s %> | Rafaela<%= " | Tel.: #{tienda_activa.telefono}" if tienda_activa.telefono.present? %><%= " | Email: #{tienda_activa.email}" if tienda_activa.email.present? %></small></center>
+      </div>
+    </div>
+  </body>
+</html>

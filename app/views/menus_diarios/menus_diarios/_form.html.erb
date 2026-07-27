@@ -1,0 +1,342 @@
+<%= modal 'form-modal', title: @menu_diario.new_record? ? 'Nuevo Menú Diario' : "Editando Menú Diario" do %>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <%= simple_form_for @menu_diario, remote: true do |f| %>
+    <%= f.error_messages %>
+    <%= f.hidden_field :tienda_id %>
+    <%= f.input :fecha, as: :string, input_html: { class: 'singledate'}, wrapper_html: { class: 'col-sm-4' } %>
+    <%
+      soporta_md = tienda_activa.muestra_menus_del_dia?
+      soporta_pd = tienda_activa.soporta_productos_diarios?
+      tipo_md_id = MenusDiarios::Tipo[:menu_diario].id
+      tipo_pd_id = MenusDiarios::Tipo[:productos_diarios].id
+
+      # Determine which tipos are available in the dropdown.
+      tipos_disponibles = []
+      tipos_disponibles << MenusDiarios::Tipo[:menu_diario]       if soporta_md
+      tipos_disponibles << MenusDiarios::Tipo[:productos_diarios] if soporta_pd
+      tipos_disponibles = MenusDiarios::Tipo.all if tipos_disponibles.empty? # fallback (legacy)
+
+      # Default tipo:
+      #   - For an existing record, ALWAYS respect the persisted tipo_id (admin
+      #     may have created it before the tienda config changed).
+      #   - For a new record, IGNORE the model's enum default (which is always
+      #     menu_diario=1) and pick based on what the tienda actually supports.
+      #     Otherwise the disabled select + hidden field would post tipo_id=1
+      #     even when only `productos_diarios` is enabled, triggering a wrong
+      #     "sólo pueden ser productos de Menú del día" validation error.
+      default_tipo_id =
+        if @menu_diario.persisted?
+          @menu_diario.tipo_id
+        elsif soporta_md
+          tipo_md_id
+        elsif soporta_pd
+          tipo_pd_id
+        else
+          tipos_disponibles.first.id
+        end
+    %>
+    <%= f.input :tipo_id,
+                collection: tipos_disponibles.map { |t| [t.desc, t.id] },
+                as: :select,
+                label: 'Tipo',
+                include_blank: false,
+                selected: default_tipo_id,
+                hint: 'Menú del Día: productos de categoría "Menú del día". Productos del Día: cualquier otro producto.',
+                input_html: { id: 'menu-diario-tipo-select',
+                              disabled: tipos_disponibles.size <= 1 },
+                wrapper_html: { class: 'col-sm-8' } %>
+    <% if tipos_disponibles.size <= 1 %>
+      <%# Disabled selects are not submitted — emit a hidden field with the value. %>
+      <%= f.hidden_field :tipo_id, value: default_tipo_id %>
+    <% end %>
+    <%
+      # Catalog: load only the productos relevant to the available tipos.
+      productos_md = []
+      productos_pd = []
+
+      if soporta_md || !soporta_pd
+        # menu_diario tipo is reachable → need MD productos.
+        productos_md = Productos::Producto.where(tienda_id: tienda_activa).joins(:categoria)
+                                          .where(categorias: { menu_diario: true, tienda_id: tienda_activa.id })
+                                          .active.includes(:categoria).to_a
+      end
+
+      if soporta_pd
+        productos_todos = Productos::Producto.where(tienda_id: tienda_activa).joins(:categoria).active.includes(:categoria)
+        productos_pd = productos_todos.reject { |p| p.categoria&.menu_diario }
+
+        # Hide productos already used by other `productos_diarios` MenuDiarios
+        # on the same fecha — each producto can only belong to one PD menu/day.
+        if @menu_diario.fecha.present?
+          ya_usados_scope = MenusDiarios::MenuDiario
+                              .productos_diarios
+                              .where(tienda_id: tienda_activa.id, fecha: @menu_diario.fecha, discontinued_at: nil)
+          ya_usados_scope = ya_usados_scope.where.not(id: @menu_diario.id) if @menu_diario.persisted?
+          ya_usados_pd_ids = ya_usados_scope.joins(:productos).pluck('productos.id').to_set
+          productos_pd = productos_pd.reject { |p| ya_usados_pd_ids.include?(p.id) }
+        end
+      end
+    %>
+    <%
+      to_payload = ->(p) {
+        { id: p.id, codigo: p.codigo.to_s, nombre: p.nombre.to_s,
+          label: p.to_s, categoria: p.categoria&.to_s.to_s,
+          color: p.try(:color_safe) || '#989898' }
+      }
+      catalog_by_id = (productos_md + productos_pd).index_by(&:id)
+      preselected_records = if @menu_diario.persisted? || @menu_diario.productos.loaded?
+                              @menu_diario.productos.to_a
+                            else
+                              (@menu_diario.producto_ids || []).map { |id| catalog_by_id[id] }.compact
+                            end
+      preselected_data = preselected_records.map { |p| to_payload.call(p) }
+    %>
+    <div class="col-sm-12 md-picker"
+         id="menu-diario-productos-wrapper"
+         data-menu-diario-id="<%= @menu_diario.id || 0 %>"
+         data-md-productos="<%= productos_md.map(&to_payload).to_json %>"
+         data-pd-productos="<%= productos_pd.map(&to_payload).to_json %>"
+         data-preselected="<%= preselected_data.to_json %>"
+         data-tipo-menu-diario="<%= MenusDiarios::Tipo[:menu_diario].id %>"
+         data-tipo-productos-diarios="<%= MenusDiarios::Tipo[:productos_diarios].id %>"
+         data-default-desc-pd="Nuestras opciones para hoy"
+         data-soporta-productos-diarios="<%= tienda_activa.soporta_productos_diarios? %>">
+
+      <div class="md-picker__head">
+        <label class="md-picker__label">Productos<span class="md-picker__req">*</span></label>
+        <span class="md-picker__count" id="md-picker-count" aria-live="polite"></span>
+      </div>
+
+      <div class="md-picker__searchbar">
+        <i class="mdi mdi-magnify md-picker__search-icon" aria-hidden="true"></i>
+        <input type="text"
+               class="md-picker__search"
+               id="md-picker-search"
+               placeholder="Buscar producto por nombre o código…"
+               autocomplete="off"
+               aria-label="Buscar productos">
+        <button type="button"
+                class="md-picker__clear"
+                id="md-picker-clear"
+                aria-label="Limpiar búsqueda"
+                tabindex="-1">×</button>
+      </div>
+
+      <div class="md-picker__results" id="md-picker-results" role="listbox" aria-label="Resultados">
+        <%# rows injected by App.onMount('#menu-diario-productos-wrapper') in adds_on.js %>
+      </div>
+
+      <div class="md-picker__selected-head">
+        <span>Seleccionados</span>
+        <span class="md-picker__selected-count" id="md-picker-selected-count">0</span>
+      </div>
+      <div class="md-picker__selected" id="md-picker-selected" aria-label="Productos seleccionados">
+        <%# chips + hidden inputs injected by JS; nothing rendered server-side
+            so JS owns the entire visible state. %>
+      </div>
+
+      <%# Sentinel so HABTM clears when user removes everything: an empty
+          producto_ids[] is sent as []. Rails permits `producto_ids: []`. %>
+      <input type="hidden" name="menu_diario[producto_ids][]" value="">
+    </div>
+    <%= f.input :descripcion, wrapper_html: { class: 'col-sm-12' }, label: 'Descripción' %>
+    <div id="menu-diario-pd-hint" class="col-sm-12"
+         style="<%= 'display:none;' unless f.object.tipo_id == MenusDiarios::Tipo[:productos_diarios].id %>margin-top:-8px;margin-bottom:12px;font-size:0.85em;color:#718096;font-style:italic;">
+      Si sólo un panel de productos diarios es creado, no se mostrará la descripción del mismo en pantalla.
+    </div>
+    <%= f.input :observaciones, wrapper_html: { class: 'col-sm-12' }, label: 'Observaciones' %>
+    <div class="col-md-12">
+      <%= f.submit (@menu_diario.new_record? ? 'Crear' : "Guardar"), class: "btn btn-success waves-effect waves-light m-r-10" %>
+      <%= link_to('Eliminar', menu_diario_path(@menu_diario), class: "btn btn-danger waves-effect waves-light m-r-10", method: :delete, remote: true, data: {confirm: "Está seguro que desea eliminar el menu_diario '#{@menu_diario}'?", toggle: 'tooltip', "original-title" => 'Eliminar' }) if !@menu_diario.new_record? && can?(:destroy, @menu_diario)  %>
+      <%= link_to('Cerrar', nil, class: "btn btn-default waves-effect waves-light m-r-10", data: {dismiss: 'modal'}) %>
+    </div>
+  <% end %>
+<% end %>
+
+<style>
+  /* ───────────────────────── Menú Diario · Producto Picker ─────────────────────────
+     A "chef's clipboard" aesthetic: warm parchment surface, ink-on-paper text,
+     single-stroke dividers, restrained accents. Designed to feel like writing
+     a daily menu by hand — calm, deliberate, never noisy. */
+  #menu-diario-productos-wrapper.md-picker {
+    --md-ink:        #1f2937;
+    --md-ink-soft:   #4b5563;
+    --md-paper:      #fdfaf3;
+    --md-paper-deep: #f5efe2;
+    --md-rule:       #d6cdb8;
+    --md-rule-soft:  #ebe3d0;
+    --md-accent:     #b45309; /* warm amber, matches Menús del Día panel */
+    --md-accent-pd:  #7c3aed; /* violet, matches Productos del Día panel  */
+    --md-danger:     #b91c1c;
+    --md-shadow:     0 1px 0 rgba(31,41,55,.04), 0 6px 18px -10px rgba(31,41,55,.18);
+
+    margin-top: 8px;
+    margin-bottom: 24px;
+    padding: 18px 18px 14px;
+    background: var(--md-paper);
+    border: 1px solid var(--md-rule);
+    border-radius: 4px;
+    box-shadow: var(--md-shadow);
+    font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--md-ink);
+  }
+  #menu-diario-productos-wrapper.md-picker[data-current-tipo="pd"] { --md-accent: var(--md-accent-pd); }
+
+  .md-picker__head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .md-picker__label {
+    font-family: 'Manrope', system-ui, sans-serif;
+    font-size: 1rem; font-weight: 800; letter-spacing: -.015em;
+    text-transform: none; margin: 0; color: var(--md-ink);
+  }
+  .md-picker__label .md-picker__req {
+    color: var(--md-accent); margin-left: 3px; font-weight: 700;
+  }
+  .md-picker__count {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--md-ink-soft);
+  }
+
+  .md-picker__searchbar {
+    position: relative; display: flex; align-items: center;
+    background: #fff;
+    border: 1px solid var(--md-rule);
+    border-radius: 3px;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .md-picker__searchbar:focus-within {
+    border-color: var(--md-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-accent) 12%, transparent);
+  }
+  .md-picker__search-icon {
+    color: var(--md-ink-soft); padding: 0 10px 0 12px; font-size: 1.1rem;
+  }
+  .md-picker__search {
+    flex: 1; border: 0; background: transparent; outline: none;
+    padding: 10px 4px; font-size: .95rem; font-family: inherit; color: var(--md-ink);
+  }
+  .md-picker__search::placeholder { color: var(--md-ink-soft); font-style: italic; }
+  .md-picker__clear {
+    border: 0; background: transparent; color: var(--md-ink-soft);
+    font-size: 1.4rem; line-height: 1; padding: 0 12px; cursor: pointer;
+    visibility: hidden; transition: color .12s ease;
+  }
+  .md-picker__clear:hover { color: var(--md-danger); }
+  .md-picker__searchbar.is-filled .md-picker__clear { visibility: visible; }
+
+  .md-picker__results {
+    margin-top: 10px;
+    max-height: 220px; overflow-y: auto;
+    border: 1px solid var(--md-rule-soft); border-radius: 3px;
+    background: #fff;
+    scrollbar-width: thin; scrollbar-color: var(--md-rule) transparent;
+  }
+  .md-picker__results::-webkit-scrollbar { width: 8px; }
+  .md-picker__results::-webkit-scrollbar-thumb { background: var(--md-rule); border-radius: 4px; }
+  .md-picker__results:empty { display: none; }
+
+  .md-picker__row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px 8px 8px;
+    border-bottom: 1px solid var(--md-rule-soft);
+    cursor: pointer; transition: background-color .1s ease;
+    font-family: 'Manrope', system-ui, sans-serif;
+  }
+  .md-picker__row:last-child { border-bottom: 0; }
+  .md-picker__row:hover, .md-picker__row.is-active {
+    background: color-mix(in srgb, var(--md-accent) 6%, #fff);
+  }
+  .md-picker__row.is-disabled {
+    opacity: .42; cursor: not-allowed; background: var(--md-paper-deep);
+  }
+  .md-picker__swatch {
+    width: 4px; align-self: stretch; min-height: 28px; border-radius: 2px;
+    background: var(--md-row-color, var(--md-rule));
+  }
+  .md-picker__row-body { flex: 1; min-width: 0; }
+  .md-picker__row-title {
+    font-size: .92rem; font-weight: 600; color: var(--md-ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .md-picker__row-title .md-picker__codigo {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .78rem; color: var(--md-ink-soft); margin-right: 8px;
+    background: var(--md-paper-deep); padding: 1px 6px; border-radius: 2px;
+  }
+  .md-picker__row-cat {
+    font-size: .76rem; color: var(--md-ink-soft); margin-top: 1px;
+    font-style: italic;
+  }
+  .md-picker__row-add {
+    border: 1px solid var(--md-accent); background: #fff;
+    color: var(--md-accent); width: 28px; height: 28px;
+    border-radius: 50%; cursor: pointer; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.15rem; line-height: 1; flex-shrink: 0;
+    transition: background-color .12s ease, color .12s ease, transform .08s ease;
+  }
+  .md-picker__row-add:hover { background: var(--md-accent); color: #fff; }
+  .md-picker__row-add:active { transform: scale(.92); }
+
+  .md-picker__results-empty {
+    padding: 18px 14px; text-align: center; color: var(--md-ink-soft);
+    font-style: italic; font-size: .9rem;
+  }
+
+  .md-picker__selected-head {
+    margin: 16px 0 8px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-top: 1px dashed var(--md-rule);
+    padding-top: 12px;
+    font-family: 'Manrope', system-ui, sans-serif;
+    font-size: .85rem; font-weight: 700; letter-spacing: -.01em; color: var(--md-ink);
+  }
+  .md-picker__selected-count {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .72rem; letter-spacing: .08em;
+    background: var(--md-accent); color: #fff;
+    padding: 2px 8px; border-radius: 999px; min-width: 22px; text-align: center;
+  }
+
+  .md-picker__selected {
+    display: flex; flex-wrap: wrap; gap: 8px; min-height: 44px;
+    align-content: flex-start;
+  }
+  .md-picker__selected:empty::before {
+    content: 'Aún no agregaste productos. Usá el buscador de arriba.';
+    color: var(--md-ink-soft); font-style: italic; font-size: .88rem;
+    padding: 12px 4px;
+  }
+
+  .md-picker__chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 4px 6px 10px;
+    background: #fff;
+    border: 1px solid var(--md-rule);
+    border-left: 3px solid var(--md-chip-color, var(--md-accent));
+    border-radius: 3px;
+    font-family: 'Manrope', system-ui, sans-serif;
+    font-size: .85rem; font-weight: 500; color: var(--md-ink);
+    transition: border-color .12s ease, transform .08s ease;
+  }
+  .md-picker__chip:hover { border-color: var(--md-ink-soft); }
+  .md-picker__chip.is-removing { transform: scale(.9); opacity: 0; transition: all .15s ease; }
+  .md-picker__chip-codigo {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .72rem; color: var(--md-ink-soft);
+  }
+  .md-picker__chip-name { font-weight: 500; }
+  .md-picker__chip-remove {
+    border: 0; background: transparent; color: var(--md-ink-soft);
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; line-height: 1;
+    transition: background-color .12s ease, color .12s ease;
+  }
+  .md-picker__chip-remove:hover { background: var(--md-danger); color: #fff; }
+</style>

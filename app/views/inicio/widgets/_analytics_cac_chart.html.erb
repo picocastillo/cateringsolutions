@@ -1,0 +1,123 @@
+<%# CAC (Customer Acquisition Cost) interactive chart + table. %>
+<% avg_vvc = @analytics[:avg_vvc] %>
+<% clientes_count = @analytics[:vvc_clientes_count] %>
+<div class="card">
+  <div class="card-body">
+    <h3 class="card-title">CAC — Costo de Adquisición de Cliente por año</h3>
+    <h6 class="card-subtitle mb-3">Cuánto podés gastar en promedio para conseguir un nuevo cliente (últimos 12 meses)</h6>
+
+    <div class="p-3 mb-3" style="background: #fff8e1; border-left: 4px solid #ffc107;">
+      <strong>¿Qué es esto?</strong><br>
+      <strong>VVC</strong> (Valor de Vida del Cliente) = ganancia bruta promedio que genera cada cliente a lo largo de toda su relación comercial.<br>
+      <strong>CAC</strong> (Costo de Adquisición de Cliente) = lo que gastás en marketing, descuentos, o acciones comerciales para conseguir un cliente nuevo.<br>
+      <small class="text-muted">Si el CAC es menor que la ganancia que genera el cliente, tu inversión se recupera. Si es mayor, perdés plata por cada cliente nuevo.</small>
+    </div>
+
+    <% if avg_vvc.to_f > 0 %>
+      <div class="form-group row align-items-center mb-3">
+        <label class="col-auto col-form-label font-weight-bold" for="inicio_cac_cost_pct">Costo de producción y despacho:</label>
+        <div class="col-auto">
+          <select id="inicio_cac_cost_pct" class="form-control form-control-lg" style="font-size: 1.2rem; font-weight: bold; background: #e3f2fd; border-color: #90caf9; min-width: 100px;">
+            <% (0..100).step(5).each do |pct| %>
+              <option value="<%= pct %>" <%= pct == 50 ? 'selected' : '' %>><%= pct %>%</option>
+            <% end %>
+          </select>
+        </div>
+        <span class="col-auto text-muted">% de la facturación que se va en costos (producción, logística, despacho)</span>
+      </div>
+
+      <%= content_tag :span, nil, id: 'inicio-cac-data', data: { avg_vvc: avg_vvc, clientes_count: clientes_count } %>
+      <div style="position: relative; height: 280px;"><canvas id="inicio-cac-chart"></canvas></div>
+
+      <div class="table-responsive mt-3">
+        <table class="table table-bordered table-sm text-center" id="inicio-cac-table">
+          <thead class="thead-light">
+            <tr>
+              <th>% de ganancia usado para conseguir al cliente</th>
+              <th>100%</th><th>50%</th><th>33%</th><th>25%</th><th>20%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="font-weight-bold">CAC Máximo usado para conseguir cliente</td>
+              <td id="inicio-cac-r1"></td><td id="inicio-cac-r2"></td><td id="inicio-cac-r3"></td><td id="inicio-cac-r4"></td><td id="inicio-cac-r5"></td>
+            </tr>
+            <tr>
+              <td class="font-weight-bold">Interpretación</td>
+              <td id="inicio-cac-i1"></td><td id="inicio-cac-i2"></td><td id="inicio-cac-i3"></td><td id="inicio-cac-i4"></td><td id="inicio-cac-i5"></td>
+            </tr>
+            <tr>
+              <td class="font-weight-bold">Dto. Máx. Recomendado</td>
+              <td id="inicio-cac-d1"></td><td id="inicio-cac-d2"></td><td id="inicio-cac-d3"></td><td id="inicio-cac-d4"></td><td id="inicio-cac-d5"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="text-muted mt-2" id="inicio-cac-footnote" style="font-size: 12px;"></p>
+      <div id="inicio-cac-explanation" class="mt-2 p-2" style="background: #f8f9fa; font-size: 13px;"></div>
+
+      <script>
+        (function() {
+          var $cacData = $('#inicio-cac-data');
+          if (!$cacData.length || !$cacData.data('avg-vvc')) return;
+          var inicioCacChart = null;
+          var avgVvc = parseFloat($cacData.data('avg-vvc'));
+          var clientesCount = parseInt($cacData.data('clientes-count'));
+
+          function fmt(v) { var p = Math.round(v).toString().split('.'); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return '$ ' + p.join(','); }
+
+          function recalc(costPct) {
+            var margin = 1 - (costPct / 100);
+            var grossProfit = avgVvc * margin;
+            var ratios = [1, 2, 3, 4, 5];
+            var pctLabels = ['100%', '50%', '33%', '25%', '20%'];
+            var cac = ratios.map(function(r) { return grossProfit / r; });
+            var interp = [
+              { label: 'Crítico',   cls: 'badge-danger' },
+              { label: 'Riesgoso',  cls: 'badge-warning' },
+              { label: 'Saludable', cls: 'badge-success' },
+              { label: 'Muy Bueno', cls: 'badge-info' },
+              { label: 'Excelente', cls: 'badge-primary' }
+            ];
+            for (var i = 0; i < 5; i++) {
+              $('#inicio-cac-r' + (i + 1)).html('<strong>' + fmt(cac[i]) + '</strong>');
+              $('#inicio-cac-i' + (i + 1)).html('<span class="badge ' + interp[i].cls + '">' + interp[i].label + '</span>');
+              $('#inicio-cac-d' + (i + 1)).text(Math.round((cac[i] / avgVvc) * 100) + '%');
+            }
+            $('#inicio-cac-footnote').html(
+              'VVC promedio: ' + fmt(avgVvc) +
+              ' — Ganancia bruta promedio por cliente: ' + fmt(grossProfit) +
+              ' (' + Math.round(margin * 100) + '% margen) — Basado en ' + clientesCount + ' clientes con pedidos en los últimos 12 meses.'
+            );
+            var safe = cac[2];
+            $('#inicio-cac-explanation').html(
+              '<strong>¿Cómo leer estos datos?</strong><br>' +
+              'Con un costo de producción y despacho del <strong>' + costPct + '%</strong>, ' +
+              'la ganancia bruta promedio por cliente es <strong>' + fmt(grossProfit) + '</strong>.<br>' +
+              'Para que la inversión en adquisición sea saludable, el CAC promedio no debería superar <strong>' + fmt(safe) + '</strong> por cliente.'
+            );
+            if (inicioCacChart) inicioCacChart.destroy();
+            inicioCacChart = new Chart(document.getElementById('inicio-cac-chart').getContext('2d'), {
+              type: 'bar',
+              data: { labels: pctLabels, datasets: [{ label: 'CAC Máximo', data: cac, backgroundColor: ['#ff4d4d', '#ffc107', '#02af1f', '#17a2b8', '#7460ee'], borderWidth: 1, borderColor: '#fff' }] },
+              options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                scales: { x: { beginAtZero: true, ticks: { callback: function(v) { return fmt(v); } }, grid: { color: '#eef0f2' } }, y: { grid: { display: false } } },
+                plugins: {
+                  legend: { display: false },
+                  tooltip: { callbacks: { label: function(ctx) { return 'CAC Máximo: ' + fmt(ctx.parsed.x); } } },
+                  annotation: { annotations: { grossProfitLine: { type: 'line', xMin: grossProfit, xMax: grossProfit, borderColor: '#343a40', borderWidth: 2, borderDash: [5, 5], label: { display: true, content: 'Ganancia bruta: ' + fmt(grossProfit), position: 'start', backgroundColor: '#343a40', color: '#fff', font: { size: 11 } } } } }
+                }
+              }
+            });
+          }
+          recalc(parseInt($('#inicio_cac_cost_pct').val()));
+          $('#inicio_cac_cost_pct').on('change', function() { recalc(parseInt($(this).val())); });
+        })();
+      </script>
+    <% else %>
+      <p class="text-muted text-center py-4">Sin datos suficientes para calcular el VVC.</p>
+    <% end %>
+  </div>
+</div>

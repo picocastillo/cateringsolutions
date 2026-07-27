@@ -1,0 +1,68 @@
+<%# Single condensed product row used when current_user.vista_lista?.
+    Preserves the .producto-venta + .cantidad + .cambiadores-cantidad contract
+    expected by the delegated click handler in pedidos.js (line 576). %>
+<% precio = Danconia::Money.new(pr.importe) %>
+<% activado = current_user.favoritos.any? { |f| f.producto_id == pr.producto_id } %>
+<% stock_activo = pr.producto.categoria&.stock_activo %>
+<% local_id = current_user&.local&.id || @pedido&.local&.id %>
+<% stock_disponible = stock_activo ? pr.producto.stock_actual(local_id) : nil %>
+<% sin_stock = stock_activo && stock_disponible.to_i < 1 %>
+<% titulo_largo = pr.producto.to_s.length > 55 %>
+<% desc_largo = pr.producto.descripcion.present? && pr.producto.descripcion.length > 35 %>
+<% mostrar_info = titulo_largo || desc_largo || pr.producto.descripcion.present? %>
+<% tooltip_content = "<strong>#{h(pr.producto.to_s)}</strong>#{pr.producto.descripcion.present? ? '<br><br>' + h(pr.producto.descripcion) : ''}" %>
+<div class="producto-venta producto-venta-lista mini-form noselect"
+     id="cantidad_producto_<%= pr.producto.id %>"
+     data-stock-activo="<%= stock_activo %>"
+     data-stock-disponible="<%= stock_disponible %>">
+  <div class="pvl-thumb">
+    <img src="<%= pr.producto.imagenes.first.present? ? pr.producto.imagenes.first.url(:thumb) : asset_url('sinimagen.png') %>"
+         loading="lazy" alt=""/>
+    <% if pr.producto.nuevo? %>
+      <span class="pvl-nuevo" title="Nuevo"><i class="fa fa-bolt"></i></span>
+    <% end %>
+  </div>
+  <div class="pvl-main">
+    <div class="pvl-nombre" title="<%= pr.producto.to_s %>"><%= pr.producto.to_s %></div>
+    <% if stock_activo && stock_disponible.to_i <= 999 %>
+      <span class="badge badge-pill stock-indicator pvl-stock <%= sin_stock ? 'badge-danger' : 'badge-success' %>">
+        <%= sin_stock ? 'Sin Stock' : "#{stock_disponible.to_i} disp." %>
+      </span>
+    <% end %>
+  </div>
+  <div class="pvl-right">
+    <div class="pvl-right-top">
+      <div class="pvl-precio"><%= precio %></div>
+      <span class="fav-container pvl-fav<%= ' active' if activado %>"
+            title="<%= activado ? 'Quitar de Favoritos' : 'Agregar a Favoritos' %>">
+        <i class="fa fa-star <%= ' active' if activado %>"></i>
+      </span>
+      <% if mostrar_info %>
+        <a href="javascript:void(0)" class="pvl-info"
+           data-toggle="tooltip" data-trigger="click" data-html="true"
+           title="<%= tooltip_content %>">
+          <i class="fa fa-info-circle"></i>
+        </a>
+      <% end %>
+    </div>
+    <%= hidden_field_tag 'productoid', pr.producto.id, class: 'productoid', id: nil %>
+    <div class="adicionadores pvl-adicionadores">
+      <%= link_to '<i class="fa fa-minus"></i>'.html_safe, nil,
+                  class: 'cambiadores-cantidad nodiarios menos',
+                  data: { suma: '-1' } %>
+      <% ccc = @pedido.productos_solicitados.find { |x| x.producto == pr.producto }.try(&:cantidad).to_i %>
+      <%= text_field_tag :cantidad, ccc,
+                         class: "#{'mayorcero' if ccc > 0} cantidad",
+                         id: "input_cantidad_#{pr.producto.id}",
+                         data: { productoid: pr.producto.id, precio: precio.to_f,
+                                 nombre: pr.producto.to_s.truncate(32),
+                                 imagen: pr.producto.imagen_principal,
+                                 stock_activo: stock_activo,
+                                 stock_disponible: stock_disponible },
+                         readonly: true %>
+      <%= link_to '<i class="fa fa-plus"></i>'.html_safe, nil,
+                  class: "cambiadores-cantidad nodiarios mas #{'disabled-stock' if sin_stock}",
+                  data: { suma: '1' } %>
+    </div>
+  </div>
+</div>

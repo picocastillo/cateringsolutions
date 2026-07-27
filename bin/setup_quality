@@ -1,0 +1,35 @@
+#!/bin/bash
+# Quick setup script for code quality tools
+
+echo "🔧 Setting up code quality tools..."
+echo ""
+
+# Check if bundle is installed
+if ! command -v bundle &> /dev/null; then
+    echo "❌ Bundler not found. Please install it first:"
+    echo "   gem install bundler"
+    exit 1
+fi
+
+# Install gems
+echo "📦 Installing gems..."
+bundle install
+
+echo ""
+echo "✅ Setup complete!"
+echo ""
+echo "📝 Quick Start:"
+echo ""
+echo "  Check code style:"
+echo "    bundle exec rubocop"
+echo ""
+echo "  Auto-fix issues:"
+echo "    bundle exec rubocop -A"
+echo ""
+echo "  Run tests with coverage:"
+echo "    COVERAGE=true bundle exec rspec"
+echo ""
+echo "  Run all quality checks:"
+echo "    rake quality"
+echo ""
+echo "📚 For more information, see: docs/QUALITY_TOOLS.md"

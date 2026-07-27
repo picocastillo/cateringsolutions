@@ -1,0 +1,174 @@
+<% if current_user.admin? && (@stocks_criticos.any? || @stocks_bajos.any? || @stocks_proyectados.any?) %>
+  <% format_stock = lambda { |cantidad|
+       cantidad = BigDecimal(cantidad.to_s)
+       cantidad.frac.zero? ? cantidad.to_i : number_with_precision(cantidad, precision: 2, strip_insignificant_zeros: true)
+     } %>
+  <div class="col-12 p-0 mt-3" id="stock-alerts">
+    <div class="card">
+      <div class="card-body bg-warning row" style="margin: 0;padding: 1.25rem;">
+        <div class="col-12">
+          <h4 class="text-white card-title">
+            <i class="ti-alert"></i> Alertas de Stock
+          </h4>
+          <h6 class="card-subtitle text-white m-b-0">
+            Productos con stock bajo o crítico (solo categorías con stock activo)
+          </h6>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <% if @stocks_criticos.any? %>
+          <div class="alert alert-danger" role="alert">
+            <h5 class="alert-heading">
+              <i class="ti-close"></i> Stock Crítico (<%= @stocks_criticos.count %>)
+            </h5>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th class="text-center">Stock Actual</th>
+                    <th class="text-center">Stock - Pendientes</th>
+                    <th class="text-center">Stock Mínimo</th>
+                    <th class="text-center">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @stocks_criticos.each do |stock| %>
+                    <% aceptados = @stock_aceptados_pendientes[stock.id] %>
+                    <% proyectado = stock.cantidad_actual - aceptados %>
+                    <tr>
+                      <td><%= link_to stock.producto.nombre, stock_path(stock) %></td>
+                      <td><span class="badge badge-secondary"><%= stock.producto.categoria.nombre %></span></td>
+                      <td class="text-center">
+                        <strong class="text-danger"><%= stock.cantidad_actual.to_i %></strong>
+                      </td>
+                      <td class="text-center">
+                        <strong class="text-danger"><%= format_stock.call(proyectado) %></strong>
+                        <% if aceptados.positive? %>
+                          <small class="text-muted d-block"><%= format_stock.call(stock.cantidad_actual) %> - <%= format_stock.call(aceptados) %></small>
+                        <% end %>
+                      </td>
+                      <td class="text-center"><%= stock.cantidad_minima.to_i %></td>
+                      <td class="text-center">
+                        <span class="badge badge-danger">
+                          <%= stock.sin_stock? ? 'SIN STOCK' : 'CRÍTICO' %>
+                        </span>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <%= link_to 'Ver todos los productos con stock crítico', stocks_path('q[status_stock_ids]': 'stock_critico', 'q[solo_categorias_stock_activo]': '1'), class: 'btn btn-danger btn-sm' %>
+          </div>
+        <% end %>
+
+        <% if @stocks_bajos.any? %>
+          <div class="alert alert-warning" role="alert">
+            <h5 class="alert-heading">
+              <i class="ti-alert"></i> Stock Bajo (<%= @stocks_bajos.count %>)
+            </h5>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th class="text-center">Stock Actual</th>
+                    <th class="text-center">Stock - Pendientes</th>
+                    <th class="text-center">Stock Mínimo</th>
+                    <th class="text-center">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @stocks_bajos.each do |stock| %>
+                    <% aceptados = @stock_aceptados_pendientes[stock.id] %>
+                    <% proyectado = stock.cantidad_actual - aceptados %>
+                    <tr>
+                      <td><%= link_to stock.producto.nombre, stock_path(stock) %></td>
+                      <td><span class="badge badge-secondary"><%= stock.producto.categoria.nombre %></span></td>
+                      <td class="text-center">
+                        <strong class="text-warning"><%= stock.cantidad_actual.to_i %></strong>
+                      </td>
+                      <td class="text-center">
+                        <strong class="text-warning"><%= format_stock.call(proyectado) %></strong>
+                        <% if aceptados.positive? %>
+                          <small class="text-muted d-block"><%= format_stock.call(stock.cantidad_actual) %> - <%= format_stock.call(aceptados) %></small>
+                        <% end %>
+                      </td>
+                      <td class="text-center"><%= stock.cantidad_minima.to_i %></td>
+                      <td class="text-center">
+                        <span class="badge badge-warning">BAJO</span>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <%= link_to 'Ver todos los productos con stock bajo', stocks_path('q[status_stock_ids]': 'stock_bajo', 'q[solo_categorias_stock_activo]': '1'), class: 'btn btn-warning btn-sm' %>
+          </div>
+        <% end %>
+
+        <% if @stocks_proyectados.any? %>
+          <div class="alert alert-info" role="alert">
+            <h5 class="alert-heading">
+              <i class="ti-time"></i> Stock Comprometido por Pedidos Aceptados (<%= @stocks_proyectados.count %>)
+            </h5>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th class="text-center">Stock Actual</th>
+                    <th class="text-center">Stock - Pendientes</th>
+                    <th class="text-center">Stock Mínimo</th>
+                    <th class="text-center">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @stocks_proyectados.each do |stock| %>
+                    <% aceptados = @stock_aceptados_pendientes[stock.id] %>
+                    <% proyectado = stock.cantidad_actual - aceptados %>
+                    <tr>
+                      <td><%= link_to stock.producto.nombre, stock_path(stock) %></td>
+                      <td><span class="badge badge-secondary"><%= stock.producto.categoria.nombre %></span></td>
+                      <td class="text-center">
+                        <strong><%= format_stock.call(stock.cantidad_actual) %></strong>
+                      </td>
+                      <td class="text-center">
+                        <strong class="text-info"><%= format_stock.call(proyectado) %></strong>
+                        <small class="text-muted d-block"><%= format_stock.call(stock.cantidad_actual) %> - <%= format_stock.call(aceptados) %></small>
+                      </td>
+                      <td class="text-center"><%= stock.cantidad_minima.to_i %></td>
+                      <td class="text-center">
+                        <span class="badge badge-info">PROYECTADO</span>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% end %>
+
+        <% unless @stocks_criticos.any? || @stocks_bajos.any? || @stocks_proyectados.any? %>
+          <div class="alert alert-success" role="alert">
+            <h5 class="alert-heading">
+              <i class="ti-check"></i> Todo en orden
+            </h5>
+            <p class="mb-0">No hay alertas de stock en este momento.</p>
+          </div>
+        <% end %>
+
+        <% if @stocks_criticos.any? || @stocks_bajos.any? || @stocks_proyectados.any? %>
+          <div class="text-center mt-3">
+            <%= link_to 'Ver todos los productos con alertas de stock (Sin Stock, Bajo y Crítico)', stocks_path('q[status_stock_ids]': 'sin_stock,stock_bajo,stock_critico', 'q[solo_categorias_stock_activo]': '1'), class: 'btn btn-primary' %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

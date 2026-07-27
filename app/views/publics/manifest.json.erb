@@ -1,0 +1,35 @@
+<% dominio = @tienda.dominio.presence || 'cateringsolutions.com.ar' %>
+<%= raw JSON.pretty_generate({
+  short_name: @tienda.nombre.truncate(12, omission: ''),
+  name: @tienda.nombre,
+  background_color: @tienda.color_de_fondo.presence || '#686877',
+  theme_color: @tienda.color_barra_superior.presence || '#232323',
+  display: 'standalone',
+  start_url: '/',
+  icons: [
+    { src: "/#{dominio}_launcher-icon-1x.png", type: "image/png", sizes: "48x48" },
+    { src: "/#{dominio}_launcher-icon-2x.png", type: "image/png", sizes: "96x96" },
+    { src: "/#{dominio}_launcher-icon-4x.png", type: "image/png", sizes: "192x192" },
+    { src: "/#{dominio}_launcher-icon-5x.png", type: "image/png", sizes: "510x510" }
+  ],
+  shortcuts: [
+    {
+      name: "Nuevo Pedido",
+      short_name: "Nuevo",
+      description: "Cargar pedidos para mañana y a futuro.",
+      url: "/pedidos/new",
+      icons: [{ src: "/#{dominio}_launcher-icon-4x.png", sizes: "192x192" }]
+    },
+    {
+      name: "Ver Pedidos",
+      short_name: "Listado",
+      description: "Ver, exportar, editar y eliminar los pedidos cargados.",
+      url: "/pedidos",
+      icons: [{ src: "/#{dominio}_launcher-icon-4x.png", sizes: "192x192" }]
+    }
+  ],
+  screenshots: [
+    { src: "/#{dominio}_screenshot1.png", type: "image/png", sizes: "540x720" },
+    { src: "/#{dominio}_screenshot2.png", type: "image/png", sizes: "540x720" }
+  ]
+}) %>

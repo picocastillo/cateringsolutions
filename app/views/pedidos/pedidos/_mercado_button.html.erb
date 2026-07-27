@@ -1,0 +1,6 @@
+<% if @preference_id %>
+  <div id="mp-boton-container" data-pid="<%= @preference_id %>" data-texto="Pagar con Mercadopago" data-pk="<%= Rails.application.secrets.mpp %>">
+  </div>
+  <% else %>
+    <a class="btn white btn-danger disabled" style="color:white;font-weight:bold;">MercadoPago no disponible</a>
+<% end %>

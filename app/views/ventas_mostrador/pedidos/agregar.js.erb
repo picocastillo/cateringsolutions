@@ -1,0 +1,39 @@
+<% if @pesable_producto %>
+  $("#productos-rapidos").unblock();
+  $("#peso-modal-producto-id").val("<%= @pesable_producto.id %>");
+  $("#peso-modal-producto-nombre").text("<%= j @pesable_producto.codigo_y_nombre %> (Precio por Kg)");
+  $("#peso-modal-input").val("");
+  $("#peso-modal").modal('show');
+  setTimeout(function() { $("#peso-modal-input").focus(); }, 500);
+<% else %>
+$("#productos-rapidos").html("<%= j render 'productos_rapidos' %>");
+$("#flash-container").html("<%= j render 'flash_messages' %>");
+$.each($('.select2-remote:not(.selectado)'), function() {
+  $(this).addClass('selectado');
+  $(this).remoteSelect2($(this).data());
+});
+$("#buscador-vr #codigo").focus();
+<% if @mensaje.present? %>
+  $("#importe-total-container").addClass('vm-flash-success');
+  setTimeout(function() { $("#importe-total-container").removeClass('vm-flash-success'); }, 1500);
+  <% if @ps && @ps.producto %>
+    toast.product({
+      id: <%= @ps.producto.id %>,
+      name: '<%= j @ps.producto.codigo_y_nombre %>',
+      image: '<%= j @ps.producto.imagen_principal %>',
+      qty: <%= @ps.pesable ? @ps.peso.to_f : @ps.cantidad.to_i %>,
+      qtyDelta: <%= @ps.pesable ? @ps.peso.to_f : 1 %>,
+      unit: '<%= @ps.pesable ? "Kg" : (@ps.cantidad.to_i == 1 ? "unidad" : "unidades") %>',
+      total: '<%= j @ps.importe_total.to_s %>'
+    });
+  <% else %>
+    toast.success({ html: '<%= @mensaje.html_safe %>', duration: 4000 });
+  <% end %>
+<% end %>
+<% if @error.present? %>
+  playSound("error", { volume: 1 });
+  $("#importe-total-container").addClass('vm-flash-error');
+  setTimeout(function() { $("#importe-total-container").removeClass('vm-flash-error'); }, 3000);
+  toast.error({ title: 'Error', html: '<%= @error.html_safe.sub("Error!<br>", "") %>', duration: 4000 });
+<% end %>
+<% end %>

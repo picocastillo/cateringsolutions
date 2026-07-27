@@ -1,0 +1,15 @@
+<%= modal 'form-modal', title: @horario.new_record? ? 'Nuevo Horario' : "Editando Horario #{@horario}" do %>
+  <%= simple_form_for @horario, remote: true do |f| %>
+    <%= f.error_messages %>
+    <%= f.hidden_field :tienda_id %>
+    <%= f.input :nombre, as: :string, wrapper_html: { class: 'col-sm-6' } %>
+    <%= f.input :horario, as: :string, wrapper_html: { class: 'col-sm-6' } %>
+    <%= f.input :por_defecto, as: :boolean, label: 'Predeterminada', wrapper_html: { class: 'col-sm-6' } %>
+    <div class="col-md-12">
+      <%= f.submit (@horario.new_record? ? 'Crear' : "Guardar"), class: "btn btn-success waves-effect waves-light m-r-10" %>
+      <%= link_to('Eliminar', horario_path(@horario), class: "btn btn-danger waves-effect waves-light m-r-10", method: :delete, remote: true, data: {confirm: "Está seguro que desea eliminar el horario '#{@horario}'?", toggle: 'tooltip', "original-title" => 'Eliminar' }) if !@horario.new_record? && can?(:destroy, @horario)  %>
+      <%= link_to('Cerrar', nil, class: "btn btn-default waves-effect waves-light m-r-10", data: {dismiss: 'modal'}) %>
+    </div>
+  <% end %>
+
+<% end %>

@@ -1,0 +1,26 @@
+<% page title: 'Horarios de entrega', raiz: 'Pedidos', hojas: 'Horarios de entrega', acciones: [link_to('Nuevo', new_horario_path, remote: true)], id: 'index-horarios' %>
+
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card" id="listado-horarios">
+          <div class="card-header">
+              <div class="card-actions">
+
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <div class="card-body collapse show">
+            <div class="table-responsive">
+              <%= table_for @horarios, id: 'horarios' do |t| %>
+                <% t.column(:nombre) %>
+                <% t.column(:horario) %>
+                <% t.column(:predeterminado) %>
+                <% t.column(:activo, class: 'center hidden-md-down')  { |t| etiqueta_activo t }%>
+                <% t.actions { |t| [link_to(content_tag(:i, nil, class: 'ti-marker-alt').html_safe, edit_horario_path(t, {de_lista: true}), remote: true, data: {toggle: 'tooltip', "original-title" => 'Editar' }), link_to_activate(t), (link_to(content_tag(:i, nil, class: 'ti-trash').html_safe, edit_horario_path(t, {de_lista: 'true'}), method: :delete, remote: true, data: {confirm: "Está seguro que desea eliminar el horario '#{t}'?", toggle: 'tooltip', "original-title" => 'Eliminar' }) if can?(:destroy, t))]} %>
+              <% end %>
+            </div>
+          </div>
+          <%= paginador @horarios %>
+      </div>
+  </div>
+</div>

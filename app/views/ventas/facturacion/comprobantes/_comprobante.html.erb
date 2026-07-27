@@ -1,0 +1,85 @@
+<div class="card">
+    <div class="card-body">
+            <div class="col-12" style="background: whitesmoke;padding: 15px 0 5px 0;">
+
+              <div class="col-sm-6 col-md-5 col-lg-4">
+                <h4 class="card-title text-left" style="margin-bottom: -10px;"><%= current_user.cliente? ? @comprobante.pedido.para_to_s_vertical : (@comprobante.pedido.usuario ? link_to(discontinuado(@comprobante.pedido.usuario, @comprobante.pedido.to_s_vertical), usuario_path(@comprobante.pedido.usuario)) : link_to(discontinuado(@comprobante.pedido.cuenta, @comprobante.pedido.para_to_s_vertical), cliente_path(@comprobante.pedido.cuenta.cliente)))  %></h4>
+                <hr>
+                <% if @comprobante.fecha_emision %>
+                  <h6 class="card-subtitle text-left"><strong>Fecha Emisión:</strong> <%= @comprobante.fecha_emision %></h6>
+                <% end %>
+                <% if @comprobante.fecha_vencimiento %>
+                  <h6 class="card-subtitle text-left" style="margin-top:-10px"><strong>Vencimiento:</strong> <%= @comprobante.fecha_vencimiento %></h6>
+                <% end %>
+                <% if @comprobante.cancela_a %>
+                  <h6 class="card-subtitle text-left" style="margin-top:-10px"><strong>Cancela a:</strong> <%= link_to @comprobante.cancela_a, @comprobante.cancela_a %></h6>
+                <% end %>
+                <h6 class="card-subtitle estado text-left" style="margin-top:-10px"><strong style="margin-right:5px">Estado:</strong> <%= pedido_estado_label @comprobante %></h6>
+                <% cbtes = @comprobante.afectadores.select{|x| x.is_a?(Cobros::Recibo) && (x.finalizado? || x.confirmado?) } %>
+                <% if cbtes.present? && !current_user.cliente? %>
+                  <h6 class="card-subtitle estado text-left" style="margin-top:-10px"><strong style="margin-right:5px">Cobrado por:</strong> <%= cbtes.map{|c| link_to(c.to_s, recibo_path(c))}.join(', ').html_safe %>
+                  </h6>
+                <% end %>
+
+                <% ncs = @comprobante.afectadores.select{|x| x.is_a?(Ventas::Facturacion::NotaCredito) && x.confirmado? } %>
+                <% if ncs.present? && !current_user.cliente? %>
+                  <h6 class="card-subtitle estado text-left" style="margin-top:-10px"><strong style="margin-right:5px">Cancelado por:</strong> <%= ncs.map{|c| link_to(c.to_s, comprobante_path(c))}.join(', ').html_safe %>
+                  </h6>
+                <% end %>
+
+
+
+                <% if @comprobante.pedido %>
+                  <h6 class="card-subtitle text-left" style="margin-top:-10px"><strong>Pedido:</strong> <%= link_to @comprobante.pedido, @comprobante.pedido %></h6>
+                <% end %>
+              </div>
+              <div class="col-sm-6 col-md-5 col-lg-4">
+              <hr style="margin-top: -5px;">
+              <h4 class="card-title  text-left" style="margin-top: -5px;">Total <%= @comprobante.total %>
+              </h4>
+              </h4>
+              </div>
+            </div>
+        <div><div>
+                            <div class="table-responsive mt-3">
+                                <table class="table stylish-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th colspan="2" class="hidden-sm-down">Descripción</th>
+                                            <th colspan="1" class="hidden-md-up">Descripción</th>
+                                            <th class="text-right hidden-sm-down">Cantidad</th>
+                                            <th class="text-right hidden-sm-down">Precio Unitario</th>
+                                            <th class="text-right">Importe</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                      <% @comprobante.renglones.each do |r| %>
+                                        <% ps = @comprobante.pedido.productos_solicitados.select{|x| x.producto == r.producto }.first if r.producto %>
+                                          <tr>
+                                              <td style="width:50px;" class="hidden-sm-down"><%= image_tag r.producto.imagen_principal, style: "max-width: 48px;border-radius:4px;background: #{ps.producto.color_safe}" if r.producto %>
+                                              </td>
+                                              <td>
+                                                  <% if ps && ps.producto || r && r.producto %>
+                                                    <h6>
+                                                      <span class="muted mr-2"><%=(ps ? ps.producto.codigo : r.producto.codigo).to_s.rjust(3, '0') %></span><%= ps ? ps.nombre_carrito : r.producto.to_s %>
+                                                    </h6>
+                                                    <small class="text-muted"><%= r.producto.categoria %></small>
+                                                    <small class="hidden-md-up text-muted"><br><%= ps.sin_producto %></small>
+                                                  <% else %>
+                                                    <h6>
+                                                      <%= r.descripcion %>
+                                                    </h6>
+                                                  <% end %>
+                                              </td>
+                                              <td class="text-right hidden-sm-down"><%= r.cantidad %></td>
+                                              <td class="text-right hidden-sm-down"><%= r.precio_unitario %></td>
+                                              <td class="text-right"><%= r.precio_total %></td>
+                                          </tr>
+                                      <% end %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+          </div>
+    </div>
+</div>

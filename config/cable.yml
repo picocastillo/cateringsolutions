@@ -1,0 +1,14 @@
+development:
+  adapter: redis
+  url: <%= "redis://#{ENV['REDIS_HOST'] || 'localhost'}:#{ENV['REDIS_PORT'] || 6379}/1" %>
+  channel_prefix: kiosk_development
+
+test:
+  adapter: redis
+  url: <%= "redis://#{ENV['REDIS_HOST'] || 'localhost'}:#{ENV['REDIS_PORT'] || 6379}/2" %>
+  channel_prefix: kiosk_test
+
+production:
+  adapter: redis
+  url: redis://localhost:6379/0
+  channel_prefix: kiosk_production

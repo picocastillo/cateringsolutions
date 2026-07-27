@@ -1,0 +1,14 @@
+<li id="<%= dom_id documento %>">
+  <%= hidden_field_tag field_name, documento.id %>
+
+  <div class="thumbnail">
+    <% if documento.image? %>
+      <%= image_tag documento.url(:thumb), title: documento.observaciones %>
+    <% else %>
+      <%= image_tag 'downloable.png', title: documento.documento_file_name %>
+    <% end %>
+  </div>
+
+  <%= link_to_function fa_icon('remove'), class: 'quitar-archivo text-error', title: 'Quitar Archivo' %>
+  <span class="filename"><%= documento.documento_file_name %></span>
+</li>

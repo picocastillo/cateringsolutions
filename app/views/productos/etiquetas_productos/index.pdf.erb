@@ -1,0 +1,17 @@
+<% content_for :styles do %>
+  @page {
+    size: 50mm 30mm;
+    margin: 0;
+  }
+
+  body {
+    font-family: Calibri;
+  }
+<% end %>
+
+<% page id: 'pedidos-etiquetas' %>
+<% primero = true %>
+<% 1..@cantidad.to_i.times do |pr| %>
+  <%= render partial: '/productos/etiquetas_productos/etiqueta_producto', locals: { ps: @precio, primero: primero } %>
+  <% primero = false %>
+<% end %>

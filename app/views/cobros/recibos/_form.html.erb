@@ -1,0 +1,121 @@
+  <%= simple_nested_form_for @recibo, html: { method: :post, id: 'recibo-form' } do |f| %>
+    <%= f.error_messages %>
+  <div class="col-md-12" id="afectaciones_totales" style="margin-bottom: -10px">
+    <%= render "afectaciones_totales" %>
+  </div>
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-body">
+        <ul class="nav nav-tabs profile-tab" role="tablist">
+          <li class="nav-item"> <a class="nav-link active" data-toggle="tab" href="#detalles" role="tab">Detalles</a> </li>
+          <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#efectivos" role="tab">Efectivo</a> </li>
+          <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#debitos" role="tab">Débito</a> </li>
+          <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#creditos" role="tab">Crédito</a> </li>
+          <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#qrs" role="tab">QR</a> </li>
+          <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#transferencias" role="tab">Transferencia</a> </li>
+          <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#retenciones" role="tab">Retenciones</a> </li>
+          <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#afectaciones" role="tab">Afectaciones</a> </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane active form-material" id="detalles" role="tabpanel">
+              <div class="card-body row">
+                <%= f.hidden_field :tienda_id %>
+                <% if true || continuando_afectacion %>
+                  <%= hidden_field_tag :id, f.object.id %>
+                  <%= f.input :fecha_emision, as: :string, input_html: { class: 'singledate'}, value: @recibo.fecha_emision.to_date, wrapper_html: { class: 'col-sm-4' } %>
+                  <%= f.input :cuenta_id, collection: Clientes::Cuenta.joins(cliente: :tiendas).where(tiendas: { id: tienda_activa.id }).distinct, wrapper_html: { class: 'col-sm-8' }, required: true %>
+                <% end %>
+                <%= f.input :documentos, wrapper_html: { class: 'col-sm-12' } do %>
+                  <%= render '/infraestructura/documentos/drag_and_drop_section', f: f %>
+                <% end %>
+            </div>
+          </div>
+          <div class="tab-pane form-material" id="efectivos" role="tabpanel">
+            <div class="card-body">
+                <table class="table-responsive efectivos">
+                  <thead>
+                    <tr>
+                      <th width="80%">Importe</th>
+                      <th width="20%"><%= f.icon_to_add :efectivos %></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <%= f.fields_for :efectivos do |fi| %>
+                    <tr class="fields">
+                      <td>
+                        <%= fi.input :importe, as: :string, label: false, class: 'efectivo form-control' %>
+                      </td>
+                      <td>
+                        <%= fi.icon_to_remove "menos"%>
+                      </td>
+                    </tr>
+                  <% end %>
+                  </tbody>
+                </table>
+            </div>
+          </div>
+          <% [:debitos, :creditos, :qrs, :transferencias].each do |medio_tipo| %>
+          <div class="tab-pane form-material" id="<%= medio_tipo %>" role="tabpanel">
+            <div class="card-body">
+                <table class="table-responsive <%= medio_tipo %>">
+                  <thead>
+                    <tr>
+                      <th width="80%">Importe</th>
+                      <th width="20%"><%= f.icon_to_add medio_tipo %></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <%= f.fields_for medio_tipo do |fi| %>
+                    <tr class="fields">
+                      <td>
+                        <%= fi.input :importe, as: :string, label: false, class: 'form-control' %>
+                      </td>
+                      <td>
+                        <%= fi.icon_to_remove "menos"%>
+                      </td>
+                    </tr>
+                  <% end %>
+                  </tbody>
+                </table>
+            </div>
+          </div>
+          <% end %>
+          <div class="tab-pane form-material" id="retenciones" role="tabpanel">
+            <div class="card-body">
+              <div class="row">
+                <table class="table-responsive retenciones">
+                  <thead>
+                    <tr>
+                      <th width="60%">Fecha de Retención</th>
+                      <th width="30%">Importe</th>
+                      <th width="10%"><%= f.icon_to_add :retenciones %></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <%= f.fields_for :retenciones do |fi| %>
+                    <tr class="fields">
+                      <td><%= fi.input :fecha_retencion, as: :string, label: false, input_html: { class: 'form-control singledate'}, value: fi.object.fecha_retencion.try(&:to_date) %></td>
+                      <td><%= fi.input :importe, class: 'form-control importe', label: false %></td>
+                      <td>
+                        <%= fi.icon_to_remove "menos"%>
+                      </td>
+                    </tr>
+                  <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane form-material" id="afectaciones" role="tabpanel">
+            <div class="card-body">
+              <div id="afectaciones_de_recibo" class="col-md-12"><%= render "afectaciones_de_recibo" %></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-12">
+  <%= f.default_button %>
+  </div>
+<% end %>

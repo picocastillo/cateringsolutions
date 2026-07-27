@@ -1,0 +1,85 @@
+#!/bin/bash
+# Test suite runner with helpful output
+
+echo "🧪 Kiosk Test Suite"
+echo "===================="
+echo ""
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+show_help() {
+    echo "Usage: ./bin/run_tests [option]"
+    echo ""
+    echo "Options:"
+    echo "  unit       Run unit tests only (default, fast)"
+    echo "  system     Run system/Selenium tests only (slow)"
+    echo "  all        Run all tests (unit + system)"
+    echo "  coverage   Run unit tests with coverage"
+    echo "  full       Run all tests with coverage"
+    echo "  help       Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  ./bin/run_tests                  # Run unit tests"
+    echo "  ./bin/run_tests system           # Run Selenium tests"
+    echo "  ./bin/run_tests coverage         # Unit tests + coverage"
+    echo ""
+}
+
+case "$1" in
+    "unit"|"")
+        echo -e "${BLUE}Running unit tests (excludes Selenium)...${NC}"
+        echo ""
+        bundle exec rspec --tag ~type:system
+        ;;
+    "system")
+        echo -e "${BLUE}Running system/Selenium tests...${NC}"
+        echo -e "${YELLOW}⚠️  This may take several minutes${NC}"
+        echo ""
+        SYSTEM_TESTS=true ONLY_SYSTEM=true bundle exec rspec --tag type:system
+        ;;
+    "all")
+        echo -e "${BLUE}Running all tests (unit + system)...${NC}"
+        echo ""
+        SYSTEM_TESTS=true bundle exec rspec
+        ;;
+    "coverage")
+        echo -e "${BLUE}Running unit tests with coverage...${NC}"
+        echo ""
+        COVERAGE=true bundle exec rspec --tag ~type:system
+        echo ""
+        echo -e "${GREEN}📊 Coverage report: coverage/index.html${NC}"
+        ;;
+    "full")
+        echo -e "${BLUE}Running all tests with coverage...${NC}"
+        echo -e "${YELLOW}⚠️  This may take several minutes${NC}"
+        echo ""
+        COVERAGE=true SYSTEM_TESTS=true bundle exec rspec
+        echo ""
+        echo -e "${GREEN}📊 Coverage report: coverage/index.html${NC}"
+        ;;
+    "help"|"-h"|"--help")
+        show_help
+        ;;
+    *)
+        echo -e "${RED}❌ Unknown option: $1${NC}"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac
+
+EXIT_CODE=$?
+
+echo ""
+if [ $EXIT_CODE -eq 0 ]; then
+    echo -e "${GREEN}✅ Tests passed!${NC}"
+else
+    echo -e "${RED}❌ Tests failed${NC}"
+fi
+
+exit $EXIT_CODE

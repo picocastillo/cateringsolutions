@@ -1,0 +1,10 @@
+<% (@pedido_pendiente = current_user.cliente ? Pedidos::Pedido.where(usuario_id: current_user, autor_id: current_user, estado_id: 1, tienda_id: tienda_activa, venta_mostrador: false).last : Pedidos::Pedido.where(autor_id: current_user, venta_mostrador: false, estado_id: 1, tienda_id: tienda_activa).last) unless @pedido_pendiente %>
+
+<%  title = @pedido_pendiente ? "Ver pedido pendiente" : "Nuevo Pedido" %>
+<%  cart_total = @pedido_pendiente&.en_grupo? ? @pedido_pendiente.pedido_multiple.total : @pedido_pendiente&.importe_total %>
+<a class="nav-link dropdown-toggle text-muted waves-effect waves-dark" href="JavaScript:void(0);" title="<%= title %>" id="cachincachin" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span id="total-pedido-pendiente"><%= cart_total %></span> <i class="mdi mdi-cart"></i><div class="notify">
+    <% if cart_total %><span class="heartbit"></span> <span class="point"></span><% end %></div>
+</a>
+<div class="dropdown-menu mailbox dropdown-menu-right scale-up cart" aria-labelledby="cachincachin" id="pedido-en-curso">
+  <%= render '/layouts/pedido_en_curso' %>
+</div>

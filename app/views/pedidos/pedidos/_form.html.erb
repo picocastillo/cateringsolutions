@@ -1,0 +1,65 @@
+<div class="" id="carga-pedidos" data-manualfocus>
+  <div class="card modern-form-card">
+    <div class="card-body modern-form-body">
+      <div class="text-center mb-2">
+        <h3 class="form-title" style="color: #2d3748; font-weight: 700; margin-bottom: 20px;">
+          <i class="mdi mdi-cart mr-2" style="color: #f59e0b;"></i>
+          Crear Pedido
+        </h3>
+      </div>
+
+      <div class="row justify-content-center">
+        <div class="col-lg-11 col-xl-10">
+          <div class="modern-form-container">
+
+            <%# ── Main pedido form ── %>
+            <%= simple_form_for @pedido do |f| %>
+              <%= f.error_messages %>
+              <div class="row modern-form-row" style="padding: 0 20px 0 20px;">
+                <% if current_user.operador? || current_user.cumple_rol?(:administrador_empresa) %>
+                  <%= f.input :tipo_pedido, label: 'Para', as: :select, collection: [['Usuario', 1],['Cuenta', 2]], prompt: false, selected: @pedido.tipo_pedido, wrapper_html: { class: 'col-sm-6 col-md-3 col-lg-2 mb-3 modern-select-wrapper'}, input_html: { class: 'modern-select' } %>
+                  <%= f.input :usuario_id, label: 'Usuario', as: :select2, input_html: {data: {multiple: false, placeholder: 'Ingrese nombre, legajo o DNI', selection: 'nombre_y_cliente', label: 'nombre_legajo_dni_cliente', url: usuarios_path(format: :json), pre: { id: @pedido.usuario.try(&:id), nombre_y_cliente: @pedido.usuario.try(&:nombre_y_cliente)}}, class: 'seleccion-usuario modern-select2'}, wrapper_html: { class: "col-sm-6 col-md-6 col-lg-4 mb-3 modern-select-wrapper#{' hide' if @pedido.tipo_pedido == 2 }"} %>
+                  <%= f.input :cuenta, as: :select2_local, collection: @cuentas, selected: @pedido.cuenta_id, label: 'Cuenta', label_method: :cliente_y_nombre, include_blank: true, input_html: {multiple: false, class: 'modern-select2'}, wrapper_html: { class: "col-sm-6 col-md-6 col-lg-4 mb-3 modern-select-wrapper#{' hide' if @pedido.tipo_pedido == 1}"} %>
+                <% end %>
+
+                <div class="col-sm-6 col-md-4 col-lg-3 mb-3 modern-input-wrapper" style="position: relative;">
+                  <div class="form-group string optional pedido_fecha mb-0">
+                    <label class="form-control-label string optional" for="pedido_fecha">Fecha</label>
+                    <%= f.text_field :fecha, id: 'pedido_fecha', class: 'form-control string optional singledate modern-date-input' %>
+                  </div>
+                  <div id="multi-fecha-hint" style="display: none;">
+                    <span class="mfh-inner">
+                      <svg class="mfh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-2px;flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      <span class="mfh-text">¿Más de un día? Elegí otra fecha para agrupar pedidos.</span>
+                      <span class="mfh-badge">Nuevo</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="col-12" id="grupo-badges-container" style="padding-bottom: 10px;">
+                  <% if @pedido.en_grupo? %>
+                    <%= render 'pedidos/pedidos/grupo_badges', pedido: @pedido %>
+                  <% end %>
+                </div>
+
+                <div class="col-12 col-md-12 col-lg-12 d-flex justify-content-center align-items-center" id="boton-compra" style="gap: 10px;">
+                  <div class="modern-primary-button">
+                    <%= render 'boton_compra' %>
+                  </div>
+                  <a class="btn modern-btn modern-btn-secondary vaciar-pedido" href="JavaScript:void(0);" title="Vaciar Carrito" style="white-space: nowrap; flex-shrink: 0;">
+                    <i class="ti-trash mr-1"></i>
+                    <span class="btn-text">Vaciar</span>
+                  </a>
+                </div>
+              </div>
+            <% end %>
+
+          </div>
+        </div>
+      </div>
+
+      <span id="productos-en-venta"><%= render 'productos_en_venta' %></span>
+    </div>
+  </div>
+</div>
+

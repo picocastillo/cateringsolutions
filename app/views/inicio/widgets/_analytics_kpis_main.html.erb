@@ -1,0 +1,21 @@
+<%# Financial KPI tiles: AOV (USD) + Total Revenue. Only rendered for admin_financiero. %>
+<div class="row mx-0">
+  <div class="col-6">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Ticket Promedio (AOV)</h6>
+        <h3 class="mb-0" style="color: #009efb;">US$ <%= number_with_precision(@analytics[:aov_usd], precision: 0, delimiter: '.') %></h3>
+        <small class="text-muted"><%= @analytics[:total_pedidos] %> pedidos totales</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6">
+    <div class="card">
+      <div class="card-body text-center p-3">
+        <h6 class="text-muted mb-1" style="font-size: 11px;">Facturación Neta Total</h6>
+        <h3 class="mb-0" style="color: #7460ee;"><%= number_to_currency(@analytics[:total_revenue], unit: '$', separator: ',', delimiter: '.', precision: 0) %></h3>
+        <small class="text-muted">US$ <%= number_with_precision(@analytics[:total_revenue_usd], precision: 0, delimiter: '.') %></small>
+      </div>
+    </div>
+  </div>
+</div>

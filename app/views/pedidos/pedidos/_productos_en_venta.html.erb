@@ -1,0 +1,110 @@
+<% @cuenta_activa = @cuenta_activa || @pedido.cuenta || (@pedido.usuario && @pedido.usuario.cuenta) %>
+<% if @cuenta_activa && @pedido.fecha %>
+  <% if @pedido.valid? %>
+        <% if tienda_activa.muestra_menus_del_dia? %>
+          <span id="top-menus-diarios">
+            <%= render 'top_menus_diarios' %>
+          </span>
+        <% end %>
+
+        <% if tienda_activa.soporta_productos_diarios? || (tienda_activa.muestra_mas_productos_efectivo? && @categorias_disponibles&.any?) %>
+          <hr style="margin: 2rem 0;">
+          <%= render 'vista_productos_toggle' %>
+        <% end %>
+
+        <% if tienda_activa.soporta_productos_diarios? %>
+          <span id="opciones-del-dia" data-pedido-id="<%= @pedido.id %>">
+            <div id="opciones-del-dia-loader" style="min-height: 200px; text-align: center;">
+              <div class="spinner-grow" style="width: 3rem; height: 3rem; margin: 3rem auto;">
+                <span class="sr-only">Cargando opciones del día...</span>
+              </div>
+            </div>
+          </span>
+        <% end %>
+
+        <% if tienda_activa.muestra_mas_productos_efectivo? && @categorias_disponibles&.any? %>
+        <!-- Más Productos Section with specific wrapper to avoid CSS conflicts -->
+        <div id="mas-productos-section">
+          <div class="text-center mb-4">
+            <h3 class="mas-productos-title" style="color: #2d3748; font-weight: 700; margin-bottom: 8px;">
+              <i class="mdi mdi-food-variant mr-2" style="color: #f59e0b;"></i>
+              Más Productos
+            </h3>
+            <p class="mas-productos-subtitle" style="color: #718096; font-size: 1.1em; margin-bottom: 0;">
+              Elige entre todas las categorías disponibles
+            </p>
+          </div>
+          
+          <div class="row justify-content-center mb-4">
+            <div class="col-lg-10 col-xl-8">
+              <div class="mas-productos-filters mini-form row transitionable">
+                <div class="col-12 mt-2">
+                  <div id="categoria-chips-wrap" class="categoria-chips-wrap">
+                    <%= select_tag :viendo_categoria_ids, options_from_collection_for_select(@categorias_disponibles, "id", "nombre", @pedido.viendo_categorias), class: 'categoria-select-hidden mas-productos-select', multiple: true, id: 'categoria-selector' %>
+                    <div class="categoria-chips" role="group" aria-label="Filtrar por categoría">
+                      <button type="button" class="categoria-chip categoria-chip--action" data-chip-action="all">Todas</button>
+                      <button type="button" class="categoria-chip categoria-chip--action" data-chip-action="none">Ninguna</button>
+                      <span class="categoria-chips__divider" aria-hidden="true"></span>
+                      <% viendo_categorias = Array(@pedido.viendo_categorias) %>
+                      <% @categorias_disponibles.each do |cat| %>
+                        <% selected = viendo_categorias.include?(cat.id) %>
+                        <button type="button"
+                                class="categoria-chip<%= ' is-selected' if selected %>"
+                                data-categoria-id="<%= cat.id %>"
+                                aria-pressed="<%= selected %>"><%= cat.nombre.to_s.downcase.titleize %></button>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 mt-3">
+                  <input class="form-control string optional mas-productos-search" type="search" value="<%= @pedido.busqueda %>" name="busqueda" id="pedido_busqueda" style="font-weight: 600; color: #1e88e5;" placeholder="Buscar por texto">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="min-height: 300px;text-align: center" id="cargar-productos">
+          <div class="spinner-grow" style="width: 3rem; height: 3rem; margin: 3rem auto;">
+            <span class="sr-only">Cargando...</span>
+          </div>
+        </div>
+        <div id="listado-de-productos" style="min-height: 310px;">
+        </div>
+        <script>
+          (function() {
+            // Wait for jQuery to be available before firing the lazy
+            // cambiar_categoria call. Required because this inline <script>
+            // executes during HTML parsing, BEFORE the deferred app bundle
+            // (jQuery + plugins). Affects full-reload navigations such as
+            // gbs-tab links with `data-turbolinks="false"`. Without this,
+            // the products listado stays empty until the user refreshes.
+            var pedidoId = '<%= @pedido.id %>';
+            function fire() {
+              var tk = encodeURIComponent($('meta[name="csrf-token"]').attr("content"));
+              $.post('/pedidos/' + pedidoId + '/cambiar_categoria', 'authenticity_token=' + tk + '&utf8=✓');
+            }
+            function ready() {
+              if (typeof window.jQuery !== 'undefined') {
+                fire();
+              } else {
+                // Poll for jQuery availability (deferred bundle still parsing).
+                var poll = setInterval(function() {
+                  if (typeof window.jQuery !== 'undefined') {
+                    clearInterval(poll);
+                    fire();
+                  }
+                }, 50);
+                // Safety timeout
+                setTimeout(function() { clearInterval(poll); }, 8000);
+              }
+            }
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', ready);
+            } else {
+              ready();
+            }
+          })();
+        </script>
+        <% end %>
+    <% end %>
+<% end %>

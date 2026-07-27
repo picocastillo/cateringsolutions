@@ -1,0 +1,44 @@
+<%
+  subtotal = @pedido.importe_total_sin_descuento.to_f
+  if subtotal > 0
+    # Preview which discount would apply based on current medios de pago
+    medios_activos = @pedido.medios_pago.reject(&:marked_for_destruction?)
+    medio = medios_activos.max_by { |m| m.importe.to_f }
+    descuento_vm = nil
+    monto_descuento = 0
+    if medio
+      importe_medio = medio.importe.to_f
+      # JS auto-fills single medio with the total client-side, but the DB still has 0.
+      # Use subtotal as fallback so the preview is accurate before the user saves.
+      importe_medio = subtotal if importe_medio.zero? && medios_activos.size == 1
+      descuento_vm = VentasMostrador::DescuentoVentaMostrador.mejor_descuento_para(
+        tienda: @pedido.tienda,
+        cliente: @pedido.cuenta&.cliente,
+        medio_pago_tipo: medio.tipo,
+        importe_total: subtotal,
+        importe_medio: importe_medio
+      )
+      monto_descuento = descuento_vm&.descuento_para(subtotal, importe_medio: importe_medio).to_f || 0
+    end
+    total_final = subtotal - monto_descuento
+  end
+%>
+<% if subtotal.to_f > 0 %>
+  <div id="importe-total-container" class="vm-total-badge">
+    <% if descuento_vm && monto_descuento > 0 %>
+      <div class="vm-total-subtotal">
+        Subtotal: <%= Danconia::Money.new(subtotal) %>
+      </div>
+      <div class="vm-total-descuento">
+        <i class="fa fa-tag"></i> <%= descuento_vm.nombre %>: -<%= Danconia::Money.new(monto_descuento) %>
+      </div>
+      <div class="vm-total-final">
+        TOTAL <%= Danconia::Money.new(total_final) %>
+      </div>
+    <% else %>
+      <div class="vm-total-final">
+        TOTAL <%= @pedido.importe_total %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

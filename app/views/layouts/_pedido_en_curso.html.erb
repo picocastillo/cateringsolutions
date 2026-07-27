@@ -1,0 +1,166 @@
+<ul>
+  <% unless @pedido_pendiente.present?
+       base_pendiente = if current_user.cliente
+                          if current_user.cumple_rol?(:administrador_empresa)
+                            Pedidos::Pedido.where(venta_mostrador: false, autor_id: current_user, estado_id: 1)
+                          else
+                            Pedidos::Pedido.where(usuario_id: current_user, venta_mostrador: false, autor_id: current_user, estado_id: 1)
+                          end
+                        else
+                          Pedidos::Pedido.where(autor_id: current_user, venta_mostrador: false, estado_id: 1)
+                        end
+
+       # Prefer a pendiente in the active tienda (preserves "current shell" behavior).
+       @pedido_pendiente = base_pendiente.where(tienda_id: tienda_activa).last
+
+       # Fallback: if no pendiente exists in the active tienda but the user has
+       # an open cross-tienda PedidoMultiple, surface it so the cart stays
+       # visible after switching tiendas. Pick the newest pendiente child.
+       if @pedido_pendiente.blank?
+         grupo_abierto = base_pendiente.where.not(pedido_multiple_id: nil)
+                                       .order(:fecha, :id)
+                                       .last
+         @pedido_pendiente = grupo_abierto
+       end
+  end %>
+  <% if @pedido_pendiente.present? %>
+    <%= hidden_field_tag 'pedido_pendiente_id_hidden', @pedido_pendiente.id, id: "pedido_pendiente_id_hidden" %>
+    <%
+      en_grupo = @pedido_pendiente.en_grupo?
+      grupo = en_grupo ? @pedido_pendiente.pedido_multiple : nil
+      grupo_pedidos = en_grupo ? grupo.pedidos.order(:fecha, :id).includes(:tienda, :productos_solicitados) : nil
+      total_carrito = en_grupo ? grupo.total : @pedido_pendiente.importe_total
+      total_items = en_grupo ? grupo_pedidos.sum { |p| p.productos_solicitados.sum(&:cantidad) } : @pedido_pendiente.productos_solicitados.sum(&:cantidad)
+      fechas_dup_cart = en_grupo ? grupo_pedidos.map(&:fecha).compact.group_by(&:itself).select { |_, v| v.size > 1 }.keys : []
+    %>
+
+    <li style="margin-top: -10px; background: #f2f2f2;">
+      <div class="drop-title">
+        Total productos: <span id="total-seleccionados"><%= total_items.to_i %></span>
+        <% if en_grupo %>
+          <span style="margin-left: 6px; font-size: 0.75rem; color: #6366f1; font-weight: 700;">(<%= grupo_pedidos.count %> días)</span>
+        <% end %>
+        <span style="float: right;" class="hidden-sm-down">
+          <a class="vaciar-pedido" title="Vaciar Carrito" href="JavaScript:void(0);">
+            <span>Vaciar Carrito</span> <i class="ti-trash"></i>
+          </a>
+        </span>
+      </div>
+    </li>
+
+    <% if en_grupo %>
+      <%# Group view: one section per pedido, current highlighted %>
+      <li id="carrito-slim" class="<%= 'hide' if total_items == 0 %>">
+        <div class="message-center" id="menu-carga-flotante">
+          <% grupo_pedidos.each do |gp| %>
+            <% es_actual = gp.id == @pedido_pendiente.id %>
+            <% tienda_color = gp.tienda.color_barra_filtros.presence || '#5c9bd2' %>
+            <%# Day separator header %>
+            <div class="item" style="background: <%= es_actual ? "#{tienda_color}1a" : '#fafafa' %>; padding: 4px 10px; border-bottom: 1px solid #e8ecf0; border-left: <%= es_actual ? '5px' : '3px' %> solid <%= es_actual ? tienda_color : 'transparent' %>; <%= 'border-left-color: transparent;' unless es_actual %>">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 0.75rem; font-weight: 700; color: <%= tienda_color %>; text-transform: uppercase; letter-spacing: 0.04em;">
+                  <i class="mdi mdi-calendar mr-1"></i><%= gp.fecha ? I18n.l(gp.fecha, format: :short) : '–' %>
+                  <% if es_actual %><span style="font-size: 0.65rem; opacity: 0.8; font-weight: 600;">&nbsp;● actual</span><% end %>
+                  <a href="<%= edit_pedido_path(gp) %>" data-turbolinks="false" class="gbs-edit-link" style="margin-left: 5px; color: <%= tienda_color %>; opacity: 0.65;" title="Editar pedido del <%= gp.fecha ? I18n.l(gp.fecha, format: :short) : '' %>">
+                    <i class="mdi mdi-pencil" style="font-size: 0.85rem;"></i>
+                  </a>
+                </span>
+                <span style="font-size: 0.78rem; font-weight: 700; color: #2d3748;">
+                  <%= gp.importe_total if gp.productos_solicitados.any? %>
+                </span>
+              </div>
+            </div>
+            <% gp.productos_solicitados.each do |ps| %>
+              <div class="item mini-form" style="border-left: <%= es_actual ? '5px' : '3px' %> solid <%= es_actual ? tienda_color : 'transparent' %>; <%= es_actual ? "background: #{tienda_color}06;" : 'opacity: 0.72;' %>">
+                <div class="user-img col-2 col-sm-2" style="margin: 0 0 -17px 0;padding: 0;border-radius:100%;overflow: hidden;">
+                  <img src="<%= ps.producto.imagen_principal %>" alt="user" style="position: relative;height: 38px;background: <%= ps.producto.color_safe %>">
+                </div>
+                <div class="mail-contnet col-5 col-sm-6" style="padding-right: 0">
+                  <h5 style="text-overflow: ellipsis;overflow: hidden;white-space: nowrap;font-size: 13px;width: 98%;"><%= ps.nombre_carrito %></h5>
+                  <span class="time"><%= Danconia::Money.new(ps.precio_efectivo) %></span>
+                </div>
+                <div style="float: right;min-width: 80px;text-align: right;padding: 0;" class="col-5 col-sm-4">
+                  <h6 style="line-height: 40px; font-size: 13px;"><%= ps.cantidad.to_i %> × <%= Danconia::Money.new(ps.precio_efectivo * ps.cantidad) %></h6>
+                </div>
+              </div>
+            <% end %>
+            <% if gp.productos_solicitados.empty? %>
+              <div class="item" style="padding: 6px 12px; color: #a0aec0; font-size: 0.8rem; font-style: italic; border-left: <%= es_actual ? '5px' : '3px' %> solid <%= es_actual ? tienda_color : 'transparent' %>;">Sin productos</div>
+            <% end %>
+          <% end %>
+        </div>
+      </li>
+      <% if fechas_dup_cart.any? %>
+        <li style="background: #fffbeb; border-top: 2px solid #fcd34d; border-bottom: 2px solid #fcd34d; padding: 8px 12px;">
+          <div style="display: flex; align-items: flex-start; gap: 8px;">
+            <span style="font-size: 1.1rem; flex-shrink: 0; line-height: 1;">⚠️</span>
+            <div>
+              <div style="font-size: 0.78rem; font-weight: 800; color: #92400e; line-height: 1.2;">Fechas duplicadas en el grupo</div>
+              <div style="font-size: 0.72rem; color: #b45309; margin-top: 2px; line-height: 1.3;">
+                Tenés más de un pedido para
+                <% fechas_dup_cart.each do |f| %><strong><%= I18n.l(f, format: :short) %></strong> <% end %>.
+                Si no es lo que deseás, revisá el grupo.
+              </div>
+            </div>
+          </div>
+        </li>
+      <% end %>
+      <%# Grand total row %>
+      <li style="background: #f8fafc; border-top: 2px solid #e2e8f0; padding: 8px 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.85rem; font-weight: 700; color: #4a5568;">Total del grupo</span>
+          <span style="font-size: 1rem; font-weight: 800; color: #6366f1;" id="total-pedido-pendiente-group"><%= total_carrito %></span>
+        </div>
+      </li>
+      <li>
+        <%= link_to resumen_pedido_multipl_path(grupo),
+              class: 'boton-aceptar-pedido nav-link text-center confirmar',
+              data: { disable_with: 'Procesando...' } do %>
+          <strong>Ver grupo &amp; Pagar</strong> <i class="fa fa-angle-right"></i>
+        <% end %>
+        <a class="nav-link text-center" href="<%= edit_pedido_path(@pedido_pendiente) %>" data-turbolinks="false" id="continuar-compra">
+          <strong>Continuar editando</strong>
+        </a>
+      </li>
+
+    <% else %>
+      <%# Single pedido view (original) %>
+      <li class="<%= 'hide' unless @pedido_pendiente.productos_solicitados.present? %>" id="carrito-slim">
+        <div class="message-center" id="menu-carga-flotante">
+          <% @pedido_pendiente.productos_solicitados.each do |ps| %>
+            <div class="item mini-form">
+              <div class="user-img col-2 col-sm-2" style="margin: 0 0 -17px 0;padding: 0;border-radius:100%;overflow: hidden;">
+                <img src="<%= ps.producto.imagen_principal %>" alt="user" style="position: relative;height: 38px;background: <%= ps.producto.color_safe %>">
+                <span class=" pull-right"></span>
+              </div>
+              <div class="mail-contnet col-5 col-sm-6" style="padding-right: 0">
+                <h5 style="text-overflow: ellipsis;overflow: hidden;white-space: nowrap;font-size: 14px;width: 98%;"><%= ps.nombre_carrito %></h5>
+                <% if ps.observaciones_cliente.present? %><span class="mail-desc"><%= ps.observaciones_cliente %></span><% end %>
+                <span class="time"><%= Danconia::Money.new(ps.precio_unitario) %></span>
+              </div>
+              <div style="float: right;min-width: 100px;text-align: right;padding: 0;" class="col-4 col-sm-3">
+                <h6 style="line-height: 40px;" id="total-producto-solicitado-<%= ps.producto_id %>"><%= Danconia::Money.new(ps.precio_unitario * ps.cantidad) %></h6>
+              </div>
+              <div style="float: right;margin: 0;padding: 0;" class="col-1 col-sm-1">
+                <h5 style="line-height: 40px;margin-left: -20px;white-space: nowrap;">
+                  <a href="JavaScript:void(0);" class="adicionador-menu menos" data-suma="-1"><i class="fa fa-minus"></i></a>
+                  <%= text_field_tag :cantidad, ps.cantidad.to_i, class: 'cantidad', id: nil, readonly: 'readonly', data: { productoid: ps.producto.id, precio: ps.precio_unitario.to_f, nombre: ps.producto.to_s.truncate(32) } %>
+                  <a href="JavaScript:void(0);" class="adicionador-menu mas" data-suma="1"><i class="fa fa-plus"></i></a>
+                </h5>
+              </div>
+              <%= hidden_field_tag 'productoid', ps.producto.id %>
+            </div>
+          <% end %>
+        </div>
+      </li>
+      <li>
+        <a class="nav-link text-center" href="/pedidos/<%= @pedido_pendiente.id %>/edit" data-turbolinks="false" id="continuar-compra"><strong>Continuar Compra</strong></a><a class="boton-aceptar-pedido nav-link text-center confirmar<%= ' disabled' unless (can?(:pagar_mercadopago, @pedido_pendiente) || can?(:aceptar, @pedido_pendiente)) %>" href="/pedidos/<%= @pedido_pendiente.id %>/comprar" data-disable-with="Procesando..."><strong>Ir al Carrito</strong> <i class="fa fa-angle-right"></i></a>
+      </li>
+    <% end %>
+
+  <% else %>
+    <li>
+      <a class="nav-link nuevo text-center" href="/pedidos/new"><strong>Nuevo</strong> <i class="fa fa-angle-right"></i></a>
+    </li>
+  <% end %>
+</ul>

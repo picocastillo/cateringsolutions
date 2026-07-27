@@ -1,0 +1,71 @@
+<% ct = tienda_activa %>
+<% imagen_fondo = ct.documentos.first.url(:hd) if ct.documentos.first %>
+<% logo = ct.documentos.second.url(:medium) if ct.documentos.second %>
+
+<% logo_dominio = ct.dominio.presence || 'cateringsolutions.com.ar' %>
+<% dark_mode = ct.respond_to?(:dark_mode_login) && ct.dark_mode_login? %>
+
+<div id="login-page" class="<%= 'login-dark' if dark_mode %>">
+  <% if imagen_fondo %>
+    <div class="login-bg" style="background-image: url('<%= imagen_fondo %>');"></div>
+  <% else %>
+    <div class="login-bg login-bg-gradient"></div>
+  <% end %>
+
+  <div class="login-content">
+    <div class="login-card">
+      <div class="login-logo">
+        <% if logo %>
+          <%= image_tag logo, alt: ct.nombre %>
+        <% else %>
+          <%= image_tag "/#{logo_dominio}_logov22.png", alt: ct.nombre %>
+        <% end %>
+      </div>
+
+      <p class="login-subtitle">Inicie sesión en su cuenta</p>
+
+      <%= form_tag public_path, class: 'login-form', id: 'loginform' do %>
+        <div class="login-field">
+          <%= text_field_tag :username, params[:username], class: 'login-input', placeholder: 'Usuario', autocomplete: 'username' %>
+          <svg class="login-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+
+        <div class="login-field">
+          <%= text_field_tag :password, '', type: 'password', class: 'login-input', placeholder: 'Contraseña', autocomplete: 'current-password', autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false' %>
+          <svg class="login-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+
+        <div class="login-flash"><%= render 'flash_messages' %></div>
+
+        <%= button_tag 'Iniciar sesión', class: 'login-btn' %>
+      <% end %>
+
+      <script>
+        document.getElementById('loginform').addEventListener('submit', function() {
+          var pw = this.querySelector('input[name="password"]');
+          if (pw && pw.value) pw.value = pw.value.trim();
+        });
+      </script>
+
+      <% tel = ct.telefono.present? ? ct.telefono.split(' ').join('%20') : nil %>
+      <% if tel || ct.email.present? %>
+        <div class="login-help">
+          <span>¿No tenés cuenta?</span>
+          <% if tel %>
+            <a href="https://api.whatsapp.com/send?phone=<%= tel %>&text=Hola,%20quiero%20solicitar%20una%20cuenta%20para%20comprar%20online%20en%20<%= ct.nombre.split(' ').join('%20') %>" target="_blank" rel="noopener noreferrer">Solicitala aquí</a>
+          <% else %>
+            <%= link_to 'Solicitala aquí', "mailto:#{ct.email}" %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if ct.mensaje_bienvenida.present? %>
+        <div class="login-welcome"><%= ct.mensaje_bienvenida.html_safe %></div>
+      <% end %>
+    </div>
+
+    <div class="login-footer">
+      &copy; <%= Time.current.year %> <%= ct.nombre %> | Rafaela<%= " | Tel.: #{ct.telefono}" if ct.telefono.present? %><%= " | #{ct.email}" if ct.email.present? %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,24 @@
+<% page title: 'Ver Tiendas', raiz: 'Tiendas', hojas: 'Ver Tiendas', acciones: [link_to('Nuevo', new_tienda_path, remote: true)], id: 'index-tiendas' %>
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <div class="card-body collapse show">
+            <div class="table-responsive">
+              <%= table_for @tiendas, id: 'tiendas' do |t| %>
+                <% t.column(:nombre) %>
+                <% t.column(:ver) { |x| link_to 'Activar', nil, class: 'selector-tienda', id: x.id unless x == tienda_activa }%>
+                <% t.column(:descripcion) %>
+                <% t.column(:activo, class: 'center')  { |t| etiqueta_activo t }%>
+                <% t.actions { |t| [(link_to(content_tag(:i, nil, class: 'ti-marker-alt').html_safe, edit_tienda_path(t), remote: true, data: {toggle: 'tooltip', "original-title" => 'Editar' }) if can?(:manage, t)), (link_to_activate(t) if current_user.super_admin? &&  can?(:cambiar_tienda, t))]} %>
+              <% end %>
+            </div>
+          </div>
+          <%= paginador @tiendas %>
+      </div>
+  </div>
+</div>

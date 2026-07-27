@@ -1,0 +1,25 @@
+<div class="card-body collapse show">
+  <div class="table-responsive">
+    <%= table_for @descuentos, id: 'descuentos-vm' do |t| %>
+      <% t.column(:nombre, header: 'Nombre') %>
+      <% t.column(:tipo_descuento, header: 'Tipo') { |d| d.tipo_descuento == 'importe' ? 'Importe Fijo' : 'Porcentaje' } %>
+      <% t.column(:descuento, header: 'Descuento') { |d| d.descuento_descripcion } %>
+      <% t.column(:limite, header: 'Límite') { |d| d.limite_bonificacion_descripcion } %>
+      <% t.column(:medio_pago_tipo, header: 'Medio de Pago') { |d| d.medio_pago_label } %>
+      <% t.column(:importe_minimo, header: 'Importe Mínimo') { |d| number_to_currency(d.importe_minimo) } %>
+      <% t.column(:clientes, header: 'Clientes') { |d| d.clientes.any? ? "#{d.clientes.size} cliente#{'s' if d.clientes.size > 1}" : 'Todos' } %>
+      <% t.column(:activo, header: 'Estado', class: 'center') { |d|
+        if d.activo?
+          content_tag(:span, 'Activo', class: 'label label-success')
+        else
+          content_tag(:span, 'Inactivo', class: 'label label-default')
+        end
+      } %>
+      <% t.actions { |d| [
+        link_to(content_tag(:i, nil, class: 'ti-marker-alt').html_safe, edit_ventas_mostrador_descuento_path(d), remote: true, data: { toggle: 'tooltip', "original-title" => 'Editar' }),
+        link_to(content_tag(:i, nil, class: d.activo? ? 'ti-na' : 'ti-check').html_safe, toggle_activo_ventas_mostrador_descuento_path(d), method: :put, data: { confirm: "¿#{d.activo? ? 'Desactivar' : 'Activar'} el descuento \"#{d.nombre}\"?", toggle: 'tooltip', "original-title" => d.activo? ? 'Desactivar' : 'Activar' }),
+        link_to(content_tag(:i, nil, class: 'ti-trash').html_safe, ventas_mostrador_descuento_path(d), method: :delete, remote: true, data: { confirm: "¿Está seguro que desea eliminar el descuento \"#{d.nombre}\"?", toggle: 'tooltip', "original-title" => 'Eliminar' })
+      ]} %>
+    <% end %>
+  </div>
+</div>

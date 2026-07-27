@@ -1,0 +1,38 @@
+<% if tienda_activa.mensaje_ingreso_a_carrito.present? %>
+  <div class="row" style="margin-bottom: 20px">
+    <div class="col-md-12" id="mensaje-bievenida-container">
+      <hr style="margin-bottom: 25px;margin-top: 10px;">
+      <div class="ayuda pl-4 pr-4 banner-gradient" id="box">
+        <h6 style="font-weight: 600;line-height: 26px;"><%= tienda_activa.mensaje_ingreso_a_carrito.html_safe %></h6>
+        <div id="close" title="Cerrar"><i class="ti-close"></i></div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<% @cuenta_activa = @cuenta_activa || @pedido.cuenta || (@pedido.usuario && @pedido.usuario.cuenta) %>
+<% if @cuenta_activa %>
+<%= hidden_field_tag 'resaltar_menues', true, id: "resaltar-menues" if @resaltar_menues %>
+<% md = MenusDiarios::MenuDiario.where(tienda_id: tienda_activa.id, tipo_id: MenusDiarios::Tipo[:menu_diario].id).joins(productos: :categoria).merge(Productos::Producto.active).merge(Productos::Categoria.active).where("fecha = ?", @pedido.fecha).includes(productos: [:precios, :categoria, :imagenes]).where(discontinued_at: nil).group(:id)  %>
+<% md = md.where('productos.categoria_id in (?)', @cuenta_activa.cliente.categorias.map(&:id)) if @cuenta_activa &&  @cuenta_activa.cliente.categorias.present?  %>
+
+<% mdt = md.map{|x| [x, x.productos.map{|x| x.buscar_precio(@cuenta_activa.cliente, @pedido.fecha) }.compact]}.select{ |x| x[1].count > 0 } %>
+<% if (options_count = mdt.map{|x| x[1].count}.count) > 0 %>
+<hr style="margin: 2rem 0;">
+      <div class="text-center mb-4">
+        <h3 class="card-title" style="color: #2d3748; font-weight: 700; margin-bottom: 8px;">
+          <%= menu_diario_tipo_icon(:menu_diario) %>
+          Menús del Día
+        </h3>
+        <p class="card-subtitle" style="color: #718096; font-size: 1.1em; margin-bottom: 0;">
+          Comidas nutritivas y deliciosas preparadas diariamente por nuestros chefs
+        </p>
+      </div>
+      
+      <div class="row pt-2 pb-0 mb-0 transitionable" id="tablas-menues">
+        <% mdt.each do |menu_diario, precios| %>
+          <%= daily_menu_card(menu_diario, precios, @pedido, options_count) %>
+        <% end %>
+      </div>
+    <% end %>
+      <% end %>

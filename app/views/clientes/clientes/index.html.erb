@@ -1,0 +1,36 @@
+<% page title: 'Ver Clientes', raiz: 'Clientes', hojas: 'Ver Clientes', acciones: [link_to('Nuevo', new_cliente_path)], id: 'index-clientes' %>
+  <div class="row">
+    <div class="col-12">
+      <div class="card filtros">
+        <div class="bg-info" >
+          <h4 class="text-white card-title">Filtros<div class="card-actions">
+              <a class="" data-action="collapse"><i class="ti-plus"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body collapse">
+          <%= error_messages_for @query %>
+          <%= query_form_for @query, remote: true do |f| %>
+            <%= f.input :cliente_ids, label: 'Clientes', as: :select2, input_html: {data: {multiple: true, minimum_input_length: 2, url: clientes_path(format: :json, for_autocomplete: true), pre: @query.cliente_ids.presence && Clientes::Cliente.where(id: @query.cliente_ids)}, autocomplete: 'off'} %>
+            <%= f.input :cuenta_ids, label: 'Cuentas', as: :select2, input_html: {data: {multiple: true, minimum_input_length: 2, label: 'cliente_y_nombre', selection: 'cliente_y_nombre', url: cuentas_path(format: :json, for_autocomplete: true), pre: @query.cuenta_ids.presence && Clientes::Cuenta.where(id: @query.cuenta_ids.is_a?(String) ? @query.cuenta_ids.split(',').map(&:to_i) : @query.cuenta_ids)}, autocomplete: 'off'} %>
+            <%= f.input :cuit, as: :string, label: 'CUIT', input_html: { autocomplete: 'off' } %>
+            <%= f.input :email, as: :string, label: 'Email', input_html: { autocomplete: 'off' } %>
+            <%= f.input :horarios_de_corte_ids, as: :select2_local, collection: Clientes::Cuenta.horarios_corte_efectivos(tienda_activa.id), selected: @query.horarios_de_corte_ids, label: 'Hora de Corte', label_method: :to_s, include_blank: true, input_html: {multiple: true, autocomplete: 'off'}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} %>
+            <%= f.input :horario_corte_cliente_ids, as: :select2_local, collection: Clientes::Cuenta.horarios_corte_clientes(tienda_activa.id), selected: @query.horario_corte_cliente_ids, label: 'Hora Corte Cliente', label_method: :to_s, include_blank: true, input_html: {multiple: true, autocomplete: 'off'}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} %>
+            <%= f.input :horario_corte_cuenta_ids, as: :select2_local, collection: Clientes::Cuenta.horarios_corte_cuentas(tienda_activa.id), selected: @query.horario_corte_cuenta_ids, label: 'Hora Corte Cuenta', label_method: :to_s, include_blank: true, input_html: {multiple: true, autocomplete: 'off'}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} %>
+            <%= f.input :activo, as: :select, collection: [['Todos', ''], ['Activos', 'true'], ['Inactivos', 'false']], input_html: { autocomplete: 'off' } %>
+            <%= search_buttons f %>
+          <% end %>
+        </div>
+      </div>
+      <div class="card">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <span id="clientes-container"> <%= render 'resultados' %></span>
+      </div>
+  </div>
+</div>

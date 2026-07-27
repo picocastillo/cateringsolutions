@@ -1,0 +1,30 @@
+<div class="card-body collapse show">
+  <div class="table-responsive">
+    <%= table_for @cupones, id: 'cupones' do |t| %>
+      <% t.column(:codigo, header: 'Código') %>
+      <% t.column(:nombre, header: 'Nombre') { |c| c.nombre.present? ? c.nombre : '-' } %>
+      <% t.column(:tipo_descuento, header: 'Tipo') { |c| c.tipo_descuento == 'importe' ? 'Importe Fijo' : 'Porcentaje' } %>
+      <% t.column(:descuento, header: 'Descuento') { |c| c.descuento_descripcion } %>
+      <% t.column(:grupo, header: 'Grupo') { |c| c.grupo.present? ? c.grupo.first(8) : '-' } %>
+      <% t.column(:fecha_vencimiento, header: 'Vence') %>
+      <% t.column(:estado, header: 'Estado', class: 'center') { |c|
+        if c.cancelado?
+          content_tag(:span, 'Cancelado', class: 'label label-warning')
+        elsif c.usado?
+          content_tag(:span, 'Usado', class: 'label label-info')
+        elsif c.vencido?
+          content_tag(:span, 'Vencido', class: 'label label-danger')
+        else
+          content_tag(:span, 'Vigente', class: 'label label-success')
+        end
+      } %>
+      <% t.actions { |c| [
+        link_to(content_tag(:i, nil, class: 'ti-printer').html_safe, cupon_path(c, format: :pdf), target: '_blank', data: { toggle: 'tooltip', "original-title" => 'Imprimir' }),
+        link_to(content_tag(:i, nil, class: 'ti-marker-alt').html_safe, edit_cupon_path(c, de_lista: true), remote: true, data: { toggle: 'tooltip', "original-title" => 'Editar' }),
+        (link_to(content_tag(:i, nil, class: 'ti-trash').html_safe, cupon_path(c, de_lista: 'true'), method: :delete, remote: true, data: { confirm: "¿Está seguro que desea eliminar el cupón '#{c}'?", toggle: 'tooltip', "original-title" => 'Eliminar' }) if can?(:destroy, c)),
+        (link_to(content_tag(:i, nil, class: 'ti-na').html_safe, cancelar_grupo_cupones_path(grupo: c.grupo), method: :put, data: { confirm: "¿Cancelar todos los cupones vigentes del grupo #{c.grupo.to_s.first(8)}?", toggle: 'tooltip', "original-title" => 'Cancelar grupo' }) if c.grupo.present? && c.vigente? && can?(:manage, c))
+      ]} %>
+    <% end %>
+  </div>
+</div>
+<%= paginador @cupones %>

@@ -1,0 +1,79 @@
+    <%= simple_nested_form_for @cliente do |f| %>
+      <%= f.error_messages %>
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-body">
+          <ul class="nav nav-tabs profile-tab" role="tablist">
+              <li class="nav-item"> <a class="nav-link active" data-toggle="tab" href="#general" role="tab">General</a> </li>
+              <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#logistica" role="tab">Logísitca</a> </li>
+              <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#categorias" role="tab">Categorías</a> </li>
+              <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#cuentas" role="tab">Cuentas</a> </li>
+              <% if current_user.super_admin? %>
+                <li class="nav-item"> <a class="nav-link" data-toggle="tab" href="#tiendas" role="tab">Tiendas</a> </li>
+              <% end %>
+          </ul>
+          <div class="tab-content">
+            <div class="tab-pane active form-material" id="general" role="tabpanel">
+                <div class="card-body">
+                    <%= f.input :nombre, required: true, wrapper_html: { class: 'col-sm-6' } %>
+                    <%= f.input :cuit, wrapper_html: { class: 'col-sm-6' } %>
+                    <%= f.input :email, wrapper_html: { class: 'col-sm-6' } %>
+                    <%= f.input :telefono, wrapper_html: { class: 'col-sm-6' } %>
+                    <%= f.input :domicilio, wrapper_html: { class: 'col-sm-12' } %>
+                    <%= f.input :usuario_puede_elegir_cuenta, label: 'Usuario elige Cuenta', as: :boolean, hint: 'El usuario podrá elegir para que Cuenta cargará el pedido', input_html: { checked: @cliente.usuario_puede_elegir_cuenta}, wrapper_html: { class: 'col-sm-6' } %>
+                    <%= f.input :cuenta_corriente, label: 'Aceptar pedidos en Cuenta Corriente', as: :boolean, hint: 'Los usuarios del cliente podrán cargar pedidos que serán abonados luego por la empresa.', input_html: { checked: @cliente.cuenta_corriente}, wrapper_html: { class: 'col-sm-6' } %>
+                    <%= f.input :mostrar_cuentas_corrientes, label: 'Mostrar Cuentas Corrientes', as: :boolean, hint: 'El usuario administrador de la empresa podrá visualizar cuentas corrientes y saldos', input_html: { checked: @cliente.mostrar_cuentas_corrientes}, wrapper_html: { class: 'col-sm-6' } %>
+                    <%= f.input :listas_de_precio_privada, label: 'Mostrar sólo productos con precio para este cliente', as: :boolean, hint: 'Podrá comprar sólo productos con precios específicos para este cliente, no de lista base.', input_html: { checked: @cliente.listas_de_precio_privada}, wrapper_html: { class: 'col-sm-6' } %>
+                    <%= f.input :limite_compra_pesos, label: 'Límite de compra en Pesos', hint: 'Monto máximo permitido por pedido en pesos. Dejar vacío para sin límite.', wrapper_html: { class: 'col-sm-6' } %>
+                    <% precio_dolar = Cotizaciones::Dolar.precio_hoy %>
+                    <%= f.input :limite_compra_dolares, label: 'Límite de compra en Dólares', hint: "Monto máximo permitido por pedido en dólares (se convierte a pesos con la cotización vigente). Dejar vacío para sin límite.#{precio_dolar ? " Cotización actual: $#{'%.2f' % precio_dolar}" : ''}".html_safe, wrapper_html: { class: 'col-sm-6' } %>
+              </div>
+            </div>
+            <div class="tab-pane  form-material" id="logistica" role="tabpanel">
+              <div class="card-body">
+                <div class="row">
+                    <%= f.input :dia_inicio_ciclo_facturacion, hint: 'Inicio hasta día anterior del mes siguiente', wrapper_html: { class: 'col-sm-4' } %>
+                    <%= f.input :vencimiento_a, hint: 'Vencimeinto en días luego del fin de cada ciclo de facturación', wrapper_html: { class: 'col-sm-4' } %>
+                    <%= f.input :corte, label: 'Horario de Corte de Pedidos', hint: 'Hora en la que se cortan los pedidos de ese día.', wrapper_html: { class: 'col-sm-4 singleclock' } %>
+                </div>
+                <div class="row d-flex align-items-end">
+                    <%= f.input :permitir_envios_a_domicilio, label: 'Permitir envíos a domicilio', as: :boolean, hint: 'El usuario podrá elegir un domicilio para el envío', input_html: { checked: @cliente.permitir_envios_a_domicilio}, wrapper_html: { class: 'col-sm-4' } %>
+                    <%= f.input :codigo_externo_en_etiquetas, label: 'Usar códigos externos en etiqueta', as: :boolean, input_html: { checked: @cliente.codigo_externo_en_etiquetas}, wrapper_html: { class: 'col-sm-4' } %>
+                    <%= f.input :horarios_de_entrega, label: 'Elije horario de entrega', as: :boolean, input_html: { checked: @cliente.horarios_de_entrega}, wrapper_html: { class: 'col-sm-4' } %>
+                </div>
+              </div>
+            </div>
+            <div class="tab-pane" id="categorias" role="tabpanel">
+              <div class="card-body">
+                <% pds = Productos::Categoria.order('menu_diario desc, nombre asc').all %>
+                <%= f.input :categoria_ids, collection: pds.map{ |m| [m.to_s, m.id, {:data => {:subtext => "#{'Menú Diario' if m.menu_diario }"}}] }, label: false, input_html: { class: 'selectpicker-categorias', data: { style: 'btn-info' }, multiple: true }, hint: ' - Si no selecciona ninguna Categoría estarán todas disponibles.' %>
+              </div>
+            </div>
+            <div class="tab-pane form-material" id="cuentas" role="tabpanel">
+              <div class="card-body">
+                <%= render 'fields_cuentas', f: f %>
+              </div>
+            </div>
+            <% if current_user.super_admin? %>
+              <div class="tab-pane form-material" id="tiendas" role="tabpanel">
+                <div class="card-body">
+                  <p class="text-muted small mb-2">
+                    Tiendas en las que este cliente puede iniciar sesión y cargar pedidos.
+                    Los usuarios verán un selector para alternar entre ellas.
+                  </p>
+                  <%= f.input :tienda_ids,
+                              collection: Tiendas::Tienda.active.order(:nombre).map { |t| [t.nombre, t.id] },
+                              label: false,
+                              input_html: { class: 'selectpicker', data: { style: 'btn-info', 'live-search' => true }, multiple: true },
+                              hint: 'Tildá todas las tiendas a las que pertenece este cliente. Como mínimo, su tienda primaria.' %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-12">
+    <%= f.default_button %>
+    </div>
+  <% end %>

@@ -1,0 +1,32 @@
+<table class="table-responsive cuentas">
+  <thead>
+    <tr>
+      <% unless f.object.new_record? %>
+        <th width="10%">Nro</th>
+      <% end %>
+      <th width="50%">Descripción</th>
+      <th width="15%">Hora de Corte</th>
+      <th width="10%">Cuenta Corriente</th>
+      <th width="10%">Activa</th>
+      <th width="5%"><%= f.icon_to_add :cuentas %></th>
+    </tr>
+  </thead>
+  <tbody>
+  <%= f.fields_for :cuentas do |fi| %>
+    <tr class="fields">
+      <% unless f.object.new_record? %>  <td><%= fi.hidden_field :nro, value: fi.object.nro %><div style="margin-top: -20px;"><%= fi.object.nro %></div></td><% end %>
+      <td><%= fi.input :nombre, label: false, class: 'form-control' %></td>
+      <td><%= fi.input :horario_corte_pedidos, label: false, as: :string, input_html: { class: 'form-control singleclock', placeholder: 'Heredar del cliente' } %></td>
+      <td><%= fi.input :cuenta_corriente_parcial, label: false, as: :select, collection: [["Heredar del cliente", ""], ["Sí", true], ["No", false]], selected: fi.object.cuenta_corriente_parcial.nil? ? "" : fi.object.cuenta_corriente_parcial, include_blank: false, class: 'form-control' %></td>
+      <td><%= fi.input :active, label: false, as: :select, class: 'form-control' %></td>
+      <td>
+        <%= fi.icon_to_remove "menos"%>
+      </td>
+    </tr>
+  <% end %>
+  </tbody>
+</table>
+<p class="text-muted small mt-1">
+  <i class="fa fa-info-circle"></i>
+  Si la Hora de Corte o Cuenta Corriente de una cuenta está en "Heredar del cliente", se usa la configuración del cliente.
+</p>

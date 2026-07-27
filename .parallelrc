@@ -1,0 +1,20 @@
+# Parallel Tests Configuration
+# This file configures the parallel_tests gem for optimal performance
+
+# Number of parallel test processes (can be overridden with -n flag)
+# Default to 20 workers for this 24-core system
+-n 20
+
+# Specify test framework
+--type rspec
+
+# Enable runtime logging for better load balancing across runs
+# This creates tmp/parallel_runtime_rspec.log
+--runtime-log
+
+# Group tests by runtime to balance load
+# Tests are distributed to keep all workers busy for roughly equal time
+--group-by runtime
+
+# Verbose output to see which worker is running which test
+--verbose

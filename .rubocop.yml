@@ -1,0 +1,272 @@
+# RuboCop configuration for Rails 5.2 and Ruby 2.7.4
+plugins:
+  - rubocop-rails
+  - rubocop-rspec
+
+AllCops:
+  TargetRubyVersion: 3.4
+  NewCops: enable
+  Exclude:
+    - 'db/schema.rb'
+    - 'db/structure.sql'
+    - 'db/migrate/*'
+    - 'bin/*'
+    - 'node_modules/**/*'
+    - 'vendor/**/*'
+    - 'config/initializers/devise.rb'
+    - 'config/environments/*'
+    - 'Capfile'
+    - 'test/**/*'
+
+Rails:
+  Enabled: true
+
+# Layout
+Layout/LineLength:
+  Max: 160
+  Exclude:
+    - 'config/routes.rb'
+    - 'spec/**/*'
+
+Layout/EmptyLinesAroundAttributeAccessor:
+  Enabled: true
+
+Layout/SpaceAroundMethodCallOperator:
+  Enabled: true
+
+Layout/BlockAlignment:
+  Enabled: false
+
+# Metrics - Lenient for legacy Rails 5.2 codebase
+Metrics/MethodLength:
+  Enabled: false
+
+Metrics/ClassLength:
+  Enabled: false
+
+Metrics/BlockLength:
+  Enabled: false
+
+Metrics/AbcSize:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Enabled: false
+
+Metrics/PerceivedComplexity:
+  Enabled: false
+
+Metrics/ParameterLists:
+  Enabled: false
+
+Metrics/ModuleLength:
+  Enabled: false
+
+Metrics/BlockNesting:
+  Enabled: false
+
+# Style
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/SymbolArray:
+  EnforcedStyle: brackets
+
+Style/WordArray:
+  EnforcedStyle: brackets
+
+Style/HashSyntax:
+  EnforcedStyle: ruby19
+
+Style/Lambda:
+  EnforcedStyle: line_count_dependent
+
+Style/ClassAndModuleChildren:
+  Enabled: false
+
+Style/DocumentDynamicEvalDefinition:
+  Enabled: false
+
+Style/OptionalBooleanParameter:
+  Enabled: false
+
+Style/FormatStringToken:
+  Enabled: false
+
+Style/FormatString:
+  Enabled: false
+
+Style/GlobalVars:
+  Enabled: false
+
+Style/MultilineBlockChain:
+  Enabled: false
+
+Style/OpenStructUse:
+  Enabled: false
+
+# Naming
+Naming/VariableNumber:
+  Enabled: false
+
+Naming/PredicatePrefix:
+  Enabled: false
+
+Naming/PredicateMethod:
+  Enabled: false
+
+Naming/HeredocDelimiterNaming:
+  Enabled: false
+
+Naming/ConstantName:
+  Enabled: false
+
+Naming/MethodParameterName:
+  AllowedNames:
+    - i
+    - f
+    - c
+    - u
+    - x
+    - e
+    - n
+    - a
+    - s
+    - k
+    - v
+    - id
+    - tp
+    - r
+    - q
+    - t
+    - h
+    - b
+    - ca
+    - md
+    - to
+    - pv
+
+# Lint
+Lint/EmptyFile:
+  Enabled: false
+
+# Rails
+Rails/HasManyOrHasOneDependent:
+  Enabled: false
+
+Rails/InverseOf:
+  Enabled: false
+
+Rails/SkipsModelValidations:
+  Enabled: false
+
+Rails/BulkChangeTable:
+  Enabled: false
+
+Rails/HasAndBelongsToMany:
+  Enabled: false
+
+Rails/OutputSafety:
+  Enabled: false
+
+Rails/I18nLocaleTexts:
+  Enabled: false
+
+Rails/HelperInstanceVariable:
+  Enabled: false
+
+Rails/ActiveRecordOverride:
+  Enabled: false
+
+Rails/LexicallyScopedActionFilter:
+  Enabled: false
+
+Rails/Output:
+  Enabled: false
+
+Rails/RakeEnvironment:
+  Enabled: false
+
+Rails/ApplicationController:
+  Exclude:
+    - 'app/controllers/shared_controller.rb'
+
+# RSpec
+RSpec/ExampleLength:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Max: 35
+
+Rails/UnknownEnv:
+  Environments:
+    - production
+    - development
+    - test
+    - staging
+
+RSpec/NestedGroups:
+  Max: 5
+
+RSpec/DescribeClass:
+  Enabled: false
+
+RSpec/ContextWording:
+  Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Enabled: false
+
+RSpec/IndexedLet:
+  Enabled: false
+
+RSpec/LetSetup:
+  Enabled: false
+
+RSpec/VerifiedDoubles:
+  Enabled: false
+
+RSpec/MessageSpies:
+  Enabled: false
+
+RSpec/AnyInstance:
+  Enabled: false
+
+RSpec/InstanceVariable:
+  Enabled: false
+
+RSpec/BeforeAfterAll:
+  Enabled: false
+
+RSpec/NoExpectationExample:
+  Enabled: false
+
+RSpec/MessageChain:
+  Enabled: false
+
+RSpec/ExpectActual:
+  Enabled: false
+
+RSpec/SpecFilePathFormat:
+  Enabled: false
+
+RSpec/StubbedMock:
+  Enabled: false
+
+RSpec/PendingWithoutReason:
+  Enabled: false
+
+RSpec/NamedSubject:
+  Enabled: false
+
+RSpec/IdenticalEqualityAssertion:
+  Enabled: false
+
+RSpec/DescribedClass:
+  Enabled: false

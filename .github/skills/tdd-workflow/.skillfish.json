@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "tdd-workflow",
+  "owner": "affaan-m",
+  "repo": "everything-claude-code",
+  "path": ".agents/skills/tdd-workflow",
+  "branch": "main",
+  "sha": "ceba07ed4494b6e0238837a3f3bcd5d2d5b55a4f",
+  "source": "manual"
+}

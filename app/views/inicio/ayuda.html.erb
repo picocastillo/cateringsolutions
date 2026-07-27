@@ -1,0 +1,451 @@
+<% page title: 'Ayuda', raiz: 'Pedidos', hojas: 'Ayuda', id: 'ayuda' unless current_user.cliente? %>
+<% page title: 'Ayuda', id: 'ayuda' if current_user.cliente? %>
+
+    <div class="row">
+
+      <% unless current_user.cliente? %>
+        <div class="col-12 mb-3">
+          <div class="card">
+            <div class="card-header" style="background-color: #f8f9fa; cursor: pointer;" data-toggle="collapse" data-target="#tutorial-impresora" aria-expanded="false" aria-controls="tutorial-impresora">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                  <i class="fa fa-print" style="font-size: 1.5rem; color: #17a2b8; margin-right: 12px;"></i>
+                  <div>
+                    <strong style="font-size: 1.1rem;">Configurar Impresión Automática de Tickets (QZ Tray)</strong>
+                    <p class="mb-0 text-muted" style="font-size: 0.85rem;">Instalar el programa para imprimir tickets directo a la impresora, sin ventanas de diálogo</p>
+                  </div>
+                </div>
+                <i class="fa fa-chevron-down text-muted"></i>
+              </div>
+            </div>
+            <div id="tutorial-impresora" class="collapse">
+              <div class="card-body">
+
+                <div class="alert alert-info" style="font-size: 0.9rem;">
+                  <i class="fa fa-info-circle"></i>
+                  <strong>¿Qué es QZ Tray?</strong> Es un programa gratuito y de código abierto que se instala en la computadora del local.
+                  Se conecta con el navegador (Chrome, Edge, Firefox) y permite enviar tickets directo a la impresora sin que aparezca ninguna ventana.
+                  <br><br>
+                  <i class="fa fa-external-link"></i> Más info en la <a href="https://qz.io/docs/using-qz-tray" target="_blank" rel="noopener noreferrer">documentación oficial de QZ Tray</a>.
+                </div>
+
+                <h6 class="mt-4 mb-3"><strong>Seguí estos pasos en la computadora del local:</strong></h6>
+
+                <!-- Paso 1: Java -->
+                <div class="d-flex mb-4" id="tutorial-paso-1">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #17a2b8; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">1</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Instalar Java (si no lo tenés)</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">QZ Tray necesita Java 8 o superior para funcionar. Si ya lo tenés instalado, salteá este paso.</p>
+                    <a href="https://java.com/en/download" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+                      <i class="fa fa-download"></i> Descargar Java (gratis)
+                    </a>
+                    <p class="text-muted mt-2" style="font-size: 0.85rem;">
+                      <i class="fa fa-lightbulb-o" style="color: #ffc107;"></i>
+                      <strong>¿Cómo sé si ya tengo Java?</strong> Abrí una ventana de comandos (tecla Windows + R, escribí <code>cmd</code> y Enter) y escribí <code>java -version</code>. Si aparece un número de versión, ya lo tenés.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Paso 2: Descargar -->
+                <div class="d-flex mb-4" id="tutorial-paso-2">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #17a2b8; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">2</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Descargar QZ Tray</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">Hacé clic en el siguiente enlace para descargar el instalador para Windows:</p>
+                    <a href="https://qz.io/download/" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info">
+                      <i class="fa fa-download"></i> Descargar QZ Tray (gratis)
+                    </a>
+                    <p class="text-muted mt-2" style="font-size: 0.85rem;">
+                      <i class="fa fa-windows" style="color: #0078d4;"></i>
+                      Se va a descargar un archivo <code>.exe</code>. Esperá a que termine la descarga antes de continuar.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Paso 3: Instalar -->
+                <div class="d-flex mb-4" id="tutorial-paso-3">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #17a2b8; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">3</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Instalar el programa</strong>
+                    <p class="text-muted mb-1" style="font-size: 0.9rem;">Hacé doble clic en el archivo descargado y seguí estos pasos:</p>
+                    <ol style="font-size: 0.9rem; color: #555; padding-left: 20px;">
+                      <li>Si Windows pregunta <em>"¿Desea permitir que esta aplicación haga cambios?"</em>, hacé clic en <strong>Sí</strong></li>
+                      <li>Hacé clic en <strong>Next</strong> (Siguiente)</li>
+                      <li>Hacé clic en <strong>Next</strong> otra vez</li>
+                      <li>Hacé clic en <strong>Finish</strong> (Finalizar)</li>
+                    </ol>
+                    <p class="text-muted" style="font-size: 0.85rem;">
+                      <i class="fa fa-check-circle" style="color: #28a745;"></i>
+                      El programa se abre solo y queda funcionando en segundo plano. Vas a ver un ícono de impresora
+                      <i class="fa fa-print" style="color: #555;"></i> en la barra de tareas de Windows (abajo a la derecha, junto al reloj).
+                    </p>
+                    <p class="text-muted" style="font-size: 0.85rem;">
+                      <i class="fa fa-lightbulb-o" style="color: #ffc107;"></i>
+                      Si no lo ves, hacé clic en la flechita <strong>^</strong> al lado del reloj para ver los íconos ocultos.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Paso 4: Certificado -->
+                <div class="d-flex mb-4" id="tutorial-paso-4">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #17a2b8; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">4</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Copiar el certificado de seguridad</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">
+                      Este paso hace que la impresión sea 100% silenciosa (sin ventanas de confirmación). Solo se hace una vez por computadora:
+                    </p>
+                    <ol style="font-size: 0.9rem; color: #555; padding-left: 20px;">
+                      <li>
+                        Descargá el certificado haciendo clic acá:
+                        <a href="/qz_certificate" download="override.crt" class="btn btn-sm btn-outline-secondary ml-1">
+                          <i class="fa fa-certificate"></i> Descargar certificado
+                        </a>
+                      </li>
+                      <li class="mt-2">
+                        Abrí el Explorador de Archivos y andá a la carpeta donde se instaló QZ Tray:
+                        <br>
+                        <code style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px;">C:\Program Files\QZ Tray\</code>
+                        <br><small class="text-muted">(Podés copiar esa ruta y pegarla en la barra de direcciones del Explorador)</small>
+                      </li>
+                      <li class="mt-2">
+                        Pegá el archivo <strong>override.crt</strong> que descargaste directamente dentro de esa carpeta
+                        <br><small class="text-muted">(Si Windows pide permiso de administrador para pegar, hacé clic en <strong>Continuar</strong>)</small>
+                      </li>
+                      <li class="mt-2">
+                        Reiniciá QZ Tray para que tome el certificado:
+                        <br>Hacé clic derecho en el ícono de impresora <i class="fa fa-print" style="color: #555;"></i> en la barra de tareas
+                        y seleccioná <strong>Reload</strong> (o <strong>Exit</strong> y volvé a abrir QZ Tray desde el menú Inicio)
+                      </li>
+                    </ol>
+                    <div class="alert alert-light border mt-2 mb-0" style="font-size: 0.83rem;">
+                      <i class="fa fa-shield" style="color: #17a2b8;"></i>
+                      <strong>¿Qué hace este certificado?</strong> Le dice a QZ Tray que confíe en nuestro sistema.
+                      Sin esto, cada vez que imprimas te va a aparecer una ventana pidiendo permiso. Con el certificado, imprime directo.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Paso 5: Activar en el sistema -->
+                <div class="d-flex mb-4" id="tutorial-paso-5">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #17a2b8; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">5</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Activar QZ Tray en tu cuenta</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">
+                      Ahora tenés que decirle al sistema que use QZ Tray en vez del servicio anterior:
+                    </p>
+                    <ol style="font-size: 0.9rem; color: #555; padding-left: 20px;">
+                      <li>
+                        Andá a <a href="/cuenta/edit"><strong>Mi Cuenta</strong></a> (menú de arriba a la derecha, hacé clic en tu nombre)
+                      </li>
+                      <li class="mt-1">Hacé clic en la pestaña <strong>Impresión</strong></li>
+                      <li class="mt-1">Cambiá el selector de <strong>WHB</strong> a <strong>QZ Tray</strong></li>
+                      <li class="mt-1">Hacé clic en <strong>Guardar</strong></li>
+                    </ol>
+                    <p class="text-muted" style="font-size: 0.85rem;">
+                      <i class="fa fa-info-circle" style="color: #17a2b8;"></i>
+                      Si en algún momento querés volver al servicio anterior (WHB), simplemente volvé a cambiar esta opción.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Paso 6: Probar -->
+                <div class="d-flex mb-4" id="tutorial-paso-6">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #28a745; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">6</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Probar la impresora</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">Hacé clic en el botón de abajo. Si todo está bien configurado, se va a imprimir un ticket de prueba automáticamente:</p>
+                    <a href="/ayuda/test_print.pdf" class="btn btn-success silentprint" id="test-print-btn" onclick="return false;">
+                      <i class="fa fa-print"></i> Probar Impresora
+                    </a>
+                  </div>
+                </div>
+
+                <!-- Solución de problemas -->
+                <div class="card bg-light border mt-2">
+                  <div class="card-header" style="cursor: pointer; padding: 10px 15px;" data-toggle="collapse" data-target="#troubleshooting-impresora">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <strong style="font-size: 0.9rem;"><i class="fa fa-wrench"></i> ¿No funciona? Solución de problemas</strong>
+                      <i class="fa fa-chevron-down text-muted" style="font-size: 0.8rem;"></i>
+                    </div>
+                  </div>
+                  <div id="troubleshooting-impresora" class="collapse">
+                    <div class="card-body" style="font-size: 0.88rem; padding: 15px;">
+                      <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                          <tr>
+                            <td style="width: 40%; vertical-align: top;"><strong>El ticket no sale</strong></td>
+                            <td>
+                              Verificá que la impresora esté prendida y conectada. Fijate que el ícono de QZ Tray
+                              <i class="fa fa-print" style="color: #555;"></i> esté en la barra de tareas.
+                              Si no está, abrilo desde el menú Inicio.
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="vertical-align: top;"><strong>Aparece una ventana pidiendo permiso</strong></td>
+                            <td>
+                              El certificado no se copió correctamente. Repetí el <strong>Paso 4</strong>:
+                              verificá que el archivo <code>override.crt</code> esté dentro de
+                              <code>C:\Program Files\QZ Tray\</code> y reiniciá QZ Tray (clic derecho en el ícono → <strong>Reload</strong>).
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="vertical-align: top;"><strong>Error "QZ Tray SDK not loaded"</strong></td>
+                            <td>
+                              Verificá que en <a href="/cuenta/edit">Mi Cuenta</a> → Impresión esté seleccionado <strong>QZ Tray</strong> y no WHB.
+                              Después recargá la página (F5).
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="vertical-align: top;"><strong>QZ Tray no se instala o da error</strong></td>
+                            <td>
+                              Verificá que Java esté instalado (<strong>Paso 1</strong>). QZ Tray requiere Java 8 o superior.
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="vertical-align: top;"><strong>Uso Firefox y no funciona</strong></td>
+                            <td>
+                              Firefox requiere un paso extra: QZ Tray debe instalarse <em>después</em> de Firefox.
+                              Si ya lo instalaste antes, desinstalá QZ Tray y volvé a instalarlo.
+                              Cerrá Firefox completamente antes de reinstalar.
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="vertical-align: top;"><strong>Quiero verificar la conexión</strong></td>
+                            <td>
+                              Abrí <a href="https://demo.qz.io" target="_blank" rel="noopener noreferrer">demo.qz.io</a>
+                              en el navegador y hacé clic en <strong>Connect</strong>. Si se conecta, QZ Tray está funcionando.
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="alert alert-warning mt-3" style="font-size: 0.85rem;">
+                  <i class="fa fa-exclamation-triangle"></i>
+                  <strong>Importante:</strong> Estos pasos se hacen solo en la computadora del local donde está la impresora de tickets.
+                  No hace falta instalarlo en otras computadoras. QZ Tray se inicia automáticamente cuando prendés la computadora.
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 mb-3">
+          <div class="card">
+            <div class="card-header" style="background-color: #f8f9fa; cursor: pointer;" data-toggle="collapse" data-target="#tutorial-whb" aria-expanded="false" aria-controls="tutorial-whb">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                  <i class="fa fa-print" style="font-size: 1.5rem; color: #6c757d; margin-right: 12px;"></i>
+                  <div>
+                    <strong style="font-size: 1.1rem;">Configurar Impresión Automática de Tickets (WHB)</strong>
+                    <p class="mb-0 text-muted" style="font-size: 0.85rem;">Instalar el programa WHB para imprimir tickets directo a la impresora desde Chrome</p>
+                  </div>
+                </div>
+                <i class="fa fa-chevron-down text-muted"></i>
+              </div>
+            </div>
+            <div id="tutorial-whb" class="collapse">
+              <div class="card-body">
+
+                <div class="alert alert-info" style="font-size: 0.9rem;">
+                  <i class="fa fa-info-circle"></i>
+                  <strong>¿Qué es WHB?</strong> Es un programa que se instala en la computadora del local.
+                  Se conecta con el navegador Chrome y permite enviar tickets directo a la impresora sin ventanas de diálogo.
+                </div>
+
+                <h6 class="mt-4 mb-3"><strong>Seguí estos pasos en la computadora del local:</strong></h6>
+
+                <!-- Paso 1: Descargar -->
+                <div class="d-flex mb-4" id="tutorial-whb-paso-1">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #6c757d; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">1</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Descargar WHB</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">Hacé clic en el siguiente enlace para descargar el instalador:</p>
+                    <a href="https://drive.google.com/file/d/1d5zKjeA9uyGsHlLNL1Zo0lDBYHc6-xE5/view?usp=drive_link" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+                      <i class="fa fa-download"></i> Descargar WHB
+                    </a>
+                    <p class="text-muted mt-2" style="font-size: 0.85rem;">
+                      <i class="fa fa-windows" style="color: #0078d4;"></i>
+                      Se va a descargar un archivo instalador. Esperá a que termine la descarga antes de continuar.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Paso 2: Java (si falla la instalación) -->
+                <div class="d-flex mb-4" id="tutorial-whb-paso-2">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #6c757d; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">2</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Instalar Java (si la instalación falla)</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">Si al instalar WHB te da error, es porque necesita Java. Instalalo y volvé a intentar:</p>
+                    <a href="https://java.com/en/download" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+                      <i class="fa fa-download"></i> Descargar Java (gratis)
+                    </a>
+                    <p class="text-muted mt-2" style="font-size: 0.85rem;">
+                      <i class="fa fa-lightbulb-o" style="color: #ffc107;"></i>
+                      <strong>¿Cómo sé si ya tengo Java?</strong> Abrí una ventana de comandos (tecla Windows + R, escribí <code>cmd</code> y Enter) y escribí <code>java -version</code>. Si aparece un número de versión, ya lo tenés.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Paso 3: Instalar -->
+                <div class="d-flex mb-4" id="tutorial-whb-paso-3">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #6c757d; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">3</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Instalar el programa</strong>
+                    <p class="text-muted mb-1" style="font-size: 0.9rem;">Hacé doble clic en el archivo descargado y seguí estos pasos:</p>
+                    <ol style="font-size: 0.9rem; color: #555; padding-left: 20px;">
+                      <li>Si Windows pregunta <em>"¿Desea permitir que esta aplicación haga cambios?"</em>, hacé clic en <strong>Sí</strong></li>
+                      <li>Hacé clic en <strong>Next</strong> (Siguiente) en cada pantalla</li>
+                      <li>Hacé clic en <strong>Finish</strong> (Finalizar) cuando termine</li>
+                    </ol>
+                    <p class="text-muted" style="font-size: 0.85rem;">
+                      <i class="fa fa-check-circle" style="color: #28a745;"></i>
+                      El programa queda funcionando en segundo plano automáticamente.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Paso 4: Aceptar certificado -->
+                <div class="d-flex mb-4" id="tutorial-whb-paso-4">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #6c757d; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">4</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Aceptar el certificado de seguridad en Chrome</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">
+                      WHB usa una conexión segura local. Chrome la va a mostrar como "no segura" porque es un certificado local.
+                      Tenés que aceptarla una sola vez:
+                    </p>
+                    <ol style="font-size: 0.9rem; color: #555; padding-left: 20px;">
+                      <li>
+                        Abrí Chrome y entrá a esta dirección:
+                        <br>
+                        <code style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px;">https://127.0.0.1:12212</code>
+                      </li>
+                      <li class="mt-2">
+                        Chrome va a mostrar una advertencia de seguridad (<em>"La conexión no es privada"</em> o <em>"Your connection is not private"</em>)
+                      </li>
+                      <li class="mt-2">
+                        Hacé clic en <strong>Configuración avanzada</strong> (o <strong>Advanced</strong>)
+                      </li>
+                      <li class="mt-2">
+                        Hacé clic en <strong>Acceder a 127.0.0.1 (no seguro)</strong> (o <strong>Proceed to 127.0.0.1 (unsafe)</strong>)
+                      </li>
+                    </ol>
+                    <div class="alert alert-light border mt-2 mb-0" style="font-size: 0.83rem;">
+                      <i class="fa fa-shield" style="color: #6c757d;"></i>
+                      <strong>¿Es seguro?</strong> Sí, es totalmente seguro. La dirección <code>127.0.0.1</code> es tu propia computadora.
+                      Chrome muestra la advertencia porque el certificado es local y no fue emitido por una autoridad externa, pero la conexión no sale de tu PC.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Paso 5: Activar en el sistema -->
+                <div class="d-flex mb-4" id="tutorial-whb-paso-5">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #6c757d; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">5</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Activar WHB en tu cuenta</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">
+                      Verificá que tu cuenta esté configurada para usar WHB:
+                    </p>
+                    <ol style="font-size: 0.9rem; color: #555; padding-left: 20px;">
+                      <li>
+                        Andá a <a href="/cuenta/edit"><strong>Mi Cuenta</strong></a> (menú de arriba a la derecha, hacé clic en tu nombre)
+                      </li>
+                      <li class="mt-1">Hacé clic en la pestaña <strong>Impresión</strong></li>
+                      <li class="mt-1">Verificá que esté seleccionado <strong>WHB</strong></li>
+                      <li class="mt-1">El indicador de conexión debería aparecer en <strong style="color: #28a745;">verde</strong> (<em>"Conectado a WHB"</em>)</li>
+                      <li class="mt-1">Hacé clic en <strong>Guardar</strong></li>
+                    </ol>
+                  </div>
+                </div>
+
+                <!-- Paso 6: Probar -->
+                <div class="d-flex mb-4" id="tutorial-whb-paso-6">
+                  <div class="text-center" style="min-width: 45px;">
+                    <span class="badge badge-pill" style="background-color: #28a745; color: #fff; font-size: 1.1rem; width: 32px; height: 32px; line-height: 32px; display: inline-block;">6</span>
+                  </div>
+                  <div class="ml-3" style="flex: 1;">
+                    <strong>Probar la impresora</strong>
+                    <p class="text-muted mb-2" style="font-size: 0.9rem;">Hacé clic en el botón de abajo. Si todo está bien configurado, se va a imprimir un ticket de prueba automáticamente:</p>
+                    <a href="/ayuda/test_print.pdf" class="btn btn-success silentprint" id="test-print-whb-btn" onclick="return false;">
+                      <i class="fa fa-print"></i> Probar Impresora
+                    </a>
+                  </div>
+                </div>
+
+                <div class="alert alert-warning mt-3" style="font-size: 0.85rem;">
+                  <i class="fa fa-exclamation-triangle"></i>
+                  <strong>Importante:</strong> Estos pasos se hacen solo en la computadora del local donde está la impresora de tickets.
+                  WHB se inicia automáticamente cuando prendés la computadora.
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <% if current_user %>
+        <%
+          completed_survey_ids = Surveys::SurveyResponse.where(user: current_user).pluck(:survey_id)
+          available_survey = Surveys::Survey.where(active: true, tienda_id: current_user.tienda_activa.id)
+                                            .where.not(id: completed_survey_ids)
+                                            .where('fecha_desde IS NULL OR fecha_desde <= ?', Date.current)
+                                            .where('fecha_hasta IS NULL OR fecha_hasta >= ?', Date.current)
+                                            .order(created_at: :desc)
+                                            .first
+        %>
+        <% if available_survey.present? %>
+          <div class="col-12 mb-3">
+            <div class="card">
+              <div class="card-body d-flex align-items-center" style="padding: 1rem 1.25rem;">
+                <i class="fa fa-clipboard" style="font-size: 1.5rem; color: #5b6abf; margin-right: 12px;"></i>
+                <div style="flex: 1;">
+                  <strong><%= available_survey.title %></strong>
+                  <p class="mb-0 text-muted" style="font-size: 0.9rem;">¡Tu opinión nos ayuda a mejorar! Completá esta breve encuesta.</p>
+                </div>
+                <%= link_to 'Completar encuesta', new_survey_survey_response_path(available_survey),
+                    class: 'btn btn-sm', style: 'background-color: #5b6abf; color: #fff; white-space: nowrap;' %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    <% if tienda_activa.video_ayuda.present? %>
+      <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="col-12">
+                  <iframe width="100%" height="500" src="<%= tienda_activa.video_ayuda %>" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>

@@ -1,0 +1,16 @@
+<% if @cupon_ok %>
+  if ($('#resumen-multiple').length || $('#pedido-container').data('page') === 'opciones') {
+    window.location.reload();
+  } else {
+    $("#pedido-container").html("<%= j render 'pedido' %>");
+    toast.success({ title: 'Cupón aplicado correctamente', duration: 3000 });
+  }
+<% else %>
+  if ($('#resumen-multiple').length) {
+    var _pid = '<%= @pedido.id %>';
+    $('#cupon-error-' + _pid).html('<%= j @cupon_error %>').show();
+  } else {
+    $('#cupon-error').html('<%= j @cupon_error %>').show();
+  }
+  toast.error({ html: '<%= j @cupon_error %>', duration: 4000 });
+<% end %>

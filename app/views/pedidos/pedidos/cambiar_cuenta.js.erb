@@ -1,0 +1,103 @@
+<% if @redirigir_a %>
+  window.location.href = '<%= j @redirigir_a %>';
+<% elsif @error_grupo %>
+  toast.error({ html: '<%= j @error_grupo %>' });
+  <% if @pedido.fecha %>
+    $('#pedido_fecha_input, #pedido_fecha').val('<%= @pedido.fecha %>');
+  <% end %>
+<% elsif @pedido.valid? %>
+  // Pin #pedido_fecha to the same viewport Y across the panel swap.
+  // Strategy:
+  //  1. Record fecha's current viewport-relative top.
+  //  2. Disable CSS overflow-anchor so the browser doesn't run its own
+  //     scroll-anchoring correction (which fires after paint and would fight
+  //     our manual correction, causing double-compensation or no correction).
+  //  3. Make all DOM changes synchronously.
+  //  4. In requestAnimationFrame (after reflow/paint) measure the new
+  //     viewport-relative top and scrollBy the delta to restore position.
+  (function() {
+    var __el = document.getElementById('pedido_fecha');
+    if (!__el) return;
+    var __docY = window.scrollY + __el.getBoundingClientRect().top; // absolute in document
+    document.documentElement.style.overflowAnchor = 'none';
+    requestAnimationFrame(function() {
+      var __el2 = document.getElementById('pedido_fecha');
+      document.documentElement.style.overflowAnchor = '';
+      if (!__el2) return;
+      var __newDocY = window.scrollY + __el2.getBoundingClientRect().top;
+      var __shift = __newDocY - __docY;
+      if (Math.abs(__shift) > 1) {
+        window.scrollBy({ top: __shift, left: 0, behavior: 'instant' });
+      }
+    });
+  })();
+
+  // Refresh whichever opcionales-de-arriba panels exist independently so we
+  // don't blow away the products listado below. If neither sub-panel exists,
+  // fall back to a full re-render of #productos-en-venta.
+  var refreshedSubpanel = false;
+  if ($("#top-menus-diarios").length > 0) {
+    $("#top-menus-diarios").html("<%= j render 'top_menus_diarios' %>");
+    refreshedSubpanel = true;
+  }
+  if ($("#opciones-del-dia").length > 0) {
+    // Use the current element height as min-height for the spinner so the
+    // placeholder doesn't collapse to a fixed 200px — this greatly reduces
+    // the layout shift the rAF correction has to compensate for.
+    var __opcionesH = $("#opciones-del-dia").outerHeight() || 200;
+    // Replace the entire node (not just .html()) so App.onMount treats it as
+    // freshly mounted and the lazy-load handler re-fires.
+    var spinnerHtml =
+      '<span id="opciones-del-dia" data-pedido-id="<%= @pedido.id %>">' +
+      '<div id="opciones-del-dia-loader" style="min-height: ' + __opcionesH + 'px; text-align: center;">' +
+      '<div class="spinner-grow" style="width: 3rem; height: 3rem; margin: 3rem auto;">' +
+      '<span class="sr-only">Cargando opciones del día...</span></div></div></span>';
+    $("#opciones-del-dia").replaceWith(spinnerHtml);
+    refreshedSubpanel = true;
+  }
+  if (!refreshedSubpanel) {
+    $("#productos-en-venta").html("<%= j render 'productos_en_venta' %>");
+  }
+  <% if @pedido.fecha %>
+    $("#pedido_fecha").val('<%= @pedido.fecha %>');
+  <% end %>
+  // Re-init Swiper sliders for any swiper containers freshly inserted by the
+  // sub-panel refreshes above (mirrors what cambiar_categoria.js.erb does for
+  // the Más Productos listado). initProductSliders() skips already-initialized
+  // nodes via the `:not(.swiper-initialized)` selector, so it's idempotent.
+  if (typeof initProductSliders === 'function') {
+    initProductSliders();
+  }
+  $.onmount();
+<% else %>
+  toast.error({ html: '<%= "#{@pedido.to_s}: #{@pedido.errors.full_messages.to_sentence}" %>', duration: 7000 });
+<% end %>
+<% if @advertir_limpieza %>
+  toast.success('Se ha vaciado el Carrito.');
+<% end %>
+<% if (!@pedido.cuenta && !@pedido.usuario) || (@pedido.fecha && !@pedido.fecha_permitida?) %>
+  $("#productos-en-venta").hide();
+  $('#new-pedido .boton-aceptar-pedido').addClass('disabled');
+<% else %>
+  $("#productos-en-venta").show();
+  $('#new-pedido .boton-aceptar-pedido').removeClass('disabled');
+<% end %>
+<% if @pedido.productos_solicitados.present? %>
+  $('#new-pedido .boton-aceptar-pedido').removeClass('disabled');
+<% else %>
+  $('#new-pedido .boton-aceptar-pedido').addClass('disabled');
+<% end %>
+$("#boton-compra").html("<%= j render '/pedidos/pedidos/boton_compra' %>");
+<% if @pedido.en_grupo? %>
+  $("#grupo-badges-container").html("<%= j render 'pedidos/pedidos/grupo_badges', pedido: @pedido %>");
+<% else %>
+  $("#grupo-badges-container").empty();
+<% end %>
+$("#pedido-en-curso").html("<%= j render '/layouts/pedido_en_curso' %>");
+<% cart_total = @pedido.en_grupo? ? @pedido.pedido_multiple.total : @pedido.importe_total %>
+$("#total-pedido-pendiente").html("<%= cart_total %>");
+$("#cart-container .notify").html("<%= cart_total ? "<span class='heartbit'></span> <span class='point'></span>".html_safe : "" %>" );
+if($('#productos-en-venta .cantidad').length > 0) {
+  $('#productos-en-venta .cantidad')[0].focus()
+}
+$('#categoria-selector').trigger('change');

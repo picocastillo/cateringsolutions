@@ -1,0 +1,24 @@
+<% page title: 'Ver Productos', raiz: 'Cocina', hojas: 'Etiquetas Productos', id: 'index-productos' %>
+  <div class="row">
+    <div class="col-12">
+      <div class="card filtros">
+        <div class="bg-info" >
+          <h4 class="text-white card-title">Buscar<div class="card-actions">
+              <a class="" data-action="collapse"><i class="ti-plus"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body">
+          <%= error_messages_for @query %>
+          <%= query_form_for @query, url: '\etiquetas_productos' do |f| %>
+            <%= f.input :producto_id, label: 'Producto', as: :select2, input_html: {data: {multiple: false, placeholder: 'Ingrese código o nombre', selection: 'codigo_y_nombre', label: 'codigo_y_nombre', url: productos_path(format: :json), pre:  @producto ? { id: @producto.id, codigo_y_nombre: @producto.codigo_y_nombre } : {} }}, wrapper_html: { class: 'col-12' } %>
+            <%= f.input :cantidad, wrapper_html: { class: 'col-2' } %>
+            <%= f.input :activo_el, label: 'Fecha Precio', as: :string, required: false, input_html: { class: 'singledate'} %>
+            <%= f.input :dias_vencimiento, wrapper_html: { class: 'col-3' } %>
+            <%= search_buttons f, title: 'Imprimir' %>
+          <% end %>
+        </div>
+      </div>
+  </div>
+</div>

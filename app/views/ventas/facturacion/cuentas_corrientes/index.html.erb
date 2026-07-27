@@ -1,0 +1,41 @@
+<% page title: 'Cuentas Corrientes', raiz: 'Administración', hojas: 'Cuentas Corrientes', acciones: [link_to('Exportar', cuentas_corrientes_path, class: 'export-link')], id: 'index-ctasctes' unless current_user.cliente? %>
+<% page title: 'Cuenta Corriente', hojas: 'Cuentas Corrientes', acciones: [link_to('Exportar', cuentas_corrientes_path, class: 'export-link')], id: 'index-ctasctes' if current_user.cliente? %>
+  <div class="row">
+    <div class="col-12">
+      <div class="card filtros">
+        <div class="bg-info" >
+          <h4 class="text-white card-title">Filtros<div class="card-actions">
+              <a class="" data-action="collapse"><i class="ti-plus"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body collapse">
+          <%= error_messages_for @query %>
+          <%= query_form_for @query, url: cuentas_corrientes_path, remote: true do |f| %>
+            <%= f.input :clientes_ids, label: 'Clientes', as: :select2, input_html: {data: {multiple: true, url: clientes_path(format: :json), pre: @query.clientes_ids.presence && Clientes::Cliente.where(id: @query.clientes_ids)}}  unless current_user.cliente? %>
+            <%= f.input :cuentas_ids, label: 'Cuentas', as: :select2, input_html: {data: {multiple: true, minimum_input_length: 1, label: 'cliente_y_nombre', selection: 'cliente_y_nombre', url: cuentas_path(format: :json), pre: @query.cuentas_ids.presence && Clientes::Cuenta.where(id: @query.cuentas_ids)}} %>
+            <%= f.input :usuarios_ids, label: 'Usuarios', as: :select2, input_html: {data: {multiple: true, url: usuarios_path(format: :json), pre: @query.usuarios_ids.presence && Usuarios::Usuario.where(id: @query.usuarios_ids)}} %>
+            <%= f.input :condicion_eq, label: 'Condición', collection: ['Pendientes', 'Vencidos', 'A Vencer'], include_blank: 'Todos'%>
+            <%= f.input :desde, as: :string, required: false, input_html: { class: 'singledate'} %>
+            <%= f.input :hasta, as: :string, required: false, input_html: { class: 'singledate'} %>
+            <%= search_buttons f %>
+          <% end %>
+        </div>
+      </div>
+      <div class="card">
+          <div class="card-header">
+              <div class="card-actions">
+
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <div class="card-body collapse show">
+            <span id="ctasctes-container">
+              <%= render 'resultados' %>
+            </span>
+          </div>
+
+      </div>
+  </div>
+</div>

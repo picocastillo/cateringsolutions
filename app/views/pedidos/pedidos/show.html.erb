@@ -1,0 +1,7 @@
+<%= content_for(:head, "<script src='https://sdk.mercadopago.com/js/v2'></script>".html_safe) if can?(:pagar_mercadopago, @pedido) %>
+<% acciones_filtradas = [@pedido.venta_mostrador? ? edit_pedido_mostrador_link(@pedido, 'Editar') : edit_pedido_link(@pedido, 'Modificar Pedido', !@pedido.estado.pendiente?), (link_to('Lista', @pedido.venta_mostrador? ? ventas_mostrador_pedidos_path : pedidos_path) unless @pedido.estado.pendiente?)].compact %>
+<% page title: @pedido.to_s, raiz: 'Pedidos', hojas: 'Detalles', id: 'show-pedido', acciones: acciones_filtradas unless @pedido.estado.pendiente? %>
+<% page title: 'Checkout', id: 'show-pedido', acciones: acciones_filtradas if @pedido.estado.pendiente? %>
+<div class="row" id="pedido-container">
+    <%= render 'pedido' %>
+</div>

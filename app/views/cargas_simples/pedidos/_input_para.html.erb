@@ -1,0 +1,3 @@
+<%= simple_fields_for @pedido do |f| %>
+  <%= f.input :para, as: :select2_local, collection: Pedidos::Pedido.where('pedidos.cuenta_id = ? and pedidos.para is not null and pedidos.para != ""', @pedido.cuenta_id).group(:para).pluck(:para).map{|x| [x,x]}, selected: @pedido.para, selection_method: :para, label: 'Para', include_blank: true, input_html: {multiple: false}, wrapper_html: { class: "col-sm-6 col-md-4 col-lg-4 mb-0#{' hide' if @pedido.usuario || !@pedido.cuenta}"} %>
+<% end %>

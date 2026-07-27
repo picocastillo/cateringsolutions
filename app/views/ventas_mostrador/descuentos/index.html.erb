@@ -1,0 +1,16 @@
+<% page title: 'Descuentos Venta Mostrador', raiz: 'Contactos', hojas: 'Descuentos VM', acciones: [link_to('Nuevo', new_ventas_mostrador_descuento_path, remote: true)], id: 'index-descuentos-vm' %>
+
+<div class="row">
+  <div class="col-md-12">
+    <div class="card" id="listado-descuentos-vm">
+      <div class="card-header">
+        <div class="card-actions">
+          <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+        </div>
+      </div>
+      <span id="descuentos-vm-container">
+        <%= render 'resultados' %>
+      </span>
+    </div>
+  </div>
+</div>

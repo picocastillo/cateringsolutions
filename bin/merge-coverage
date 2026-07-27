@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+# Display coverage summary from parallel test workers
+
+require 'json'
+
+puts "\n" + "="*80
+puts "📊 COVERAGE SUMMARY".center(80)
+puts "="*80
+
+# SimpleCov saves all results to coverage/.resultset.json  
+result_file = 'coverage/.resultset.json'
+
+unless File.exist?(result_file)
+  puts "❌ No coverage results found"
+  puts "Run tests with: ./bin/ptest unit (or system, or all)"
+  exit 1
+end
+
+# Load the results (SimpleCov already merged everything from all workers)
+all_results = JSON.parse(File.read(result_file))
+
+# Count how many test workers contributed
+num_workers = all_results.keys.select { |k| k.match(/^\(\d+\/\d+\)/) }.size
+puts "Workers: #{num_workers} parallel test processes"
+
+puts ""
+puts "✅ Detailed HTML report: coverage/index.html"
+puts ""
+puts "To view in browser: open coverage/index.html"
+puts "="*80
+
+exit 0

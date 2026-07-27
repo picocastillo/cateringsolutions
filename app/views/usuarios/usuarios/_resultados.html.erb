@@ -1,0 +1,15 @@
+<div class="card-body collapse show">
+  <div class="table-responsive">
+    <%= table_for @usuarios, id: 'usuarios' do |t| %>
+      <% t.column(:foto, header: '', class: 'hidden-sm-down') { |t| content_tag :div, (image_tag(t.foto_safe, style: 'position: absolute;max-width: 105%;width: 105%;height: auto;top: 50%;left: 50%;transform: translate( -50%, -50%);')), style: 'margin-top: -5px;overflow:hidden; width:30px;height:30px;border-radius:100%;position:relative' } %>
+      <% t.column(:nombre) { |t| link_to discontinuado(t, t.nombre), t } %>
+      <% t.column(:login)%>
+      <% t.column(:cliente) { |t| link_to discontinuado(t.cuenta.cliente, t.cuenta.cliente.nombre), t.cuenta.cliente  if t.cuenta } %>
+      <% t.column(:dni, class: 'hidden-md-down')  %>
+      <% t.column(:legajo, class: 'hidden-md-down') %>
+      <% t.column(:activo, class: 'center hidden-md-down')  { |t| etiqueta_activo t }%>
+      <% t.actions { |t| [edit_link(t, 'Editar'), link_to_activate(t)]} %>
+    <% end %>
+  </div>
+</div>
+<%= paginador @usuarios %>

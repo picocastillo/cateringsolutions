@@ -1,0 +1,138 @@
+<% page title: @pedido_cocina.to_s, raiz: 'Pedidos', hojas: 'Cocina', id: 'show-pedido-cocina', acciones: [link_to('Lista', pedidos_cocina_path)] %>
+
+<div class="row">
+  <!-- Left Column: Summary -->
+  <div class="col-lg-4 col-xlg-3 col-md-5">
+    <div class="card">
+      <div class="card-body">
+        <center class="m-t-30">
+          <div class="display-4 mb-2"><i class="mdi mdi-silverware"></i></div>
+          <h2 class="card-title m-t-10 m-b-5"><%= @pedido_cocina.to_s %></h2>
+          <h4 class="card-subtitle m-b-5"><%= l(@pedido_cocina.fecha, format: :long) if @pedido_cocina.fecha %></h4>
+          <div class="m-b-20">
+            <span class="badge badge-info px-2 py-1">Tienda: <%= @pedido_cocina.tienda&.nombre %></span>
+          </div>
+        </center>
+      </div>
+      <div><hr></div>
+      <div class="card-body p-b-30">
+        <% if @pedido_cocina.codigo.present? %>
+          <small class="text-muted">Código</small>
+          <h6><%= @pedido_cocina.codigo %></h6>
+        <% end %>
+        <% if @pedido_cocina.autor.present? %>
+          <small class="text-muted">Autor</small>
+          <h6><%= @pedido_cocina.autor %></h6>
+        <% end %>
+        <% if @pedido_cocina.descripcion.present? %>
+          <small class="text-muted">Descripción</small>
+          <h6><%= @pedido_cocina.descripcion %></h6>
+        <% end %>
+        <small class="text-muted">Pedidos</small>
+        <h6><%= @pedido_cocina.pedidos.size %></h6>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Orders breakdown -->
+  <div class="col-lg-8 col-xlg-9 col-md-7">
+    <div class="card">
+      <!-- Nav tabs -->
+      <ul class="nav nav-tabs profile-tab" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link active" data-toggle="tab" href="#resumen" role="tab">Resumen</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-toggle="tab" href="#pedidos" role="tab">Pedidos</a>
+        </li>
+      </ul>
+      <!-- Tab panes -->
+      <div class="tab-content">
+        <div class="tab-pane active" id="resumen" role="tabpanel">
+          <div class="card-body">
+            <%# Agrupar por cliente/cuenta y contar pedidos %>
+            <% grouped_by_cliente = @pedido_cocina.pedidos.group_by { |p| p.cuenta&.cliente || p.usuario&.cuenta&.cliente }.sort_by { |cliente, _| cliente&.nombre.to_s } %>
+            <table class="table table-sm stylish-table mb-0">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Cuentas</th>
+                  <th class="text-center">Pedidos</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% grouped_by_cliente.each do |cliente, pedidos_cliente| %>
+                  <% pedidos_por_cuenta = pedidos_cliente.group_by(&:cuenta).sort_by { |cuenta, _| cuenta&.nombre.to_s } %>
+                  <% cliente_nombre = cliente ? cliente.nombre : 'Sin cliente' %>
+                  <% single_cuenta = pedidos_por_cuenta.count == 1 && pedidos_por_cuenta.first.first&.nombre == cliente_nombre %>
+                  <tr>
+                    <td<%= " rowspan=#{pedidos_por_cuenta.count}".html_safe if !single_cuenta && pedidos_por_cuenta.count > 1 %>>
+                      <strong><%= cliente_nombre %></strong>
+                    </td>
+                    <% if single_cuenta %>
+                      <td></td>
+                      <td class="text-center"><%= pedidos_cliente.count %></td>
+                    <% else %>
+                      <td><%= pedidos_por_cuenta.first.first&.nombre || 'Sin cuenta' %></td>
+                      <td class="text-center"><%= pedidos_por_cuenta.first.second.count %></td>
+                    <% end %>
+                  </tr>
+                  <% unless single_cuenta %>
+                    <% pedidos_por_cuenta.drop(1).each do |cuenta, pedidos_cuenta| %>
+                      <tr>
+                        <td><%= cuenta&.nombre || 'Sin cuenta' %></td>
+                        <td class="text-center"><%= pedidos_cuenta.count %></td>
+                      </tr>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="2"><strong>Total de pedidos</strong></td>
+                  <td class="text-center"><strong><%= @pedido_cocina.pedidos.size %></strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="tab-pane" id="pedidos" role="tabpanel">
+          <div class="card-body">
+            <div class="table-responsive mt-3">
+              <table class="table stylish-table mb-0">
+                <thead>
+                  <tr>
+                    <th>Pedido</th>
+                    <th>Cliente/Cuenta</th>
+                    <th>Usuario</th>
+                    <th class="text-right">Productos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @pedido_cocina.pedidos.each do |p| %>
+                    <tr>
+                      <td><%= link_to(p.codigo_s, pedido_path(p)) %></td>
+                      <td>
+                        <% if p.cuenta %>
+                          <h6><%= p.cuenta.cliente.nombre %></h6>
+                          <div class="text-muted"><%= p.cuenta.nombre %></div>
+                        <% else %>
+                          <span class="text-muted">—</span>
+                        <% end %>
+                      </td>
+                      <td><%= p.usuario || 'Empresa' %></td>
+                      <td class="text-right">
+                        <% total_items = p.productos_solicitados.map(&:cantidad).compact.sum %>
+                        <%= total_items %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

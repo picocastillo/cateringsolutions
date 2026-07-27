@@ -1,0 +1,162 @@
+<%
+  opciones_diarias = productos_diarios_para(@pedido, @cuenta_activa, tienda_activa)
+%>
+<% una_sola_categoria = opciones_diarias.size == 1 %>
+<% if opciones_diarias.any? %>
+  <div id="opciones-del-dia-section">
+    <style>
+      /* Tight horizontal spacing for opciones del día panels */
+      #opciones-del-dia-section .opciones-del-dia-row { margin-left: 0; margin-right: 0; }
+      #opciones-del-dia-section .opciones-del-dia-panel { padding-left: 4px; padding-right: 4px; }
+      #opciones-del-dia-section .opciones-del-dia-panel > .panel { margin-left: 0; margin-right: 0; }
+      #opciones-del-dia-section .swiper { padding-left: 0; padding-right: 0; }
+      #opciones-del-dia-section .producto-slide-pair { padding: 0 !important; }
+    </style>
+    <div class="text-center mb-4">
+      <h3 class="opciones-del-dia-title" style="color: #2d3748; font-weight: 700; margin-bottom: 8px;">
+        <i class="mdi mdi-star mr-2" style="color: #f59e0b;"></i>
+        Nuestras opciones del día
+      </h3>
+      <p class="opciones-del-dia-subtitle" style="color: #718096; font-size: 1.1em; margin-bottom: 0;">
+        <%= una_sola_categoria ? opciones_diarias.first.first.descripcion : 'Selecciones especiales preparadas para hoy' %>
+      </p>
+    </div>
+
+    <div class="row opciones-del-dia-row"<%= ' style="padding-top:10px;"'.html_safe if una_sola_categoria %>>
+    <% panel_col_classes = if current_user.vista_lista? || una_sola_categoria
+                            'col-12'
+                          else
+                            'col-12 col-md-6 col-lg-4'
+                          end %>
+    <% opciones_diarias.each do |menu_diario, precios| %>
+      <div class="opciones-del-dia-panel <%= panel_col_classes %>" data-menu-diario-id="<%= menu_diario.id %>"
+           style="margin-bottom: 1.5rem;">
+        <%= panel menu_diario.descripcion,
+                  toggle: true,
+                  show_toggle_button: false,
+                  header: !una_sola_categoria,
+                  start_toggled: current_user.obtener_preferencia("togle_opciones_dia_#{menu_diario.id}").estado do %>
+          <%= hidden_field_tag :id_panel, "opciones_dia_#{menu_diario.id}", class: 'id_panel' %>
+          <%
+            productos_agrupados = precios.group_by(&:producto_id).map do |_id, prs|
+              prs.select { |x| x.clientes.present? }.max_by(&:importe) || prs.max_by(&:importe)
+            end
+          %>
+          <% if current_user.vista_lista? %>
+            <div class="productos-lista-grid productos-lista-grid--diarios col-12">
+              <% productos_agrupados.each do |pr| %>
+                <%= render 'producto_card_lista', pr: pr %>
+              <% end %>
+            </div>
+          <% else %>
+          <% productos_agrupados.each_slice(200).with_index do |chunk, chunk_idx| %>
+            <% if chunk_idx > 0 %>
+              <hr style="margin: 0.8rem 0; border-color: rgba(0,0,0,0.08);">
+            <% end %>
+            <% slider_activo = chunk.size > 2 %>
+            <% usar_single_col = slider_activo && !una_sola_categoria %>
+            <div class="<%= slider_activo ? (usar_single_col ? 'swiper swiper-single-col' : 'swiper') : 'opciones-static-list' %> col-12">
+              <div class="<%= slider_activo ? 'swiper-wrapper' : 'opciones-static-wrapper' %>">
+                <% chunk.each_slice(2) do |par| %>
+                  <div class="<%= slider_activo ? 'swiper-slide' : 'opciones-static-slide' %> producto-slide-pair"
+                       style="display: flex; flex-direction: column; gap: 8px; padding: 0;">
+                    <% par.each do |pr| %>
+                      <% precio = Danconia::Money.new(pr.importe) %>
+                      <% activado = current_user.favoritos.any? { |f| f.producto_id == pr.producto_id } %>
+                      <% stock_activo = pr.producto.categoria&.stock_activo %>
+                      <% local_id = current_user&.local&.id || @pedido&.local&.id %>
+                      <% stock_disponible = stock_activo ? pr.producto.stock_actual(local_id) : nil %>
+                      <% sin_stock = stock_activo && stock_disponible.to_i < 1 %>
+                      <div class="producto-venta card-hover mini-form noselect"
+                           id="cantidad_producto_<%= pr.producto.id %>"
+                           data-stock-activo="<%= stock_activo %>"
+                           data-stock-disponible="<%= stock_disponible %>"
+                           style="border: 1.5px solid rgba(139,92,246,0.18); border-radius: 14px; box-shadow: 0 2px 12px rgba(139,92,246,0.10); background: rgba(255,255,255,0.65); backdrop-filter: blur(12px) saturate(160%); display: flex; flex-direction: row; align-items: stretch; width: 100%; height: 140px; padding: 0; transition: box-shadow 0.2s, border 0.2s; overflow: hidden;">
+                        <div class="rounded interior-producto-con-foto"
+                             style="padding: 10px 12px 6px 12px; cursor: grab; flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; overflow: hidden;">
+                          <div>
+                            <% titulo_largo = pr.producto.to_s.length > 55 %>
+                            <% desc_largo = pr.producto.descripcion.present? && pr.producto.descripcion.length > 35 %>
+                            <% mostrar_ver_mas = titulo_largo || desc_largo %>
+                            <% if mostrar_ver_mas %>
+                              <% tooltip_content = "<strong>#{h(pr.producto.to_s)}</strong>#{pr.producto.descripcion.present? ? '<br><br>' + h(pr.producto.descripcion) : ''}" %>
+                            <% end %>
+                            <h5 style="color: #1b1b1b; font-weight: 600; font-size: 0.88em; text-align: left; margin: 0 0 2px 0; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                              <%= pr.producto.to_s %>
+                            </h5>
+                            <% if pr.producto.descripcion.present? %>
+                              <p class="desc" style="margin: 0 0 2px 0; color: #888; font-size: 0.78em; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">
+                                <%= pr.producto.descripcion %>
+                              </p>
+                            <% end %>
+                          </div>
+                          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-bottom: 10px;">
+                            <% if stock_activo && stock_disponible.to_i <= 999 %>
+                              <div style="width: 100%;">
+                                <span class="badge badge-pill stock-indicator <%= sin_stock ? 'badge-danger' : 'badge-success' %>"
+                                      style="font-size: 0.65em; padding: 2px 6px;">
+                                  <%= sin_stock ? 'Sin Stock' : "#{stock_disponible.to_i} disp." %>
+                                </span>
+                              </div>
+                            <% end %>
+                            <span class="badge badge-pill badge-light precio-producto"
+                                  style="padding: 5px 12px; background: #f0f1f3; color: #333; font-weight: 600;">
+                              <%= precio %>
+                            </span>
+                            <span class="fav-container<%= ' active' if activado %>"
+                                  title="<%= activado ? 'Quitar de Favoritos' : 'Agregar a Favoritos' %>"
+                                  style="font-size: 1em; color: #d5d6d7; cursor: pointer;">
+                              <i class="fa fa-star <%= ' active' if activado %>"></i>
+                            </span>
+                            <% if mostrar_ver_mas %>
+                              <a href="javascript:void(0)" data-toggle="tooltip" data-trigger="click" data-html="true"
+                                 title="<%= tooltip_content %>"
+                                 style="color: #3393d4; font-size: 0.85em; cursor: pointer; margin-left: 0;">
+                                <i class="fa fa-info-circle"></i>
+                              </a>
+                            <% end %>
+                          </div>
+                          <%= hidden_field_tag 'productoid', pr.producto.id, class: 'productoid', id: nil %>
+                        </div>
+                        <div class="imagen-container image-box de-categoria con-imagen"
+                             style="position: relative; width: 140px; min-width: 140px; height: 100%; display: flex; flex-direction: column;">
+                          <% if pr.producto.nuevo? %>
+                            <span style="position: absolute; top: 6px; right: 6px; z-index: 2; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #fff; font-size: 0.65em; font-weight: 600; padding: 2px 8px; border-radius: 8px; letter-spacing: 0.5px;">
+                              <i class="fa fa-bolt" style="margin-right: 2px;"></i>Nuevo
+                            </span>
+                          <% end %>
+                          <div style="flex: 1; overflow: hidden; background: #fafafa;">
+                            <img src="<%= pr.producto.imagenes.first.present? ? pr.producto.imagenes.first.url(:thumb) : asset_url('sinimagen.png') %>"
+                                 loading="lazy"
+                                 style="width: 100%; height: 100%; object-fit: cover; display: block;"/>
+                          </div>
+                          <div class="adicionadores"
+                               style="display: flex; align-items: center; justify-content: center; gap: 2px; padding: 6px 0; background: rgba(255,255,255,0.95); border-top: 1px solid #eee;">
+                            <%= link_to '<i class="fa fa-minus"></i>'.html_safe, nil, class: 'cambiadores-cantidad nodiarios menos', data: { suma: '-1' }, style: 'font-size: 1.1em; background: none; border: none; cursor: pointer; padding: 2px 6px;' %>
+                            <% ccc = @pedido.productos_solicitados.find { |x| x.producto == pr.producto }.try(&:cantidad).to_i %>
+                            <%= text_field_tag :cantidad, ccc, class: "#{'mayorcero' if ccc > 0} cantidad", id: "input_cantidad_#{pr.producto.id}", data: { productoid: pr.producto.id, precio: precio.to_f, nombre: pr.producto.to_s.truncate(32), imagen: pr.producto.imagen_principal, stock_activo: stock_activo, stock_disponible: stock_disponible }, readonly: true, style: 'text-align: center; width: 36px; font-size: 0.9em; border-radius: 6px; border: 1px solid #e0e0e0; background: #f9f9f9;' %>
+                            <%= link_to '<i class="fa fa-plus"></i>'.html_safe, nil, class: "cambiadores-cantidad nodiarios mas #{'disabled-stock' if sin_stock}", data: { suma: '1' }, style: "font-size: 1.1em; background: none; border: none; cursor: #{sin_stock ? 'not-allowed' : 'pointer'}; opacity: #{sin_stock ? '0.3' : '1'}; padding: 2px 6px;" %>
+                          </div>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+              <% if slider_activo %>
+                <div class="swiper-pagination"></div>
+                <div class="swiper-button-prev"></div>
+                <div class="swiper-button-next"></div>
+              <% end %>
+            </div>
+          <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+    </div>
+  </div>
+  <% if tienda_activa.muestra_mas_productos_efectivo? %>
+    <hr style="margin: 2rem 0;">
+  <% end %>
+<% end %>

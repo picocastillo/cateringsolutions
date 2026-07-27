@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "ruby",
+  "owner": "el-feo",
+  "repo": "ai-context",
+  "path": "plugins/ruby-rails/skills/ruby",
+  "branch": "main",
+  "sha": "c3a3ac049475889fd4d79f34660902ef79966557",
+  "source": "manual"
+}

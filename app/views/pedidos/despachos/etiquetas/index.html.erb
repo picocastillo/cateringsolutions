@@ -1,0 +1,50 @@
+<% page title: 'Etiquetas', raiz: 'Despachos', hojas: 'Etiquetas', acciones: [export_link_despacho, link_to_etiquetas(etiquetas_path(filtered_params.merge(format: :pdf))), (link_to_function('Importar', data: {toggle: 'modal', target: '#importar'}) if false)].compact, id: 'index-etiquetas' %>
+  <div class="row">
+    <div class="col-12">
+      <div class="card filtros">
+        <div class="bg-info" >
+          <h4 class="text-white card-title">Filtros<div class="card-actions">
+              <a class="" data-action="collapse"><i class="ti-plus"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body collapse">
+          <%= query_form_for @query, url: etiquetas_path, remote: true do |f| %>
+            <%= f.input :fecha_desde, as: :string, required: false, input_html: { class: 'singledate'}, label: 'Fecha Desde' %>
+            <%= f.input :fecha_hasta, as: :string, required: false, input_html: { class: 'singledate'}, label: 'Fecha Hasta' %>
+            <%= f.input :cliente_ids, label: 'Clientes', as: :select2, input_html: {data: {multiple: true, url: clientes_path(format: :json), pre: @query.cliente_ids.presence && Clientes::Cliente.where(id: @query.cliente_ids.split(',').map(&:to_i))}} %>
+            <%= f.input :cuentas_ids, label: 'Cuentas', as: :select2, input_html: {data: {multiple: true, minimum_input_length: 1, label: 'cliente_y_nombre', selection: 'cliente_y_nombre', url: cuentas_path(format: :json), pre: @query.cuentas_ids.presence && Clientes::Cuenta.where(id: @query.cuentas_ids.split(',').map(&:to_i))}} %>
+            <%= f.input :usuario_ids, label: 'Usuarios', as: :select2, input_html: {data: {multiple: true, url: usuarios_path(format: :json), pre: @query.usuario_ids.presence && Usuarios::Usuario.where(id: @query.usuario_ids)}} %>
+            <%= f.input :agrupar_por_id, label: 'Visualizando por', collection: [['Clientes, Cuentas y Usuarios', 2], ['Sólo Clientes', 1]], prompt: false%>
+            <%= f.input :ver_aceptados_etiquetas, label: 'Visualizando Pedidos', collection: [['Sólo Confirmados', false], ['Aceptados y Confirmados', true]], prompt: false %>
+            <%= f.input :horario_ids, as: :select2_local, collection: Pedidos::Horario.where(tienda_id: tienda_activa.id).all, selected: @query.horario_ids, label: 'Horarios', label_method: :to_s, include_blank: true, input_html: {multiple: true}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} if tienda_activa.horarios_de_entrega? && !current_user.cliente? %>
+            <%= f.input :horarios_de_corte_ids, as: :select2_local, collection: Clientes::Cuenta.horarios_corte_efectivos(tienda_activa.id), selected: @query.horarios_de_corte_ids, label: 'Hora de Corte', label_method: :to_s, include_blank: true, input_html: {multiple: true}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} unless current_user.cliente? %>
+            <%= f.input :horario_corte_cliente_ids, as: :select2_local, collection: Clientes::Cuenta.horarios_corte_clientes(tienda_activa.id), selected: @query.horario_corte_cliente_ids, label: 'Hora Corte Cliente', label_method: :to_s, include_blank: true, input_html: {multiple: true}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} unless current_user.cliente? %>
+            <%= f.input :horario_corte_cuenta_ids, as: :select2_local, collection: Clientes::Cuenta.horarios_corte_cuentas(tienda_activa.id), selected: @query.horario_corte_cuenta_ids, label: 'Hora Corte Cuenta', label_method: :to_s, include_blank: true, input_html: {multiple: true}, wrapper_html: { class: "col-sm-9 col-md-4 mb-0"} unless current_user.cliente? %>
+            <%= f.input :local_id, label: 'Local', as: :select, collection: Locales::Local.where(tienda_id: tienda_activa.id).order(:nombre).all, label_method: :nombre_y_domicilio, selected: @query.local_id, include_blank: true if tienda_activa.multiple_locales && !current_user.cliente? %>
+            <%= search_buttons f %>
+          <% end %>
+        </div>
+      </div>
+      <div class="card">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <div class="card-body collapse show">
+            <span id="etiquetas-container">
+              <%= render 'etiquetas'%>
+            </span>
+          </div>
+      </div>
+  </div>
+</div>
+
+<%= import_dialog 'Importar Etiquetas Williner', importar_etiquetas_williner_etiquetas_path(format: :pdf) do %>
+  <p>Para importar correctamente el archivo y convertirlo en Etiquetas PDF a imprimir, el archivo de Excel, debe ser formato XLS (97-2003) y no XLSX (nuevo formato) y además debe cumplir las siguientes reglas:</p>
+  <ul>
+    <li>Las primer fila del archivo se ignorará. La segunda fila deben ser las columnas <b>Código del menú</b>, <b>Nombre del menú</b>, <b>Nombre de empleado</b> y	<b>Lugar de entrega</b></b> y a partir de la tercer fila la información de las etiquetas.</li>
+  </ul>
+<% end if false %>

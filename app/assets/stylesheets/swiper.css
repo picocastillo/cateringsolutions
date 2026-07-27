@@ -1,0 +1,6 @@
+/*
+ * Swiper CSS loaded as standalone asset (outside SassC pipeline).
+ * Swiper v12 uses modern CSS nesting (button&{}) which SassC 2.4 cannot parse.
+ *
+ *= require swiper/swiper-bundle.min
+ */

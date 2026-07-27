@@ -1,0 +1,116 @@
+/* Survey-specific styles to override theme conflicts */
+
+/* Fix for card header padding being overridden by theme's .card .card-header { padding: 0!important; } */
+.surveys-index .card .card-header,
+.surveys-show .card .card-header,
+.surveys-new .card .card-header,
+.surveys-edit .card .card-header {
+  padding: 0.75rem 1.25rem !important;
+}
+
+/* Ensure proper spacing for survey forms */
+.surveys-new .form-group,
+.surveys-edit .form-group {
+  margin-bottom: 1rem;
+}
+
+/* Better spacing for question cards */
+.surveys-show .question-field,
+.surveys-new .question-field,
+.surveys-edit .question-field {
+  margin-bottom: 1rem;
+}
+
+/* Status badges styling */
+.surveys-show .badge {
+  font-size: 0.75em;
+  padding: 0.375rem 0.75rem;
+}
+
+/* Statistics cards equal height */
+.surveys-show .stats-card {
+  height: 100%;
+}
+
+/* Better spacing for action buttons */
+.surveys-show .btn-group .btn,
+.surveys-index .btn-group .btn {
+  margin-left: 0.25rem;
+}
+
+.surveys-show .btn-group .btn:first-child,
+.surveys-index .btn-group .btn:first-child {
+  margin-left: 0;
+}
+
+/* Word Cloud Styles */
+.wordcloud-container {
+  canvas {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    width: 100% !important;
+    height: 220px !important;
+    max-width: 100%;
+    
+    &:hover {
+      border-color: #6c757d;
+      transition: border-color 0.3s ease;
+    }
+  }
+  
+  .wordcloud-fallback {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 220px;
+    font-family: 'Arial', sans-serif;
+    font-size: 0.9rem;
+    color: #495057;
+    
+    .word-item {
+      display: inline-block;
+      margin: 0.25rem 0.5rem;
+      padding: 0.25rem 0.5rem;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      
+      .word {
+        font-weight: 600;
+        color: #2574A9;
+      }
+      
+      .count {
+        color: #6c757d;
+        font-size: 0.8rem;
+        margin-left: 0.25rem;
+      }
+    }
+  }
+  
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    color: #6c757d;
+    font-style: italic;
+    background-color: #f8f9fa;
+    border: 1px dashed #dee2e6;
+    border-radius: 8px;
+  }
+}
+
+/* Survey responses page specific word cloud styles */
+#survey-responses-index,
+#survey-responses-show {
+  .wordcloud-container canvas {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    
+    &:hover {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+  }
+}

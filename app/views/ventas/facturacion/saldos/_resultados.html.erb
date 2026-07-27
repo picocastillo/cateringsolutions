@@ -1,0 +1,15 @@
+<div class="table-responsive ajax-data-container">
+  <% ultima_pagina = @movimientos.current_page == @movimientos.total_pages %>
+  <%= table_for @movimientos, id: 'movimientos' do |t|
+    t.column(:cliente, footer: ('Total' if ultima_pagina)) { |m| link_to(m.cuenta.cliente, cliente_path(m.cuenta.cliente))}
+    t.column(:cuenta, class: "#{'hidden' unless @query.visualizar_por_id.to_i > 1}") { |m| m.cuenta }
+    t.column(:usuario,class: "#{'hidden' unless @query.visualizar_por_id.to_i > 2}") { |m| m.comprobante.pedido.usuario.nombre if @query.visualizar_por_id.to_i > 2 }
+    t.column(:saldo_total, class: 'text-right', header: 'Saldo Total',
+      footer: (number_to_currency(@query.totales.saldo_total) if ultima_pagina)) { |m| number_to_currency m.saldo_total }
+    @query.headers_de_vencimiento.each { |key, text| t.column(key.to_sym, header: text, class: 'text-right',
+      footer: (number_to_currency(@query.totales.send(key.to_sym)) if ultima_pagina)) { |m| number_to_currency m.send(key.to_sym)} }
+    t.column(:saldo_favor, class: 'text-right', header: 'Saldo Favor',
+      footer: (number_to_currency(@query.totales.saldo_favor) if ultima_pagina)) { |m| number_to_currency m.saldo_favor }
+  end %>
+</div>
+<%= paginador @movimientos  %>

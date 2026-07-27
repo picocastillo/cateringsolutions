@@ -1,0 +1,47 @@
+<% page title: 'Gestión de Stocks', raiz: 'Productos', hojas: 'Stocks', acciones: [export_link(Productos::Stock), import_link(Productos::Stock), link_to('Nuevo Producto', new_producto_path)].compact, id: 'index-stocks' %>
+  <div class="row">
+    <div class="col-12">
+      <div class="card filtros">
+        <div class="bg-info" >
+          <h4 class="text-white card-title">Filtros<div class="card-actions">
+              <a class="" data-action="collapse"><i class="ti-plus"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body collapse">
+          <%= error_messages_for @query %>
+          <%= query_form_for @query, remote: true do |f| %>
+            <%= f.input :producto_nombre, label: 'Nombre del Producto', input_html: { autocomplete: 'off' } %>
+            <%= f.input :categoria_ids, as: :select2_local, selected: @query.categoria_ids, collection: Productos::Categoria.order(:nombre).where(tienda_id: tienda_activa).active, prompt: ' - Todas - ', label: 'Categorías', input_html: {multiple: true, autocomplete: 'off'} %>
+            <%= f.input :status_stock_ids, as: :select2_local, selected: @query.status_stocks, collection: [['Con Stock', 'con_stock'], ['Sin Stock', 'sin_stock'], ['Stock Bajo', 'stock_bajo'], ['Stock Crítico', 'stock_critico']], label: 'Estado del Stock', input_html: {multiple: true, autocomplete: 'off' } %>
+            <%= f.input :solo_categorias_stock_activo, as: :boolean, label: 'Mostrar categorías con Stock activo', input_html: { checked: true }, wrapper_html: { style: 'padding-top: 25px;' } %>
+            <%= f.input :busqueda, label: 'Búsqueda General', placeholder: 'Busca en nombre, código y códigos externos del producto', input_html: { autocomplete: 'off' } %>
+            <%= search_buttons f %>
+          <% end %>
+        </div>
+      </div>
+      <div class="card">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+        <span id=stocks-container> <%= render 'resultados' %></span>
+      </div>
+      <div id="movimientos-container" style="display:none;"></div>
+  </div>
+</div>
+
+<%= import_dialog 'Importar Stocks', import_stocks_path do %>
+  <p>Para importar stocks el archivo debe ser formato XLS (no XLSX) y cumplir las siguientes reglas:</p>
+  <ul>
+    <li>Si ingresa un valor en la columna <b>ID</b>, se actualizará el stock con ese ID. Al actualizar cantidad se registrará automáticamente un movimiento de stock.</li>
+    <li>Para crear un nuevo stock debe ingresar: <b>Producto</b> (nombre del producto) o <b>Código</b> (código del producto).</li>
+    <li>Columnas de cantidades: <b>Cantidad Actual</b> (obligatorio para nuevos), <b>Cantidad Mínima</b> (opcional, por defecto 0), <b>Cantidad Máxima</b> (opcional).</li>
+    <li>Columna <b>Activo</b> (opcional, Si/No, por defecto Si).</li>
+    <li>Los stocks se crearán/actualizarán en la tienda activa del usuario actual (stock principal).</li>
+    <li>El producto debe pertenecer a su tienda activa.</li>
+    <li>Al cambiar cantidades en stocks existentes se registrará el movimiento automáticamente con motivo "Importación Excel".</li>
+  </ul>
+<% end %>

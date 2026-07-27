@@ -1,0 +1,17 @@
+<%= modal 'form-modal', title: @grupo_cocina.new_record? ? 'Nuevo Grupo' : "Editando Grupo #{@grupo_cocina}" do %>
+  <%= simple_form_for @grupo_cocina, remote: true do |f| %>
+    <%= f.error_messages %>
+    <%= f.hidden_field :tienda_id %>
+
+    <%= f.input :nombre, as: :string, wrapper_html: { class: 'col-sm-12' } %>
+    <%= f.input :descripcion, as: :string, wrapper_html: { class: 'col-sm-12' } %>
+    <% pds = Productos::Categoria.order('menu_diario desc, nombre asc').all %>
+    <%= f.input :categoria_ids, collection: pds.map{ |m| [m.to_s, m.id, {:data => {:subtext => "#{'Menú Diario' if m.menu_diario }"}}] }, label: 'Categorías', input_html: { class: 'selectpicker-categorias', data: { style: 'btn-info' }, multiple: true }, wrapper_html: { class: 'col-sm-12' } %>
+    <div class="col-md-12">
+      <%= f.submit (@grupo_cocina.new_record? ? 'Crear' : "Guardar"), class: "btn btn-success waves-effect waves-light m-r-10" %>
+      <%= link_to('Eliminar', grupo_cocina_path(@grupo_cocina), class: "btn btn-danger waves-effect waves-light m-r-10", method: :delete, remote: true, data: {confirm: "Está seguro que desea eliminar el grupo_cocina '#{@grupo_cocina}'?", toggle: 'tooltip', "original-title" => 'Eliminar' }) if !@grupo_cocina.new_record? && can?(:destroy, @grupo_cocina)  %>
+      <%= link_to('Cerrar', nil, class: "btn btn-default waves-effect waves-light m-r-10", data: {dismiss: 'modal'}) %>
+    </div>
+  <% end %>
+
+<% end %>

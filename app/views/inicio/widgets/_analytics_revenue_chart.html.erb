@@ -1,0 +1,55 @@
+<%# Monthly net revenue (Pesos + USD dual axis bar chart). %>
+<% labels = @analytics[:chart_labels] %>
+<% pesos = @analytics[:chart_values_pesos] %>
+<% usd = @analytics[:chart_values_usd] %>
+<div class="card">
+  <div class="card-body">
+    <h3 class="card-title">Venta Neta Mensual</h3>
+    <h6 class="card-subtitle">Pesos y dólares — todos los clientes (últimos 12 meses)</h6>
+    <% if labels.any? %>
+      <%= content_tag :span, nil, id: 'inicio-analytics-revenue', data: { labels: labels, pesos: pesos, usd: usd } %>
+      <div style="position: relative; height: 250px;"><canvas id="inicio-analytics-revenue-chart"></canvas></div>
+      <script>
+        (function() {
+          var $el = $('#inicio-analytics-revenue');
+          if (!$el.data('labels')) return;
+          function fmtArs(v) { var p = v.toString().split('.'); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return '$ ' + p.join(','); }
+          function fmtUsd(v) { var p = v.toString().split('.'); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return 'US$ ' + p.join(','); }
+          new Chart(document.getElementById('inicio-analytics-revenue-chart').getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: $el.data('labels'),
+              datasets: [
+                { label: 'Pesos', data: $el.data('pesos'), borderColor: '#7460ee', backgroundColor: 'rgba(116, 96, 238, 0.4)', borderWidth: 2, fill: false, yAxisID: 'y' },
+                { label: 'Dólares', data: $el.data('usd'), borderColor: '#02af1f', backgroundColor: 'rgba(2, 175, 31, 0.4)', borderWidth: 2, fill: false, yAxisID: 'y1', type: 'line' }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              scales: {
+                y:  { type: 'linear', position: 'left',  beginAtZero: true, ticks: { callback: fmtArs, color: '#7460ee' }, grid: { color: '#eef0f2' }, title: { display: true, text: 'Pesos', color: '#7460ee' } },
+                y1: { type: 'linear', position: 'right', beginAtZero: true, ticks: { callback: fmtUsd, color: '#02af1f' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'Dólares', color: '#02af1f' } },
+                x:  { grid: { color: '#eef0f2' } }
+              },
+              plugins: {
+                legend: { display: true, position: 'top' },
+                tooltip: {
+                  mode: 'index', intersect: false,
+                  callbacks: {
+                    label: function(ctx) {
+                      var v = ctx.parsed.y; var p = v.toFixed(0).toString().split('.'); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                      return ctx.dataset.yAxisID === 'y1' ? 'Dólares: US$ ' + p.join(',') : 'Pesos: $ ' + p.join(',');
+                    }
+                  }
+                }
+              }
+            }
+          });
+        })();
+      </script>
+    <% else %>
+      <p class="text-muted text-center py-4">Sin datos en los últimos 12 meses.</p>
+    <% end %>
+  </div>
+</div>

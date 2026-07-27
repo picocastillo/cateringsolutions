@@ -1,0 +1,93 @@
+<div class="card-body collapse show ajax-data-container">
+  <div class="table-responsive">
+    <% if @productos_sin_precio %>
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th class="center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @productos_sin_precio.each do |producto| %>
+            <tr>
+              <td><%= producto.codigo %></td>
+              <td><%= producto.nombre %></td>
+              <td><%= producto.categoria&.nombre %></td>
+              <td class="center">
+                <%= link_to content_tag(:i, nil, class: 'ti-pencil').html_safe,
+                           edit_producto_path(producto, tab: 'Precios'),
+                           title: 'Editar precios' %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Categoría</th>
+          <th class="text-right">Importe</th>
+          <th>Clientes</th>
+          <th>Fecha Desde</th>
+          <th>Fecha Hasta</th>
+          <th class="center">Activo</th>
+          <th class="center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @precios.each do |precio| %>
+          <% bg = duplicate_bg_color(precio.id, @duplicate_groups) %>
+          <tr style="<%= "background-color: #{bg};" if bg %>">
+            <td>
+              <% if bg %>
+                <i class="ti-alert text-warning" data-toggle="tooltip" title="Duplicado: mismo producto, clientes y fechas"></i>
+              <% end %>
+              <%= precio.producto.nombre %>
+            </td>
+            <td><%= precio.producto.categoria&.nombre %></td>
+            <td class="text-right"><%= Danconia::Money.new(precio.importe) %></td>
+            <td>
+              <% if precio.clientes.any? %>
+                <% nombres = precio.clientes.map(&:nombre).join(', ') %>
+                <% if nombres.length > 30 %>
+                  <span data-toggle="tooltip" title="<%= nombres %>"><%= nombres.truncate(30) %></span>
+                <% else %>
+                  <%= nombres %>
+                <% end %>
+              <% else %>
+                <span class="text-muted">Todos (Base)</span>
+              <% end %>
+            </td>
+            <td><%= I18n.l(precio.fecha_desde, format: '%d/%m/%Y') if precio.fecha_desde %></td>
+            <td>
+              <% if precio.fecha_hasta %>
+                <%= I18n.l(precio.fecha_hasta, format: '%d/%m/%Y') %>
+              <% else %>
+                <i class="ti-alert text-warning" data-toggle="tooltip" title="Sin fecha hasta"></i>
+              <% end %>
+            </td>
+            <td class="center"><%= etiqueta_activo(precio) %></td>
+            <td class="center">
+              <%= link_to content_tag(:i, nil, class: 'ti-pencil').html_safe,
+                         edit_producto_path(precio.producto, tab: 'Precios', precio_id: precio.id),
+                         title: 'Editar precios' %>
+              <%= link_to content_tag(:i, nil, class: 'ti-trash').html_safe,
+                         lista_precio_path(precio),
+                         method: :delete,
+                         data: { confirm: "¿Está seguro que desea eliminar este precio de #{precio.producto}?" },
+                         class: 'text-danger',
+                         title: 'Eliminar' %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <% end %>
+  </div>
+</div>
+<%= paginador(@productos_sin_precio || @precios, ajax: true) %>

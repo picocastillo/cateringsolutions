@@ -1,0 +1,13 @@
+<div class="card-body collapse show ajax-data-container">
+  <div class="table-responsive">
+    <%= table_for @comprobantes, id: 'comprobantes' do |t| %>
+      <% t.column(:nro, class: 'nowrap')  { |t| link_to t.to_s, t }  %>
+      <% t.column(:pedido) { |t| link_to t.pedido, t.pedido } %>
+      <% t.column(:estado, class: 'text-center') { |c| estado_label c } %>
+      <% t.column(:fecha_emision)  %>
+      <% t.column(:usuario, class: 'hidden-md-down', header: 'Para') { |t| t.pedido && t.pedido.usuario ? link_to(t.pedido.to_s_vertical, usuario_path(t.pedido.usuario)) : link_to(t.pedido ? t.pedido.para_to_s_vertical : t.cuenta.to_s, cliente_path(t.cuenta.cliente)) } %>
+      <% t.column(:total, class: 'hidden-md-down text-right', footer: "<span style='font-weight: bold'>Total: #{Danconia::Money.new(@query.relation.joins(:tipo).sum('if(tipos_comprobantes.debitan, comprobantes.total, comprobantes.total*-1)'))}</span> ".html_safe) { |t| t.tipo.debitan? ? t.total : Danconia::Money.new(-1.0*t.total) }  %>
+    <% end %>
+  </div>
+</div>
+<%= paginador @comprobantes  %>

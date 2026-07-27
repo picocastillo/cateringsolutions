@@ -1,0 +1,41 @@
+<% page title: 'Cupones', raiz: 'Contactos', hojas: 'Cupones', acciones: [link_to('Eliminar', confirmar_eliminar_cupones_path, remote: true, class: 'btn btn-outline-danger btn-sm'), link_to('Imprimir', cupones_path(filtered_params.merge(format: :pdf)), target: '_blank', class: 'btn btn-outline-info btn-sm export-pdf'), link_to('Nuevo', new_cupon_path, remote: true)], id: 'index-cupones' %>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card filtros">
+        <div class="bg-info">
+          <h4 class="text-white card-title">Filtros<div class="card-actions">
+              <a class="" data-action="collapse"><i class="ti-plus"></i></a>
+              <a class="btn-close" data-action="close"><i class="ti-close"></i></a>
+          </div>
+        </h4>
+        </div>
+        <div class="card-body collapse">
+          <%= error_messages_for @query %>
+          <%= query_form_for @query, url: cupones_path, remote: true do |f| %>
+            <%= f.input :grupo, wrapper_html: { class: 'col-3' } %>
+            <%= f.input :codigo, label: 'Código', wrapper_html: { class: 'col-3' } %>
+            <%= f.input :fecha_vencimiento_desde, as: :string, required: false, input_html: { class: 'singledate' }, label: 'Vence desde' %>
+            <%= f.input :fecha_vencimiento_hasta, as: :string, required: false, input_html: { class: 'singledate' }, label: 'Vence hasta' %>
+            <%= f.input :estado, label: 'Estado', as: :select, collection: [['Vigente', 'vigente'], ['Usado', 'usado'], ['Vencido', 'vencido'], ['Cancelado', 'cancelado']], include_blank: 'Todos' %>
+            <%= search_buttons f %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card" id="listado-cupones">
+          <div class="card-header">
+              <div class="card-actions">
+                <a class="btn-minimize" data-action="expand"><i class="mdi mdi-arrow-expand"></i></a>
+              </div>
+          </div>
+          <span id="cupones-container">
+            <%= render 'resultados' %>
+          </span>
+      </div>
+  </div>
+</div>

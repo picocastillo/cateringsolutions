@@ -1,0 +1,31 @@
+<div class="etiqueta<%= ' page' if !primero %>">
+  <div class="row">
+    <div class="titulo nombre">
+        <%= ps.producto.categoria.menu_diario? ? ps.producto.descripcion.to_s.upcase : ps.producto.nombre.upcase %>
+    </div>
+    <table width="100%">
+        <tr>
+          <td class="muted center" width="100%">
+            <div class="resumen">
+              <%= ps.producto.categoria.menu_diario? ? ps.producto.nombre : ps.producto.descripcion.to_s %>
+             </div>
+          </td>
+        </tr>
+      <tr>
+        <td class="muted-bold center" width="100%">
+          <div class="vencimiento">ELABORACION: <%= @fecha.to_s %> - VENCE: <%= (@fecha + @dias_vencimiento.days).to_date.to_s %></div>
+        </td>
+      </tr>
+      <tr>
+        <td class="muted-bold center" width="100%">
+          <div class="precio"><%= Danconia::Money.new(ps.importe) %></div>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <div class="barcode">
+    <% if ps.producto.codigos_externos.present? || ps.producto.codigo.present? %>
+      <%= inline_barcode_image((ps.producto.codigos_externos.split(',').first || ps.producto.codigo).to_s, type: 'code39', height: 18, width: 140) %>
+    <% end %>
+  </div>
+</div>

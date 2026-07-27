@@ -1,0 +1,21 @@
+<div class="etiqueta williner<%= ' page' if !primero %>">
+  <div class="row">
+    <div class="titulo nombre"><%= et[2].to_s.upcase %></div>
+    <table width="100%">
+      <tr>
+        <td class="muted-bold center" width="100%">
+          <%= et[1].to_s.upcase %>
+        </td>
+      </tr>
+      <tr>
+        <td class="muted center" width="100%">
+          <%= et[3].to_s.upcase %>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <div class="barcode">
+    <%= inline_barcode_image(et[0].to_s.rjust(12, '0'), type: 'ean13', height: 20) %>
+  </div>
+  <div class="barcode-text"><%= et[0].to_s %></div>
+</div>

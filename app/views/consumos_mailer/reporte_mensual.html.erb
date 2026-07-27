@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+    h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+    h2 { color: #555; margin-top: 30px; }
+    .summary { background: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin: 20px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th { background: #34495e; color: white; padding: 10px 12px; text-align: left; }
+    td { padding: 8px 12px; border-bottom: 1px solid #ddd; }
+    tr:hover { background: #f5f5f5; }
+    .total-row { background: #ecf0f1; font-weight: bold; }
+    .total-row td { border-top: 2px solid #34495e; padding: 12px; }
+    .ok { color: #27ae60; font-weight: bold; }
+    .excedido { color: #c0392b; font-weight: bold; }
+    .limit-table { margin: 15px 0; }
+    .limit-table td { padding: 8px 12px; }
+    .text-right { text-align: right; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Consumos del mes - <%= @cliente.nombre %></h1>
+
+    <div class="summary">
+      <p><strong>Tienda:</strong> <%= @tienda.nombre %></p>
+      <p><strong>Período:</strong> <%= @fecha_inicio.strftime('%d/%m/%Y') %> al <%= @fecha_fin.strftime('%d/%m/%Y') %></p>
+    </div>
+
+    <h2>Detalle diario</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th class="text-right">Pedidos</th>
+          <th class="text-right">Usuarios</th>
+          <th class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% (@fecha_inicio..@fecha_fin).each do |dia| %>
+          <% monto = @totales_diarios[dia] || 0 %>
+          <% next if monto == 0 %>
+          <tr>
+            <td><%= I18n.l(dia, format: '%A %d/%m').capitalize %></td>
+            <td class="text-right"><%= @pedidos_por_dia[dia] || 0 %></td>
+            <td class="text-right"><%= @usuarios_por_dia[dia] || 0 %></td>
+            <td class="text-right">$ <%= '%.2f' % monto %></td>
+          </tr>
+        <% end %>
+        <tr class="total-row">
+          <td>Total del mes</td>
+          <td class="text-right"><%= @pedidos_por_dia.values.sum %></td>
+          <td class="text-right"><%= @usuario_dias %></td>
+          <td class="text-right">$ <%= '%.2f' % @total_mes %></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <% if @limite_mensual_pesos || @limite_mensual_dolares_en_pesos %>
+      <h2>Comparación con límites</h2>
+      <p style="color: #7f8c8d; font-size: 0.9em;">
+        Límite diario por usuario × <%= @usuario_dias %> usuario-días con pedidos
+      </p>
+      <table class="limit-table">
+        <thead>
+          <tr>
+            <th>Concepto</th>
+            <th class="text-right">Monto</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Consumo total del mes</td>
+            <td class="text-right">$ <%= '%.2f' % @total_mes %></td>
+            <td></td>
+          </tr>
+          <% if @limite_mensual_pesos %>
+            <tr>
+              <td>Límite mensual en pesos (<%= '%.2f' % @limite_pesos %>/día × <%= @usuario_dias %> usuario-días)</td>
+              <td class="text-right">$ <%= '%.2f' % @limite_mensual_pesos %></td>
+              <td class="<%= @total_mes <= @limite_mensual_pesos ? 'ok' : 'excedido' %>">
+                <%= @total_mes <= @limite_mensual_pesos ? '✅ Dentro del límite' : '❌ Excedido' %>
+              </td>
+            </tr>
+          <% end %>
+          <% if @limite_mensual_dolares_en_pesos %>
+            <tr>
+              <td>Límite mensual en dólares (US$ <%= '%.2f' % @limite_dolares %>/día × <%= @usuario_dias %> usuario-días, cotiz. promedio: $<%= '%.2f' % @precio_dolar_promedio %>)</td>
+              <td class="text-right">$ <%= '%.2f' % @limite_mensual_dolares_en_pesos %></td>
+              <td class="<%= @total_mes <= @limite_mensual_dolares_en_pesos ? 'ok' : 'excedido' %>">
+                <%= @total_mes <= @limite_mensual_dolares_en_pesos ? '✅ Dentro del límite' : '❌ Excedido' %>
+              </td>
+            </tr>
+            <% if @cotizaciones_diarias.values.uniq.size > 1 %>
+            <tr>
+              <td colspan="3" style="font-size: 0.85em; color: #7f8c8d; padding-top: 2px;">
+                Cotización dólar: mín $<%= '%.2f' % @cotizaciones_diarias.values.compact.min %> — máx $<%= '%.2f' % @cotizaciones_diarias.values.compact.max %> (calculado con cotización diaria por día con pedidos)
+              </td>
+            </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+    <p style="font-size: 0.9em; color: #7f8c8d;">
+      Este es un reporte automático generado por el sistema.<br>
+      Para más detalles, acceda al sistema de gestión.
+    </p>
+  </div>
+</body>
+</html>

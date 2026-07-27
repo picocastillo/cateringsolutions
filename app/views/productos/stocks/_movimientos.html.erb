@@ -1,0 +1,61 @@
+<div class="card">
+  <div class="card-header">
+    <h4 class="card-title m-b-0">Movimientos de Stock - <%= @stock.producto.nombre %></h4>
+    <div class="card-actions">
+      <a class="btn-close" data-action="close" onclick="$('#movimientos-container').hide();"><i class="ti-close"></i></a>
+    </div>
+  </div>
+  <div class="card-body">
+    <% if @movimientos.any? %>
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Cantidad</th>
+              <th>Anterior</th>
+              <th>Nueva</th>
+              <th>Motivo</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @movimientos.each do |movimiento| %>
+              <tr>
+                <td><%= movimiento.fecha.strftime('%d/%m/%Y %H:%M') %></td>
+                <td>
+                  <% case movimiento.tipo %>
+                  <% when 'entrada', 'ajuste_entrada', 'devolucion' %>
+                    <span class="label label-success"><%= movimiento.tipo.humanize %></span>
+                  <% when 'salida', 'ajuste_salida', 'venta', 'transferencia' %>
+                    <span class="label label-warning"><%= movimiento.tipo.humanize %></span>
+                  <% else %>
+                    <span class="label label-info"><%= movimiento.tipo.humanize %></span>
+                  <% end %>
+                </td>
+                <td class="text-right">
+                  <% if movimiento.entrada? %>
+                    <span class="text-success">+<%= movimiento.cantidad.to_i %></span>
+                  <% else %>
+                    <span class="text-danger">-<%= movimiento.cantidad.to_i %></span>
+                  <% end %>
+                </td>
+                <td class="text-right"><%= movimiento.cantidad_anterior.to_i %></td>
+                <td class="text-right"><%= movimiento.cantidad_nueva.to_i %></td>
+                <td><%= movimiento.motivo.present? ? movimiento.motivo : '-' %></td>
+                <td><%= movimiento.usuario&.nombre || 'Sistema' %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      
+      <%= paginador @movimientos, ajax: false %>
+    <% else %>
+      <div class="alert alert-info">
+        <i class="ti-info"></i> No hay movimientos registrados para este stock.
+      </div>
+    <% end %>
+  </div>
+</div>

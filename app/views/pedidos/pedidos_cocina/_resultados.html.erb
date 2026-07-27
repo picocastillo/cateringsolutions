@@ -1,0 +1,54 @@
+<div class="card-body collapse show ajax-data-container">
+  <style>
+    #pedidos { table-layout: fixed; width: 100%; }
+    #pedidos th:first-child, #pedidos td:first-child { width: 100px; white-space: nowrap; }
+    #pedidos th:nth-child(3), #pedidos td:nth-child(3),
+    #pedidos th:nth-child(4), #pedidos td:nth-child(4) { width: 80px; white-space: nowrap; }
+    #pedidos th:last-child, #pedidos td:last-child { width: 130px; white-space: nowrap; }
+    #pedidos td:nth-child(2) { overflow: hidden; }
+  </style>
+  <div class="table-responsive">
+    <%= table_for @pedidos_cocina, id: 'pedidos' do |t| %>
+      <% t.column(:codigo, header: 'Detalles', class: 'text-right nowrap') {|x| fecha_parts = x.fecha.to_s.split(' '); [link_to(x.codigo, pedido_cocina_path(x)), content_tag(:div, fecha_parts[0]), (content_tag(:div, fecha_parts[1]) if fecha_parts[1])].compact.join.html_safe } %>
+      <% t.column(:pedidos, header: 'Clientes y Cuentas', class: 'hidden-md-down') do |t| 
+        grouped_by_cliente = t.pedidos.sort_by{|x| [x.cuenta.cliente.nombre, x.cuenta.nombre]}.group_by{|x| x.cuenta.cliente.nombre}
+        
+        content_tag(:div, class: 'readmoreable', style: 'overflow: auto; word-wrap: break-word;') do
+          items = grouped_by_cliente.map do |cliente_nombre, pedidos_cliente|
+            cuentas_info = pedidos_cliente.group_by{|x| x.cuenta.nombre}.map do |cuenta_nombre, pedidos_cuenta|
+              if cuenta_nombre != cliente_nombre
+                cuenta_nombre
+              end
+            end.compact
+            
+            if cuentas_info.any?
+              "#{cliente_nombre} (#{cuentas_info.join(', ')})"
+            else
+              cliente_nombre
+            end
+          end
+          
+          content_tag(:div, class: 'd-inline') do
+            items.map.with_index do |item, index|
+              content_tag(:span, class: 'badge badge-primary mr-1 mb-1 d-inline-block') do
+                item
+              end + (index < items.length - 1 ? ' ' : '')
+            end.join.html_safe
+          end
+        end
+      end %>
+      <% t.column(:pedidos, header: 'Productos', class: 'text-center') { |t| content_tag(:div, t.pedidos.flat_map(&:productos_solicitados).sum(&:cantidad).to_i) } %>
+      <% t.column(:pedidos, header: 'Pedidos', class: 'text-center') { |t| content_tag(:div, t.pedidos.size) } %>
+      <% t.actions { |t|
+          etiquetas_params = { q: { pedido_cocina_id: t.id, fecha_desde: t.fecha&.strftime('%d/%m/%Y'), fecha_hasta: t.fecha&.strftime('%d/%m/%Y') }, format: :pdf }
+        [
+          edit_link(t),
+          link_to(content_tag(:i, nil, class: 'ti-printer').html_safe, etiquetas_path(etiquetas_params), target: '_blank', rel: 'noopener', data: {toggle: 'tooltip', "original-title" => 'Imprimir Etiquetas'}),
+          link_to(content_tag(:i, nil, class: 'ti-download').html_safe, pedido_cocina_path(t, format: :xls), target: '_blank', rel: 'noopener', data: {toggle: 'tooltip', "original-title" => 'Exportar XLS'}),
+          (link_to(content_tag(:i, nil, class: 'ti-trash').html_safe, pedido_cocina_path(t), method: :delete, data: {confirm: "Está seguro que desea eliminar el pedido #{t.to_s}? El mismo dejará de existir.", toggle: 'tooltip', "original-title" => 'Eliminar' }) if can?(:destroy, t)),
+          (link_to(content_tag(:i, nil, class: 'ti-close').html_safe, cancelar_pedido_cocina_path(t), method: :put, data: {confirm: "Está seguro que desea cancelar el pedido #{t.to_s}? El mismo quedará definitivamente en estado Cancelado y sus comprobantes serán anulados con Notas de Crédito.", toggle: 'tooltip', "original-title" => 'Cancelar' }) if can?(:cancelar, t))
+        ].compact } %>
+    <% end %>
+  </div>
+</div>
+<%= paginador @pedidos_cocina, ajax: true %>

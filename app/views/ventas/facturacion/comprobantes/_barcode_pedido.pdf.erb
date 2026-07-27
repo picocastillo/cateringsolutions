@@ -1,0 +1,7 @@
+<% if comprobante.pedido %>
+<td class="pedido">
+  <div class="barcode-container"><%= inline_barcode_image(comprobante.pedido.codigo, width: 160, height: 30) %></div>
+  <div class="codigo">Nº <%= comprobante.pedido.codigo %></div>
+  <div class="codigo"><%= comprobante.pedido.updated_at %></div>
+</td>
+<% end %>

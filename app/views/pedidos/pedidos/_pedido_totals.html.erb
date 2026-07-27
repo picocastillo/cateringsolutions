@@ -1,0 +1,97 @@
+<% standalone = local_assigns.fetch(:standalone, true) %>
+<div style="<%= standalone ? 'background: #fefefe; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px 25px;' : 'border-top: 2px solid #e8ecf4; background: #f8fafc; border-radius: 0 0 12px 12px; padding: 20px 25px;' %>">
+  <% has_cupon = @pedido.tiene_descuento_cupon? %>
+  <% has_descuento_vm = @pedido.tiene_descuento_vm? %>
+  <% has_descuento = has_cupon || has_descuento_vm %>
+  <% if @pedido.costo_envio_domicilio > 0 %>
+    <!-- With Shipping -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <span style="color: #718096; font-size: 1em; font-weight: 500;">Subtotal</span>
+      <span style="color: #2d3748; font-size: 1em; font-weight: 600;"><%= has_descuento ? @pedido.importe_total_sin_descuento : @pedido.importe_total %></span>
+    </div>
+    <% if has_cupon %>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="color: #38a169; font-size: 1em; font-weight: 500;">
+          <i class="fa fa-tag" style="margin-right: 5px;"></i>Cupón <%= @pedido.cupon.codigo %> (<%= @pedido.cupon.descuento_descripcion %>)
+        </span>
+        <span style="color: #38a169; font-size: 1em; font-weight: 600;">-<%= @pedido.importe_descuento_cupon %></span>
+      </div>
+    <% elsif has_descuento_vm %>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="color: #38a169; font-size: 1em; font-weight: 500;">
+          <i class="fa fa-tag" style="margin-right: 5px;"></i><%= @pedido.descuento_venta_mostrador.nombre %>
+        </span>
+        <span style="color: #38a169; font-size: 1em; font-weight: 600;">-<%= @pedido.importe_descuento_vm %></span>
+      </div>
+    <% end %>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #cbd5e0;">
+      <span style="color: #718096; font-size: 1em; font-weight: 500;">Envío</span>
+      <span style="color: #2d3748; font-size: 1em; font-weight: 600;"><%= Danconia::Money.new @pedido.costo_envio_domicilio.to_f %></span>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span style="color: #2d3748; font-size: 1.2em; font-weight: 700;">Total</span>
+      <span style="color: #6366f1; font-size: 1.3em; font-weight: 800;"><%= @pedido.importe_total + @pedido.costo_envio_domicilio.to_f %></span>
+    </div>
+  <% else %>
+    <!-- Without Shipping -->
+    <% if has_cupon %>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="color: #718096; font-size: 1em; font-weight: 500;">Subtotal</span>
+        <span style="color: #2d3748; font-size: 1em; font-weight: 600;"><%= @pedido.importe_total_sin_descuento %></span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="color: #38a169; font-size: 1em; font-weight: 500;">
+          <i class="fa fa-tag" style="margin-right: 5px;"></i>Cupón <%= @pedido.cupon.codigo %> (<%= @pedido.cupon.descuento_descripcion %>)
+        </span>
+        <span style="color: #38a169; font-size: 1em; font-weight: 600;">-<%= @pedido.importe_descuento_cupon %></span>
+      </div>
+    <% elsif has_descuento_vm %>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="color: #718096; font-size: 1em; font-weight: 500;">Subtotal</span>
+        <span style="color: #2d3748; font-size: 1em; font-weight: 600;"><%= @pedido.importe_total_sin_descuento %></span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="color: #38a169; font-size: 1em; font-weight: 500;">
+          <i class="fa fa-tag" style="margin-right: 5px;"></i><%= @pedido.descuento_venta_mostrador.nombre %>
+        </span>
+        <span style="color: #38a169; font-size: 1em; font-weight: 600;">-<%= @pedido.importe_descuento_vm %></span>
+      </div>
+    <% end %>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span style="color: #2d3748; font-size: 1.2em; font-weight: 700;">Total</span>
+      <span style="color: #6366f1; font-size: 1.3em; font-weight: 800;"><%= @pedido.importe_total %></span>
+    </div>
+  <% end %>
+
+  <% if @pedido.pendiente? %>
+    <!-- Cupon Section -->
+    <div id="cupon-section" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e0;">
+      <% if @pedido.cupon.present? %>
+        <div style="display: flex; align-items: center; justify-content: space-between; background: #f0fff4; padding: 10px 15px; border-radius: 8px; border: 1px solid #c6f6d5;">
+          <span style="color: #38a169; font-weight: 500;">
+            <i class="fa fa-check-circle" style="margin-right: 5px;"></i>
+            Cupón <strong><%= @pedido.cupon.codigo %></strong> aplicado <%= @pedido.cupon.descuento_descripcion %>
+          </span>
+          <a href="#" id="quitar_cupon_btn" data-pedido-id="<%= @pedido.id %>" style="color: #e53e3e; font-size: 0.9em; text-decoration: none; font-weight: 500;">
+            <i class="fa fa-times" style="margin-right: 3px;"></i>Eliminar
+          </a>
+        </div>
+      <% else %>
+        <div style="display: flex; align-items: flex-end; gap: 10px;">
+          <div style="flex: 1; min-width: 150px;">
+            <label style="font-size: 0.85em; color: #718096; margin-bottom: 4px; display: block;">
+              <i class="fa fa-tag" style="margin-right: 4px;"></i>Código de cupón
+            </label>
+            <input type="text" id="cupon_codigo_input" placeholder="Ingrese código..." maxlength="20"
+              style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95em; text-transform: uppercase;">
+          </div>
+          <button type="button" id="aplicar_cupon_btn" data-pedido-id="<%= @pedido.id %>" class="btn btn-sm btn-outline-success" style="padding: 8px 16px; border-radius: 8px; font-weight: 500;">
+            Aplicar
+          </button>
+        </div>
+        <div id="cupon-error" style="display: none; color: #e53e3e; font-size: 0.85em; margin-top: 6px;">
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

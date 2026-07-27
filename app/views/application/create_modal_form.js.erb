@@ -1,0 +1,15 @@
+<% if @model.errors.any? %>
+  $('#form-modal').html($("<%= j render 'form' %>").find('>'));
+  $('#form-modal').trigger('show.bs.modal');
+<% else %>
+  $('#form-modal').modal('hide');
+  <% if @evento_cal_id.present? %>
+    $('#input-highlight').val('<%=@evento_cal_id %>');
+    $('#calendar').fullCalendar('refetchEvents');
+    toast.success("<%= @notice.html_safe %>");
+  <% else %>
+    refreshPage(function() {
+      toast.success("<%= @notice.html_safe %>");
+    });
+  <% end %>
+<% end %>

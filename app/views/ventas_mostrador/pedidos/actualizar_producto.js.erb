@@ -1,0 +1,16 @@
+$("#importe-total-vm").html("<%= j render 'importe_total' %>");
+$(".vm-cart-header .badge").text("<%= @pedido.productos_solicitados_venta_mostrador.sum(&:cantidad).to_i %>");
+<% if @ps %>
+  $("#importe-renglon-<%= @ps.id %>").html('<%= @ps.importe_total %>');
+  <% if @ps.destroyed? && !@ps.valid? %>
+    playSound("error", { volume: 1 });
+    $("#importe-total-container").addClass('vm-flash-error');
+    setTimeout(function() { $("#importe-total-container").removeClass('vm-flash-error'); }, 3000);
+    toast.error({ html: '<%= @ps.errors.full_messages.join(". ") %>', duration: 4000 });
+  <% end %>
+<% else %>
+  playSound("error", { volume: 1 });
+  $("#importe-total-container").addClass('vm-flash-error');
+  setTimeout(function() { $("#importe-total-container").removeClass('vm-flash-error'); }, 3000);
+  toast.error({ message: 'El producto actualizado no existe más en el pedido.', duration: 4000 });
+<% end %>

@@ -1,0 +1,105 @@
+<% content_for :page_id, 'surveys-index' %>
+
+<div class="container-fluid mt-4" style="padding-top: 80px;">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="col-12 d-flex justify-content-between align-items-center" style="padding: 0.75rem 1.25rem !important;">
+          <h4 class="card-title mb-0">
+            <i class="fa fa-list-alt text-primary"></i>
+            Encuestas
+          </h4>
+          <%= link_to new_survey_path, class: 'btn btn-primary' do %>
+            <i class="fa fa-plus"></i>
+            Nueva Encuesta
+          <% end %>
+        </div>
+        
+        <div class="card-body">
+          <% if @surveys.any? %>
+            <div class="table-responsive">
+              <table class="table table-striped table-hover">
+                <thead>
+                  <tr>
+                    <th>Título</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                    <th>Periodo</th>
+                    <th>Preguntas</th>
+                    <th>Respuestas</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @surveys.each do |survey| %>
+                    <tr>
+                      <td>
+                        <%= link_to survey.title, survey_path(survey), class: 'text-primary font-weight-bold' %>
+                      </td>
+                      <td>
+                        <span class="text-muted">
+                          <%= truncate(survey.description, length: 60) %>
+                        </span>
+                      </td>
+                      <td>
+                        <% if survey.active? %>
+                          <span class="badge badge-success">Activa</span>
+                        <% else %>
+                          <span class="badge badge-secondary">Inactiva</span>
+                        <% end %>
+                      </td>
+                      <td>
+                        <small class="text-muted">
+                          <%= survey.date_range_text %>
+                        </small>
+                      </td>
+                      <td>
+                        <span class="badge badge-info"><%= survey.questions_count_optimized %></span>
+                      </td>
+                      <td>
+                        <span class="badge badge-primary"><%= survey.total_responses %></span>
+                      </td>
+                      <td>
+                        <div class="btn-group" role="group">
+                          <%= link_to survey_path(survey), class: 'btn btn-sm btn-outline-info', title: 'Ver' do %>
+                            <i class="fa fa-eye"></i>
+                          <% end %>
+                          <%= link_to edit_survey_path(survey), class: 'btn btn-sm btn-outline-warning', title: 'Editar' do %>
+                            <i class="fa fa-edit"></i>
+                          <% end %>
+                          <% if survey.active? %>
+                            <%= link_to new_survey_survey_response_path(survey), class: 'btn btn-sm btn-success', title: 'Completar Encuesta' do %>
+                              <i class="fa fa-play"></i>
+                            <% end %>
+                          <% end %>
+                          <%= link_to survey_path(survey), method: :delete, 
+                                      confirm: '¿Está seguro que desea eliminar esta encuesta?',
+                                      class: 'btn btn-sm btn-outline-danger', title: 'Eliminar' do %>
+                            <i class="fa fa-trash"></i>
+                          <% end %>
+                        </div>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Pagination -->
+            <%= paginador @surveys %>
+          <% else %>
+            <div class="text-center py-5">
+              <i class="fa fa-list-alt fa-3x text-muted mb-3"></i>
+              <h5 class="text-muted">No hay encuestas creadas</h5>
+              <p class="text-muted">Cree su primera encuesta para comenzar a recopilar respuestas.</p>
+              <%= link_to new_survey_path, class: 'btn btn-primary' do %>
+                <i class="fa fa-plus"></i>
+                Crear Primera Encuesta
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

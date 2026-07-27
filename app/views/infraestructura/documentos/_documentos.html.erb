@@ -1,0 +1,17 @@
+<% if documentos.any? %>
+  <ul class="thumbnails">
+    <% documentos.each do |documento| %>
+      <li>
+        <% if documento.image? %>
+          <%= link_to image_tag(documento.url(:thumb), title: documento.observaciones), documento.url, class: 'thumbnail' %>
+        <% else %>
+          <%= link_to image_tag('downloable.png', title: documento.documento_file_name), documento.url, download: documento.documento_file_name, class: 'thumbnail' %>
+        <% end %>
+
+        <span class="filename">
+          <%= link_to documento.documento_file_name, documento.url, download: documento.documento_file_name, title: 'Clickear aquí para descargar el archivo.', class: 'muted'  %>
+        </span>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

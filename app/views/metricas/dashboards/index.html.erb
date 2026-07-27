@@ -1,0 +1,796 @@
+<% content_for :page_id, 'metricas-dashboard' %>
+
+<div class="container-fluid" style="padding-top: 80px;">
+  <div class="row">
+    <div class="col-12 col-md-6">
+      <h3 class="mb-3"><i class="mdi mdi-chart-areaspline text-info"></i> Métricas del Sistema</h3>
+    </div>
+    <div class="col-12 col-md-6 text-right mb-3">
+      <%= form_tag dashboards_path, method: :get, class: 'd-inline-block', style: 'min-width: 250px;' do %>
+        <div class="input-group">
+          <div class="input-group-prepend">
+            <span class="input-group-text"><i class="fa fa-store"></i></span>
+          </div>
+          <%= select_tag :tienda_id,
+              options_for_select([['Todas las tiendas', '']] + @tiendas.map { |id, nombre| [nombre, id] }, @tienda_id),
+              class: 'form-control', onchange: 'this.form.submit();' %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @snapshots.blank? %>
+    <div class="alert alert-warning">
+      <i class="fa fa-info-circle"></i> No hay datos de métricas todavía. Ejecutá <code>rake metricas:daily</code> o <code>rake metricas:backfill</code> para cargar datos.
+    </div>
+  <% else %>
+
+  <!-- Summary Cards -->
+  <% if @latest %>
+  <div class="row mb-3">
+    <div class="col-6 col-md-3">
+      <div class="card">
+        <div class="card-body text-center p-3">
+          <h6 class="text-muted mb-1">Requests (ayer)</h6>
+          <h3 class="mb-0"><%= number_with_delimiter(@latest.total_requests) %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card">
+        <div class="card-body text-center p-3">
+          <h6 class="text-muted mb-1">Avg Response</h6>
+          <h3 class="mb-0"><%= @latest.avg_response_time_ms %>ms</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card">
+        <div class="card-body text-center p-3">
+          <h6 class="text-muted mb-1">P95 Response</h6>
+          <h3 class="mb-0"><%= @latest.p95_response_time_ms %>ms</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card">
+        <div class="card-body text-center p-3">
+          <h6 class="text-muted mb-1">Errores 5xx</h6>
+          <h3 class="mb-0 <%= @latest.status_5xx > 0 ? 'text-danger' : 'text-success' %>"><%= @latest.status_5xx %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% end %>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" data-toggle="tab" href="#tab-trafico" role="tab">
+        <i class="fa fa-line-chart"></i> Tráfico
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-toggle="tab" href="#tab-errores" role="tab">
+        <i class="fa fa-exclamation-triangle"></i> Errores
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-toggle="tab" href="#tab-database" role="tab">
+        <i class="fa fa-database"></i> Base de Datos
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-toggle="tab" href="#tab-jobs" role="tab">
+        <i class="fa fa-cogs"></i> Background Jobs
+      </a>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-3">
+
+    <!-- TAB 1: TRÁFICO -->
+    <div class="tab-pane active" id="tab-trafico" role="tabpanel">
+      <div class="row">
+        <!-- Requests per day line chart -->
+        <div class="col-12 col-lg-8">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Requests por Día</h5>
+              <div style="position: relative; height: 300px;">
+                <canvas id="chart-requests-day"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile vs Desktop doughnut -->
+        <div class="col-12 col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Mobile vs Desktop</h5>
+              <div style="position: relative; height: 300px;">
+                <canvas id="chart-mobile-desktop"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Response time trend -->
+        <div class="col-12 col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Tiempos de Respuesta (ms)</h5>
+              <div style="position: relative; height: 250px;">
+                <canvas id="chart-response-times"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Requests by hour (latest day) -->
+        <div class="col-12 col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Requests por Hora (<%= @latest&.fecha&.strftime('%d/%m/%Y') || 'sin datos' %>)</h5>
+              <div style="position: relative; height: 250px;">
+                <canvas id="chart-by-hour"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Status codes doughnut -->
+        <div class="col-12 col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Status Codes (último día)</h5>
+              <div style="position: relative; height: 250px;">
+                <canvas id="chart-status-codes"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Response time histogram -->
+        <div class="col-12 col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Distribución Response Time</h5>
+              <div style="position: relative; height: 250px;">
+                <canvas id="chart-histogram"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unique IPs trend -->
+        <div class="col-12 col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">IPs Únicas por Día</h5>
+              <div style="position: relative; height: 250px;">
+                <canvas id="chart-unique-ips"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Endpoints table -->
+      <% if @latest&.top_endpoints.present? %>
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Top 20 Endpoints (último día)</h5>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Endpoint</th>
+                      <th class="text-right">Requests</th>
+                      <th class="text-right">Avg (ms)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @latest.top_endpoints.each_with_index do |ep, i| %>
+                      <tr>
+                        <td><%= i + 1 %></td>
+                        <td><code><%= ep['endpoint'] %></code></td>
+                        <td class="text-right"><%= number_with_delimiter(ep['count']) %></td>
+                        <td class="text-right"><%= ep['avg_ms'] %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% end %>
+
+      <!-- Top IPs table -->
+      <% if @latest&.top_ips.present? %>
+      <div class="row">
+        <div class="col-12 col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Top 20 IPs (último día)</h5>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr><th>#</th><th>IP</th><th class="text-right">Requests</th></tr>
+                  </thead>
+                  <tbody>
+                    <% @latest.top_ips.each_with_index do |ip, i| %>
+                      <tr>
+                        <td><%= i + 1 %></td>
+                        <td><code><%= ip['ip'] %></code></td>
+                        <td class="text-right"><%= number_with_delimiter(ip['count']) %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% end %>
+
+      <!-- Worst Response Times table -->
+      <% if @latest&.worst_response_times.present? %>
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">20 Endpoints con Peor Tiempo Promedio (último día)</h5>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Endpoint</th>
+                      <th class="text-right">Promedio (ms)</th>
+                      <th class="text-right">Requests</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @latest.worst_response_times.each_with_index do |req, i| %>
+                      <tr class="<%= 'table-danger' if req['avg_ms'].to_f >= 3000 %>">
+                        <td><%= i + 1 %></td>
+                        <td><code><%= req['endpoint'] %></code></td>
+                        <td class="text-right"><%= number_with_delimiter(req['avg_ms'].to_f.round(0)) %></td>
+                        <td class="text-right"><%= req['count'] %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% end %>
+    </div>
+    <div class="tab-pane" id="tab-errores" role="tabpanel">
+      <div class="row">
+        <!-- Error trend chart -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Errores 5xx por Día</h5>
+              <div style="position: relative; height: 250px;">
+                <canvas id="chart-errors-trend"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Latest errors table -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Últimos 20 Errores</h5>
+              <% if @errors.present? %>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Clase</th>
+                      <th>Mensaje</th>
+                      <th>Controller</th>
+                      <th>Status</th>
+                      <th>IP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @errors.each do |err| %>
+                      <tr>
+                        <td class="text-nowrap"><small><%= err.fecha&.strftime('%d/%m %H:%M') %></small></td>
+                        <td><code><%= err.error_class %></code></td>
+                        <td><small><%= truncate(err.error_message, length: 80) %></small></td>
+                        <td><small><%= err.controller_action %></small></td>
+                        <td><%= err.status_code %></td>
+                        <td><small><%= err.ip %></small></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+              <% else %>
+                <p class="text-muted mb-0">No hay errores registrados.</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: BASE DE DATOS -->
+    <div class="tab-pane" id="tab-database" role="tabpanel">
+      <% if @latest %>
+      <div class="row mb-3">
+        <div class="col-6 col-md-3">
+          <div class="card">
+            <div class="card-body text-center p-3">
+              <h6 class="text-muted mb-1">Tamaño Total</h6>
+              <h3 class="mb-0"><%= @latest.db_total_size_mb %> MB</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card">
+            <div class="card-body text-center p-3">
+              <h6 class="text-muted mb-1">Conexiones</h6>
+              <h3 class="mb-0"><%= @latest.db_active_connections %> / <%= @latest.db_max_connections %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Top tables by size chart -->
+        <div class="col-12 col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Top 10 Tablas por Tamaño</h5>
+              <div style="position: relative; height: 300px;">
+                <canvas id="chart-table-sizes"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DB size trend -->
+        <div class="col-12 col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Tamaño DB en el Tiempo</h5>
+              <div style="position: relative; height: 300px;">
+                <canvas id="chart-db-size-trend"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- All tables -->
+      <% if @latest.db_table_sizes.present? %>
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Todas las Tablas</h5>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Tabla</th>
+                      <th class="text-right">Filas</th>
+                      <th class="text-right">Data (MB)</th>
+                      <th class="text-right">Index (MB)</th>
+                      <th class="text-right">Total (MB)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @latest.db_table_sizes.each_with_index do |tbl, i| %>
+                      <tr>
+                        <td><%= i + 1 %></td>
+                        <td><code><%= tbl['table'] %></code></td>
+                        <td class="text-right"><%= number_with_delimiter(tbl['rows']) %></td>
+                        <td class="text-right"><%= tbl['data_mb'] %></td>
+                        <td class="text-right"><%= tbl['index_mb'] %></td>
+                        <td class="text-right"><%= (tbl['data_mb'].to_f + tbl['index_mb'].to_f).round(2) %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% end %>
+
+      <!-- Slow queries -->
+      <% if @latest.db_slow_queries.present? %>
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Top 20 Queries Más Lentas (promedio)</h5>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Query</th>
+                      <th class="text-right">Ejecuciones</th>
+                      <th class="text-right">Avg (ms)</th>
+                      <th class="text-right">Max (ms)</th>
+                      <th class="text-right">Total (ms)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @latest.db_slow_queries.each_with_index do |q, i| %>
+                      <tr>
+                        <td><%= i + 1 %></td>
+                        <td><code style="font-size: 11px; word-break: break-all;"><%= truncate(q['query'], length: 150) %></code></td>
+                        <td class="text-right"><%= number_with_delimiter(q['count']) %></td>
+                        <td class="text-right"><%= q['avg_ms'] %></td>
+                        <td class="text-right"><%= q['max_ms'] %></td>
+                        <td class="text-right"><%= number_with_delimiter(q['total_ms']) %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% end %>
+      <% end %>
+    </div>
+
+    <!-- TAB 4: BACKGROUND JOBS -->
+    <div class="tab-pane" id="tab-jobs" role="tabpanel">
+      <% if @latest&.delayed_jobs_stats.present? %>
+      <div class="row mb-3">
+        <div class="col-6 col-md-3">
+          <div class="card">
+            <div class="card-body text-center p-3">
+              <h6 class="text-muted mb-1">Total Ejecuciones</h6>
+              <h3 class="mb-0"><%= number_with_delimiter(@latest.delayed_jobs_stats.sum { |j| j['count'] }) %></h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card">
+            <div class="card-body text-center p-3">
+              <h6 class="text-muted mb-1">Tiempo Total</h6>
+              <h3 class="mb-0"><%= @latest.delayed_jobs_stats.sum { |j| j['total_seconds'] }.round(1) %>s</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card">
+            <div class="card-body text-center p-3">
+              <h6 class="text-muted mb-1">Colas Activas</h6>
+              <h3 class="mb-0"><%= @latest.delayed_jobs_stats.map { |j| j['queue'] }.uniq.size %></h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card">
+            <div class="card-body text-center p-3">
+              <h6 class="text-muted mb-1">Peor Max</h6>
+              <h3 class="mb-0"><%= @latest.delayed_jobs_stats.map { |j| j['max_seconds'] }.max&.round(1) || 0 %>s</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-queue summary -->
+      <div class="row">
+        <div class="col-12 col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Por Cola</h5>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr>
+                      <th>Cola</th>
+                      <th class="text-right">Jobs</th>
+                      <th class="text-right">Avg (s)</th>
+                      <th class="text-right">Total (s)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @latest.delayed_jobs_stats.group_by { |j| j['queue'] }.sort_by { |q, jobs| -jobs.sum { |j| j['count'] } }.each do |queue, jobs| %>
+                      <tr>
+                        <td><span class="badge badge-info"><%= queue %></span></td>
+                        <td class="text-right"><%= number_with_delimiter(jobs.sum { |j| j['count'] }) %></td>
+                        <td class="text-right"><%= (jobs.sum { |j| j['total_seconds'] } / jobs.sum { |j| j['count'] }).round(3) %></td>
+                        <td class="text-right"><%= jobs.sum { |j| j['total_seconds'] }.round(1) %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Per-job detail -->
+        <div class="col-12 col-lg-8">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Detalle por Job</h5>
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr>
+                      <th>Job</th>
+                      <th>Cola</th>
+                      <th class="text-right">Ejecuciones</th>
+                      <th class="text-right">Avg (s)</th>
+                      <th class="text-right">Max (s)</th>
+                      <th class="text-right">Total (s)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @latest.delayed_jobs_stats.each do |job| %>
+                      <tr class="<%= 'table-warning' if job['max_seconds'].to_f >= 10 %>">
+                        <td><code><%= job['job'] %></code></td>
+                        <td><span class="badge badge-info"><%= job['queue'] %></span></td>
+                        <td class="text-right"><%= number_with_delimiter(job['count']) %></td>
+                        <td class="text-right"><%= job['avg_seconds'] %></td>
+                        <td class="text-right"><%= job['max_seconds'] %></td>
+                        <td class="text-right"><%= job['total_seconds'] %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% else %>
+      <div class="alert alert-info">
+        <i class="fa fa-info-circle"></i> No hay datos de background jobs para este período.
+      </div>
+      <% end %>
+    </div>
+
+  </div><!-- tab-content -->
+  <% end %>
+</div>
+
+<script>
+if($('#metricas-dashboard').length > 0) {
+$(function() {
+  "use strict";
+
+  <% if @snapshots.present? %>
+  var labels = <%= raw @snapshots.map { |s| s.fecha.strftime('%d/%m') }.to_json %>;
+  var requestsData = <%= raw @snapshots.map(&:total_requests).to_json %>;
+  var mobileData = <%= raw @snapshots.map(&:requests_mobile).to_json %>;
+  var desktopData = <%= raw @snapshots.map(&:requests_desktop).to_json %>;
+  var avgTimes = <%= raw @snapshots.map { |s| s.avg_response_time_ms.to_f }.to_json %>;
+  var p95Times = <%= raw @snapshots.map { |s| s.p95_response_time_ms.to_f }.to_json %>;
+  var maxTimes = <%= raw @snapshots.map { |s| s.max_response_time_ms.to_f }.to_json %>;
+  var uniqueIps = <%= raw @snapshots.map(&:unique_ips).to_json %>;
+  var errors5xx = <%= raw @snapshots.map(&:status_5xx).to_json %>;
+  var dbSizes = <%= raw @snapshots.map { |s| s.db_total_size_mb.to_f }.to_json %>;
+
+  var chartColors = {
+    blue: 'rgba(0, 158, 251, 0.8)',
+    blueBg: 'rgba(0, 158, 251, 0.1)',
+    green: 'rgba(2, 175, 31, 0.8)',
+    greenBg: 'rgba(2, 175, 31, 0.1)',
+    orange: 'rgba(245, 158, 11, 0.8)',
+    orangeBg: 'rgba(245, 158, 11, 0.1)',
+    red: 'rgba(220, 53, 69, 0.8)',
+    redBg: 'rgba(220, 53, 69, 0.1)',
+    purple: 'rgba(111, 66, 193, 0.8)',
+    gray: 'rgba(108, 117, 125, 0.6)'
+  };
+
+  var defaultOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 10 } } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#eef0f2' } },
+      x: { grid: { color: '#eef0f2' } }
+    }
+  };
+
+  // 1. Requests per day
+  new Chart(document.getElementById('chart-requests-day').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Total', data: requestsData,
+        borderColor: chartColors.blue, backgroundColor: chartColors.blueBg, borderWidth: 2, fill: true, tension: 0.3
+      }, {
+        label: 'Mobile', data: mobileData,
+        borderColor: chartColors.green, backgroundColor: 'transparent', borderWidth: 1.5, fill: false, tension: 0.3
+      }, {
+        label: 'Desktop', data: desktopData,
+        borderColor: chartColors.orange, backgroundColor: 'transparent', borderWidth: 1.5, fill: false, tension: 0.3
+      }]
+    },
+    options: defaultOptions
+  });
+
+  // 2. Mobile vs Desktop doughnut (totals)
+  var totalMobile = mobileData.reduce(function(a, b) { return a + b; }, 0);
+  var totalDesktop = desktopData.reduce(function(a, b) { return a + b; }, 0);
+  new Chart(document.getElementById('chart-mobile-desktop').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Mobile', 'Desktop'],
+      datasets: [{
+        data: [totalMobile, totalDesktop],
+        backgroundColor: [chartColors.green, chartColors.blue]
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+  });
+
+  // 3. Response times trend (capped at 3s to avoid outlier distortion)
+  var maxCap = 3000;
+  var cappedMax = maxTimes.map(function(v) { return Math.min(v, maxCap); });
+  var cappedP95 = p95Times.map(function(v) { return Math.min(v, maxCap); });
+  new Chart(document.getElementById('chart-response-times').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Avg', data: avgTimes,
+        borderColor: chartColors.blue, borderWidth: 2, fill: false, tension: 0.3
+      }, {
+        label: 'P95', data: cappedP95,
+        borderColor: chartColors.orange, borderWidth: 2, fill: false, tension: 0.3
+      }, {
+        label: 'Max', data: cappedMax,
+        borderColor: chartColors.red, borderWidth: 1, borderDash: [5, 5], fill: false, tension: 0.3
+      }]
+    },
+    options: $.extend(true, {}, defaultOptions, {
+      scales: { y: { beginAtZero: true, max: maxCap, grid: { color: '#eef0f2' },
+        ticks: { callback: function(v) { return v >= 1000 ? (v/1000) + 's' : v + 'ms'; } }
+      }}
+    })
+  });
+
+  // 4. Requests by hour (latest day)
+  <% if @latest&.requests_by_hour.present? %>
+  var hourLabels = [];
+  for (var h = 0; h < 24; h++) { hourLabels.push(h + ':00'); }
+  new Chart(document.getElementById('chart-by-hour').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: hourLabels,
+      datasets: [{
+        label: 'Requests', data: <%= raw @latest.requests_by_hour.to_json %>,
+        backgroundColor: chartColors.blue
+      }]
+    },
+    options: $.extend(true, {}, defaultOptions, { plugins: { legend: { display: false } } })
+  });
+  <% end %>
+
+  // 5. Status codes doughnut (latest day)
+  <% if @latest %>
+  new Chart(document.getElementById('chart-status-codes').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['2xx', '3xx', '4xx', '5xx'],
+      datasets: [{
+        data: [<%= @latest.status_2xx %>, <%= @latest.status_3xx %>, <%= @latest.status_4xx %>, <%= @latest.status_5xx %>],
+        backgroundColor: [chartColors.green, chartColors.blue, chartColors.orange, chartColors.red]
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+  });
+  <% end %>
+
+  // 6. Response time histogram (latest day)
+  <% if @latest&.response_times_histogram.present? %>
+  var histData = <%= raw @latest.response_times_histogram.to_json %>;
+  new Chart(document.getElementById('chart-histogram').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['< 100ms', '100-500ms', '500ms-1s', '1s-3s', '> 3s'],
+      datasets: [{
+        label: 'Requests', data: [histData.under_100ms, histData.under_500ms, histData.under_1s, histData.under_3s, histData.over_3s],
+        backgroundColor: [chartColors.green, chartColors.blue, chartColors.orange, chartColors.red, chartColors.purple]
+      }]
+    },
+    options: $.extend(true, {}, defaultOptions, { plugins: { legend: { display: false } } })
+  });
+  <% end %>
+
+  // 7. Unique IPs trend
+  new Chart(document.getElementById('chart-unique-ips').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'IPs Únicas', data: uniqueIps,
+        borderColor: chartColors.purple, backgroundColor: 'rgba(111, 66, 193, 0.1)', borderWidth: 2, fill: true, tension: 0.3
+      }]
+    },
+    options: $.extend(true, {}, defaultOptions, { plugins: { legend: { display: false } } })
+  });
+
+  // 8. Error 5xx trend
+  new Chart(document.getElementById('chart-errors-trend').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Errores 5xx', data: errors5xx,
+        backgroundColor: chartColors.redBg, borderColor: chartColors.red, borderWidth: 1
+      }]
+    },
+    options: $.extend(true, {}, defaultOptions, { plugins: { legend: { display: false } } })
+  });
+
+  // 9. Top tables by size (horizontal bar)
+  <% if @latest&.db_table_sizes.present? %>
+  var topTables = <%= raw @latest.db_table_sizes.first(10).to_json %>;
+  new Chart(document.getElementById('chart-table-sizes').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: topTables.map(function(t) { return t.table; }),
+      datasets: [{
+        label: 'Data (MB)', data: topTables.map(function(t) { return t.data_mb; }),
+        backgroundColor: chartColors.blue
+      }, {
+        label: 'Index (MB)', data: topTables.map(function(t) { return t.index_mb; }),
+        backgroundColor: chartColors.orange
+      }]
+    },
+    options: $.extend(true, {}, defaultOptions, {
+      indexAxis: 'y',
+      scales: { x: { stacked: true, grid: { color: '#eef0f2' } }, y: { stacked: true, grid: { color: '#eef0f2' } } }
+    })
+  });
+  <% end %>
+
+  // 10. DB size trend
+  new Chart(document.getElementById('chart-db-size-trend').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'DB Size (MB)', data: dbSizes,
+        borderColor: chartColors.blue, backgroundColor: chartColors.blueBg, borderWidth: 2, fill: true, tension: 0.3
+      }]
+    },
+    options: $.extend(true, {}, defaultOptions, { plugins: { legend: { display: false } } })
+  });
+
+  <% end %>
+});
+}
+</script>

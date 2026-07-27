@@ -1,0 +1,6 @@
+$("#pedidos-container").html("<%= j render 'resultados' %>");
+$(":input:focus").select();
+$("#flash-container").html("<%= j render 'flash_messages' %>");
+$('.readmoreable').readmore()
+$('#pedidos-container [data-toggle="tooltip"]').tooltip();
+errors.set(<%= raw @query.errors.full_messages %>);

@@ -1,0 +1,16 @@
+<% @ct = @pedido.cuenta || (@pedido.usuario && @pedido.usuario.cuenta)%>
+<%= simple_nested_fields_for @pedido do |f| %>
+  <% if @ct && @ct.cliente.permitir_envios_a_domicilio %>
+    <div class="mt-3">
+      <div class="col-md-12">
+      <hr>
+      </div>
+      <span style="display: flex;">
+      <%= f.input :enviar_a_id, label: 'Enviar a', as: :select, collection: @pedido.opciones_de_envio, prompt: false, selected: @pedido.enviar_a_id, wrapper_html: { class: 'col-4 mt-0 mb-0 text-left' } %>
+      <%= f.input :direccion_envio, as: :string, placeholder: 'Ingrese una dirección', label: false, required: true, wrapper_html: { class: "col-4 mb-0 #{' hide' unless @pedido.envio_a_domicilio}", id: 'wraper-direccion' } %>
+      <%= f.input :horario_id, label: false, as: :select, collection: @horarios_cs || Pedidos::Horario.where(tienda_id: tienda_activa).active, prompt: false, selected: @pedido.horario_id, wrapper_html: { class: 'col-4 mt-0 mb-0 text-left' } %>
+      </span>
+    </div>
+  <% end %>
+  <%= render 'fields_productos_solicitados', f: f %>
+<% end if @pedido.fecha && @ct %>

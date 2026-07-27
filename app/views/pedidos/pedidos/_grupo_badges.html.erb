@@ -1,0 +1,173 @@
+<%#
+  _grupo_badges.html.erb
+  Horizontal date-tab strip for pedidos belonging to a PedidoMultiple group.
+  Active pedido tab is filled; siblings are outlined. Remove button inline.
+%>
+<% grupo = pedido.pedido_multiple %>
+<% miembros = grupo.pedidos.order(:fecha, :id).includes(:tienda, :productos_solicitados) %>
+<% fechas_ms = miembros.map(&:fecha).compact.uniq.map { |fecha| fecha.to_time(:utc).to_i * 1000 } %>
+<% fecha_actual_ms = pedido.fecha ? pedido.fecha.to_time(:utc).to_i * 1000 : nil %>
+
+<div class="gbs-wrap" data-pedido-group-date-ms="<%= fechas_ms.join(',') %>" data-pedido-current-date-ms="<%= fecha_actual_ms %>">
+  <div class="gbs-inner">
+    <span class="gbs-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Pedidos del grupo
+    </span>
+
+    <div class="gbs-tabs">
+      <% miembros.each do |p| %>
+        <%
+          es_actual = p.id == pedido.id
+          color = p.tienda.color_barra_filtros.presence || '#5c9bd2'
+          fecha_label = p.fecha ? I18n.l(p.fecha, format: '%a %-d %b').delete('.').titleize : '–'
+          n_prods = p.productos_solicitados.sum(&:cantidad).to_i
+          total_label = n_prods > 0 ? p.importe_total : nil
+          fechas_en_grupo = miembros.map(&:fecha).compact
+          fecha_duplicada_badge = p.fecha.present? && fechas_en_grupo.count(p.fecha) > 1
+        %>
+        <div class="gbs-tab-wrap">
+          <%= link_to edit_pedido_path(p),
+                class: "gbs-tab#{' gbs-tab--active' if es_actual}#{' gbs-tab--dup' if fecha_duplicada_badge}",
+                style: "--tab-color: #{color};",
+                data: { turbolinks: false, 'turbolinks-track': 'reload' } do %>
+            <span class="gbs-tab__date">
+              <% if fecha_duplicada_badge %><span class="gbs-dup-icon" title="Fecha duplicada">⚠</span> <% end %><%= fecha_label %></span>
+            <% if n_prods > 0 %>
+              <span class="gbs-tab__count"><%= n_prods %> producto<%= 's' if n_prods != 1 %></span>
+              <span class="gbs-tab__total"><%= total_label %></span>
+            <% else %>
+              <span class="gbs-tab__count gbs-tab__count--empty">vacío</span>
+            <% end %>
+          <% end %>
+          <%= link_to salir_del_multiple_pedido_path(p),
+                method: :delete,
+                data: { confirm: "¿Quitar el pedido del #{fecha_label} del grupo?" },
+                class: 'gbs-remove',
+                title: 'Quitar del grupo' do %>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .gbs-wrap {
+    margin: 4px 0 10px;
+    padding: 6px 0 4px;
+    background: transparent;
+  }
+  .gbs-inner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .gbs-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: #374151;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .gbs-tabs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .gbs-tab-wrap {
+    display: flex;
+    align-items: stretch;
+  }
+  .gbs-tab {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 60px;
+    padding: 5px 12px;
+    border: 1.5px solid var(--tab-color);
+    border-radius: 8px 0 0 8px;
+    color: var(--tab-color);
+    text-decoration: none;
+    line-height: 1.25;
+    transition: background 0.12s, color 0.12s;
+    background: transparent;
+  }
+  .gbs-tab:hover {
+    background: var(--tab-color);
+    color: #fff;
+    text-decoration: none;
+  }
+  .gbs-tab--active {
+    background: var(--tab-color);
+    border-color: var(--tab-color);
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  }
+  .gbs-tab--active .gbs-tab__date,
+  .gbs-tab--active .gbs-tab__count {
+    color: #fff;
+    font-weight: 700;
+  }
+  .gbs-tab__date {
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+  .gbs-tab__count {
+    font-size: 0.65rem;
+    opacity: 0.85;
+    font-weight: 500;
+  }
+  .gbs-tab__total {
+    font-size: 0.7rem;
+    font-weight: 700;
+    opacity: 0.95;
+    margin-top: 1px;
+  }
+  .gbs-tab__count--empty {
+    font-style: italic;
+    opacity: 0.65;
+  }
+  .gbs-tab--dup {
+    border-color: #fbbf24 !important;
+    background: #fffbeb !important;
+    color: #92400e !important;
+    &:hover {
+      background: #f59e0b !important;
+      color: #fff !important;
+    }
+  }
+  .gbs-tab--active.gbs-tab--dup {
+    background: #f59e0b !important;
+    color: #fff !important;
+  }
+  .gbs-dup-icon {
+    font-style: normal;
+  }
+  .gbs-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    padding: 0;
+    background: #e2e8f0;
+    border: 1.5px solid #cbd5e1;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    color: #64748b;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    flex-shrink: 0;
+  }
+  .gbs-remove:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
+  }
+</style>

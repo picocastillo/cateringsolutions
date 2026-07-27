@@ -1,0 +1,54 @@
+==========================================================
+ALERTA DE STOCK - <%= @tienda.nombre %>
+==========================================================
+
+Fecha: <%= Date.current.strftime('%d/%m/%Y') %>
+
+RESUMEN:
+  Total de alertas: <%= @total_alerts %>
+  - Críticos: <%= @stocks_criticos.count %>
+  - Bajos: <%= @stocks_bajos.count %>
+  - Sin Stock: <%= @stocks_sin_stock.count %>
+
+<% if @stocks_criticos.any? %>
+----------------------------------------------------------
+STOCK CRÍTICO (<%= @stocks_criticos.count %>)
+----------------------------------------------------------
+<% @stocks_criticos.each do |stock| %>
+⚠️ <%= stock.producto.nombre %>
+   Categoría: <%= stock.producto.categoria.nombre %>
+   Local: <%= stock.local&.nombre || 'Principal' %>
+   Cantidad: <%= stock.cantidad_actual.to_i %> (Mínimo: <%= stock.cantidad_minima.to_i %>)
+
+<% end %>
+<% end %>
+
+<% if @stocks_bajos.any? %>
+----------------------------------------------------------
+STOCK BAJO (<%= @stocks_bajos.count %>)
+----------------------------------------------------------
+<% @stocks_bajos.each do |stock| %>
+⚠️ <%= stock.producto.nombre %>
+   Categoría: <%= stock.producto.categoria.nombre %>
+   Local: <%= stock.local&.nombre || 'Principal' %>
+   Cantidad: <%= stock.cantidad_actual.to_i %> (Mínimo: <%= stock.cantidad_minima.to_i %>)
+
+<% end %>
+<% end %>
+
+<% if @stocks_sin_stock.any? %>
+----------------------------------------------------------
+SIN STOCK (<%= @stocks_sin_stock.count %>)
+----------------------------------------------------------
+<% @stocks_sin_stock.each do |stock| %>
+⚠️ <%= stock.producto.nombre %>
+   Categoría: <%= stock.producto.categoria.nombre %>
+   Local: <%= stock.local&.nombre || 'Principal' %>
+   Mínimo requerido: <%= stock.cantidad_minima.to_i %>
+
+<% end %>
+<% end %>
+
+==========================================================
+Reporte automático del sistema de gestión de stock
+==========================================================

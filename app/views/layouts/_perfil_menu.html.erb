@@ -1,0 +1,109 @@
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle text-muted waves-effect waves-dark" href="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding-bottom: 20px!important;"><div class="div-imagen-user"><img src="<%= current_user ? current_user.foto_safe : 'user.png' %>" alt="user" style="vertical-align: baseline;position: absolute;max-width: 105%;width: 105%;height: auto;top: 50%;left: 50%;transform: translate( -50%, -50%);" /></div></a>
+    <div class="dropdown-menu dropdown-menu-right scale-up oculta-public">
+        <ul class="dropdown-user">
+            <li>
+                <div class="dw-user-box">
+                    <div class="u-img"><img src="<%= current_user ? current_user.foto_safe : 'user.png' %>" alt="user"></div>
+                    <div class="u-text">
+                        <% if  current_user %>
+                          <h4>
+                          <%= current_user.nombre_normalizado.size > 33 ? current_user.nombre_normalizado.truncate(33) : current_user.nombre_normalizado %></h4>
+                          <p class="text-muted"><%= current_user.tipo_usuario_html %></p>
+                          <% if current_user.cliente&.mostrar_cuentas_corrientes && current_user.cliente? && current_user.cumple_rol?(:administrador_empresa)%>
+                            <p class="text-muted" style="margin-top: -5px;margin-bottom:5px">Saldo: <%= link_to current_user.saldo, cuentas_corrientes_path, class: 'link-saldo', title: 'Ver resúmen Cuenta Corriente' %>
+                            </p>
+                          <% end %>
+                          <a href="/cuenta/edit" class="btn btn-rounded btn-danger btn-sm">Mi Cuenta</a><% if current_user.super_admin? %><a href="/metricas" class="ml-1 btn btn-rounded btn-info btn-sm"><i class="mdi mdi-chart-areaspline"></i> Métricas</a><% end %><a href="/procesos" class="ml-1 btn btn-rounded btn-danger btn-sm"><%= current_user.cliente? ? 'Descargas' : 'Procesos' %></a>
+                        <% else %>
+                          <h4 class="mt-2">¡Hola!</h4>
+                          <p class="text-muted mb-2 mt-1">No estas logueado. Por favor inicia sesión.</p>
+                        <% end %>
+                      </div>
+                </div>
+            </li>
+            <% if current_user %>
+            <% switcher_tiendas = current_user.super_admin? ? Tiendas::Tienda.active.to_a : current_user.tiendas_disponibles.select(&:active) %>
+            <% if switcher_tiendas.size > 1 %>
+            <li class="tienda-switcher-item">
+              <div class="tienda-switcher-header">
+                <span class="tienda-switcher-label"><i class="fa fa-th-large tienda-switcher-icon"></i> Tienda activa</span>
+                <% if current_user.super_admin? %>
+                  <a href="/tiendas" class="tienda-switcher-cog" title="Gestionar tiendas"><i class="fa fa-cog"></i></a>
+                <% end %>
+              </div>
+              <div class="tienda-switcher-btns" role="group">
+                <% switcher_tiendas.each do |t| %>
+                  <% active = t == tienda_activa %>
+                  <% if current_user.cliente? %>
+                    <%= button_to cambiar_tienda_activa_tiendas_path(tienda_activa_id: t.id),
+                                  method: :post,
+                                  class: "btn-tienda-pill #{'activa' if active}",
+                                  title: t.nombre,
+                                  disabled: active,
+                                  form: { style: 'display: contents;', data: { turbolinks: false } } do %>
+                      <span class="tienda-pill-iniciales"><%= t.iniciales %></span>
+                      <span class="tienda-pill-nombre"><%= t.nombre.truncate(16) %></span>
+                    <% end %>
+                  <% else %>
+                    <button type="button"
+                            class="btn-tienda-pill <%= 'activa' if active %> btn-tienda-switch"
+                            data-tienda-id="<%= t.id %>"
+                            title="<%= t.nombre %>">
+                      <span class="tienda-pill-iniciales"><%= t.iniciales %></span>
+                      <span class="tienda-pill-nombre"><%= t.nombre.truncate(16) %></span>
+                    </button>
+                  <% end %>
+                <% end %>
+              </div>
+            </li>
+            <% end %>
+            <% locales_tienda = tienda_activa.locales.to_a %>
+            <% if locales_tienda.size > 1 && !current_user.cliente? && current_user.local_id.blank? %>
+            <li style="background: #e2e2e2;padding: 8px 15px;margin-bottom: -10px;">
+              <div class="row">
+                <div class="btn-group mb-md-0 col-3" style="margin-left: 10px;margin-right: -10px;font-size:12px;padding: 5px 5px!important;">
+                  Local
+                </div>
+                <div class="btn-group mb-md-0 col-9" role="group">
+                  <button type="button" class="btn btn-secondary selector-local <%= 'active' unless current_user.visualizando_local_id %>" data-local-id="0" style="font-size:11px;padding: 2px 5px!important;font-weight: 600">Todos</button>
+                  <% locales_tienda.each do |l| %>
+                    <% local_label = l.nombre.sub(tienda_activa.nombre, '').strip.presence || l.nombre %>
+                    <button type="button" class="btn btn-secondary selector-local <%= 'active' if current_user.visualizando_local_id == l.id %>" data-local-id="<%= l.id %>" style="font-size:11px;padding: 2px 5px!important;font-weight: 600"><%= local_label.truncate(12) %></button>
+                  <% end %>
+                </div>
+              </div>
+            </li>
+            <% end %>
+            <li role="separator" class="divider"></li>
+              <% if !current_user.cliente? %>
+              <li><a href="/inicio"><i class="mdi mdi-gauge"></i> Inicio</a></li>
+              <% end %>
+              <% if tienda_activa.carrito_de_compras? %>
+                <li><a href="/pedidos/new"><i class="mdi mdi-silverware-fork-knife"></i> Nuevo Pedido</a></li>
+              <% end %>
+              <% if !current_user.cliente? %>
+              <% if tienda_activa.venta_mostrador? %>
+                <li><a href="/ventas_mostrador/pedidos"><i class="mdi mdi-shopping"></i> Venta Mostrador</a></li>
+                <% end %>
+                  <% if tienda_activa.carrito_de_compras? %>
+                    <li><a href="/cargas_simples/pedidos"><i class="mdi mdi-keyboard-close"></i> Carga Rápida</a></li>
+                  <% end %>
+              <% end %>
+              <% if tienda_activa.carrito_de_compras? %>
+              <li><a href="/pedidos"><i class="mdi mdi-calendar-clock"></i> Ver Pedidos</a></li>
+              <% end %>
+              <% if !current_user.cliente? %>
+                <% if tienda_activa.despachos? %>
+                  <li><a href="/etiquetas"><i class="mdi mdi-printer""></i> Etiquetas</a></li>
+                <% end %>
+              <% end %>
+              <% if current_user && current_user.cliente? && tienda_activa.video_ayuda.present? %>
+                <li><a href="/ayuda"><i class="mdi mdi-help"></i> Ayuda</a></li>
+              <% end %>
+              <li role="separator" class="divider"></li>
+            <li><%= link_to "#{content_tag(:i, nil, class: 'fa fa-power-off')} Salir".html_safe, public_path, method: :delete, data: {disable: true} %></li>
+            <% end %>
+        </ul>
+    </div>
+</li>

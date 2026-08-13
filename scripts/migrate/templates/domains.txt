@@ -1,0 +1,8 @@
+# Canonical production hostnames for Kiosk (one app, one DB, multiple tiendas).
+# Used by finalize-server.sh / certbot. Override with DOMAINS env if needed.
+cateringsolutions.com.ar
+www.cateringsolutions.com.ar
+tivoglio.com.ar
+www.tivoglio.com.ar
+cotidianomarket.ar
+www.cotidianomarket.ar

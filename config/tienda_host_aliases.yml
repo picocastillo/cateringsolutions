@@ -1,0 +1,7 @@
+# Maps request hosts (www stripped) to the canonical `tiendas.dominio` value.
+# Staging / trackerdev hosts keep production dominio rows (logos, mailer assets).
+#
+# Override path with ENV TIENDA_HOST_ALIASES_FILE if needed.
+
+cateringsolutions.trackerdev.com.ar: cateringsolutions.com.ar
+tivoglio.trackerdev.com.ar: tivoglio.com.ar

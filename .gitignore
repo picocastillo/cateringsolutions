@@ -57,6 +57,12 @@ rspec_*_output.txt
 # Environment variables
 .env.local
 .env.*.local
+.env
+
+# Local DB dumps for Docker init (keep 00-create-databases.sql)
+docker/db/*.sql
+docker/db/*.sql.gz
+!docker/db/00-create-databases.sql
 
 # Coverage reports
 /coverage

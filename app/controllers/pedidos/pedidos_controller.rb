@@ -385,7 +385,9 @@ module Pedidos
 
     def importar
       authorize! :import, Pedidos::Pedido
-      raise ErrorAplicacion, 'Está intentando importar pedidos de otro dominio.' if request.domain(2) != tienda_activa.dominio && !Rails.env.development?
+      unless Tiendas::HostResolver.matches?(request.host, tienda_activa.dominio) || Rails.env.development?
+        raise ErrorAplicacion, 'Está intentando importar pedidos de otro dominio.'
+      end
 
       cliente = Clientes::Cliente.where(id: params[:cliente_id].to_i).first if params[:cliente_id].to_i.positive?
       f = params[:fecha].to_date if params[:fecha]
@@ -1005,7 +1007,12 @@ module Pedidos
 
     def imagen_url(r)
       url_interna = r.producto.imagen_principal
-      Rails.env.development? ? "http://localhost:3000#{url_interna}" : "https://#{tienda_activa.dominio}#{url_interna}"
+      if Rails.env.development?
+        "http://localhost:3000#{url_interna}"
+      else
+        host = Tiendas::HostResolver.public_host(request.host, tienda_activa.dominio)
+        "https://#{host}#{url_interna}"
+      end
     end
 
     def categorias_usuario

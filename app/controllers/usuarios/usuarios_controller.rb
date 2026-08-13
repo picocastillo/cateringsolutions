@@ -72,7 +72,7 @@ module Usuarios
     def import
       authorize! :manage, Usuarios::Usuario
 
-      return unless tienda_activa.dominio == request.domain(2) || Rails.env.development?
+      return unless Tiendas::HostResolver.matches?(request.host, tienda_activa.dominio) || Rails.env.development?
 
       import_in_background Usuarios::UsuariosImporter, false
       redirect_to usuarios_path, notice: 'La importación de usuarios se está procesando en segundo plano.'

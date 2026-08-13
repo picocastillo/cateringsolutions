@@ -1,0 +1,7 @@
+# Allow deploy user `dev` to manage puma-kiosk without a full root shell.
+# Install to: /etc/sudoers.d/kiosk-puma
+# Permissions must be 0440.
+#
+# Validate with: visudo -cf /etc/sudoers.d/kiosk-puma
+
+dev ALL=(root) NOPASSWD: /bin/systemctl start puma-kiosk, /bin/systemctl stop puma-kiosk, /bin/systemctl restart puma-kiosk, /bin/systemctl status puma-kiosk, /bin/systemctl is-active puma-kiosk, /bin/journalctl -u puma-kiosk *

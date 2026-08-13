@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Pedidos Importar', type: :request do
-  # Default Rails test host is www.example.com; request.domain(2) returns 'www.example.com'
+  # Default Rails test host is www.example.com; HostResolver matches tienda.dominio to that host
   let(:tienda) { create(:tienda, nombre: 'Tienda Import Test', carrito_de_compras: true, dominio: 'www.example.com') }
   let(:cliente) { create(:cliente, tienda: tienda) }
   let(:cuenta_sucursal_a) { create(:cuenta, cliente: cliente, nombre: 'Sucursal A') }

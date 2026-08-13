@@ -1,0 +1,7 @@
+# Staging hostnames on trackerdev (same Rails app + DB, two tiendas).
+# Canonical tiendas.dominio stays production; HostResolver maps these hosts.
+# Used by finalize-server.sh / certbot when DOMAIN_PROFILE=trackerdev.
+cateringsolutions.trackerdev.com.ar
+www.cateringsolutions.trackerdev.com.ar
+tivoglio.trackerdev.com.ar
+www.tivoglio.trackerdev.com.ar

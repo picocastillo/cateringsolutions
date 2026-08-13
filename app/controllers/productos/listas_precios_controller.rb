@@ -28,7 +28,7 @@ module Productos
 
     def import
       authorize! :index, Productos::Precio
-      return unless tienda_activa.dominio == request.domain(2) || !Rails.env.production?
+      return unless Tiendas::HostResolver.matches?(request.host, tienda_activa.dominio) || !Rails.env.production?
 
       import_in_background Productos::PreciosImporter
     end

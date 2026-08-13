@@ -1,0 +1,29 @@
+[Unit]
+Description=Puma HTTP Server for Kiosk
+After=network.target mariadb.service redis-server.service
+Wants=mariadb.service redis-server.service
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/var/www/kiosk/current
+Environment=RAILS_ENV=production
+Environment=WEB_CONCURRENCY=5
+Environment=RAILS_MAX_THREADS=5
+Environment=MALLOC_ARENA_MAX=2
+# asdf Ruby 3.4.8 — adjust if asdf install path differs
+Environment=PATH=/home/dev/.asdf/shims:/home/dev/.asdf/installs/ruby/3.4.8/bin:/home/dev/.asdf/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/bin/bash -lc 'cd /var/www/kiosk/current && bundle exec puma -C config/puma.rb'
+ExecReload=/bin/kill -USR1 $MAINPID
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=30
+SyslogIdentifier=puma-kiosk
+
+# Soften until first Capistrano release exists
+# After `cap production deploy`, `current` symlink will exist.
+
+[Install]
+WantedBy=multi-user.target

@@ -46,7 +46,7 @@ class SharedController < ActionController::Base
       # subdomain.
       current_user.tienda_activa
     else
-      Tiendas::Tienda.find_by(dominio: request.domain(2)) || Tiendas::Tienda.first
+      Tiendas::HostResolver.find_tienda(request.host)
     end
   end
 

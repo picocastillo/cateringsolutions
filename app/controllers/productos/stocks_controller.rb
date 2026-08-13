@@ -45,7 +45,7 @@ module Productos
 
     def import
       authorize! :manage, Stock
-      return unless tienda_activa.dominio == request.domain(2) || Rails.env.development?
+      return unless Tiendas::HostResolver.matches?(request.host, tienda_activa.dominio) || Rails.env.development?
 
       import_in_background Productos::StocksImporter
     end

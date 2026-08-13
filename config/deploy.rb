@@ -64,6 +64,7 @@ after 'deploy:restart', 'deploy:cleanup'
 namespace :deploy do
   task :make_links do
     run "ln -f #{shared_path}/config/database.yml #{release_path}/config/database.yml"
+    run "if [ -f #{shared_path}/config/master.key ]; then ln -f #{shared_path}/config/master.key #{release_path}/config/master.key; fi"
     run "mkdir -p #{release_path}/config/qz_tray && ln -f #{shared_path}/config/qz_tray/private-key.pem #{release_path}/config/qz_tray/private-key.pem"
   end
   after 'deploy:update_code', 'deploy:make_links'

@@ -173,18 +173,24 @@ install -d -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" \
   "${APP_ROOT}/shared/public" \
   "${APP_ROOT}/repo"
 
-# Placeholder public so nginx root exists before first Capistrano release
-install -d -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" "${APP_ROOT}/current_placeholder/public"
-ln -sfn "${APP_ROOT}/current_placeholder" "${APP_ROOT}/current"
-echo '<!doctype html><title>Kiosk</title><h1>Deploy pending</h1>' \
-  > "${APP_ROOT}/current_placeholder/public/index.html"
-chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${APP_ROOT}/current_placeholder"
+# Placeholder public so nginx root exists before first Capistrano release.
+# Never reset current if a real release is already linked (re-running bootstrap).
+if [[ -f "${APP_ROOT}/current/config/puma.rb" ]]; then
+  echo "    keeping existing Capistrano current -> $(readlink -f "${APP_ROOT}/current")"
+else
+  install -d -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" "${APP_ROOT}/current_placeholder/public"
+  ln -sfn "${APP_ROOT}/current_placeholder" "${APP_ROOT}/current"
+  echo '<!doctype html><title>Kiosk</title><h1>Deploy pending</h1>' \
+    > "${APP_ROOT}/current_placeholder/public/index.html"
+  chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${APP_ROOT}/current_placeholder"
+fi
 
 echo "==> Configuring MariaDB (bind 127.0.0.1, create DB ${DB_NAME})"
 systemctl enable --now mariadb
 cat > /etc/mysql/mariadb.conf.d/99-kiosk-bind.cnf <<'EOF'
 [mysqld]
 bind-address = 127.0.0.1
+skip-name-resolve
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
 EOF

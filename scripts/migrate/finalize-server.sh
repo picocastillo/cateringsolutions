@@ -86,9 +86,22 @@ echo "==> Domain profile: ${DOMAIN_PROFILE}"
 echo "==> Primary domain: ${PRIMARY_DOMAIN}"
 echo "==> Domains: ${DOMAINS[*]}"
 
+if command -v dig >/dev/null 2>&1; then
+  echo "==> DNS (must point at this VPS before certbot)"
+  for d in "${DOMAINS[@]}"; do
+    echo "    ${d} -> $(dig +short "${d}" A | tr '\n' ' ')"
+  done
+fi
+
 if [[ ! -d "${APP_ROOT}/current" ]] || [[ ! -f "${APP_ROOT}/current/config/puma.rb" ]]; then
   echo "ERROR: ${APP_ROOT}/current does not look like a Capistrano release." >&2
-  echo "Run: bundle exec cap production deploy  (from your laptop) first." >&2
+  echo "Run Capistrano deploy first (docker compose --profile deploy run --rm deploy)." >&2
+  exit 1
+fi
+if readlink -f "${APP_ROOT}/current" | grep -q current_placeholder; then
+  echo "ERROR: ${APP_ROOT}/current still points at current_placeholder." >&2
+  echo "Capistrano did not switch the symlink. Deploy again, or:" >&2
+  echo "  sudo ln -sfn ${APP_ROOT}/releases/\$(ls -1 ${APP_ROOT}/releases | tail -1) ${APP_ROOT}/current" >&2
   exit 1
 fi
 
@@ -141,7 +154,13 @@ systemctl reload nginx
 echo "==> Starting puma-kiosk"
 systemctl daemon-reload
 systemctl restart puma-kiosk
-sleep 2
+sleep 3
+if ! systemctl is-active --quiet puma-kiosk; then
+  echo "ERROR: puma-kiosk failed to start" >&2
+  systemctl --no-pager --full status puma-kiosk || true
+  journalctl -u puma-kiosk -n 80 --no-pager || true
+  exit 1
+fi
 systemctl --no-pager --full status puma-kiosk || true
 
 echo "==> Restarting Delayed Job pools"
@@ -157,7 +176,7 @@ EOSU
 
 echo "==> Smoke checks"
 redis-cli ping | grep -q PONG && echo "    OK redis" || echo "    FAIL redis"
-mysql -e "USE kiosk; SELECT 1;" &>/dev/null && echo "    OK mariadb kiosk" || echo "    FAIL mariadb"
+mysql --protocol=socket -e "USE kiosk; SELECT 1;" &>/dev/null && echo "    OK mariadb kiosk" || echo "    FAIL mariadb"
 if [[ -S "${APP_ROOT}/shared/tmp/sockets/puma.sock" ]]; then
   echo "    OK puma.sock"
 else

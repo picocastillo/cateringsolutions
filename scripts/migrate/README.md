@@ -1,139 +1,257 @@
 # VPS migration — complete Capistrano lift-and-shift
 
-Move **Kiosk** to a new VPS with the full production stack: Ruby/asdf, MariaDB, Redis, nginx (HTTPS + all domains), systemd Puma, Delayed Job, Nailgun, Let’s Encrypt.
+Move **Kiosk** to a new VPS: Ruby/asdf, MariaDB, Redis, nginx (HTTPS), systemd Puma, Delayed Job, Nailgun, Let’s Encrypt.
 
-## Recommended OS
+**Recommended OS:** Ubuntu Server 24.04 LTS (x86_64), 2+ vCPU / 4–8 GB RAM / 40+ GB SSD.
 
-**Ubuntu Server 24.04 LTS** (x86_64), 2+ vCPU / 4–8 GB RAM / 40+ GB SSD.
+Capistrano deploys the app. These scripts do **not** issue TLS. Until `finalize-server.sh` runs, Rails `force_ssl` redirects HTTP → HTTPS and the browser fails because port 443 is closed. That is expected.
+
+## Do not
+
+- Re-run `bootstrap-vps.sh` after a successful Capistrano deploy (it used to reset `current` to a placeholder).
+- Pass `--apply-server-configs` on trackerdev (packed nginx/puma come from old CentOS production).
+- Ctrl-C during export dump or restore import (the dump is hundreds of MB; a cut import leaves tables missing).
+- Skip `finalize-server.sh` and expect `https://…` to work.
+- Point Capistrano `rosa` at the old production IP while deploying to the new VPS.
 
 ## One app, one DB, multiple domains
 
-Same Rails app and MariaDB database `kiosk`. Tiendas are rows with a `dominio`; nginx serves the hostnames for the chosen profile.
+Same Rails app and MariaDB database `kiosk`. Tiendas keep production `dominio` values. Staging hosts are mapped in `config/tienda_host_aliases.yml`.
 
 ### Production (`DOMAIN_PROFILE=production`, default)
 
 | Domain | Role |
 |---|---|
-| `cateringsolutions.com.ar` (+ `www`) | Primary (cert name + mailer host) |
+| `cateringsolutions.com.ar` (+ `www`) | Primary (cert name) |
 | `tivoglio.com.ar` (+ `www`) | Tienda |
 | `cotidianomarket.ar` (+ `www`) | Tienda |
 
 ### Staging trackerdev (`DOMAIN_PROFILE=trackerdev`)
-
-Replica of Catering Solutions + Ti Voglio on the new VPS (no Cotidiano):
 
 | Domain | Maps to `tiendas.dominio` |
 |---|---|
 | `cateringsolutions.trackerdev.com.ar` (+ `www`) | `cateringsolutions.com.ar` |
 | `tivoglio.trackerdev.com.ar` (+ `www`) | `tivoglio.com.ar` |
 
-Host → tienda mapping is in `config/tienda_host_aliases.yml` (`Tiendas::HostResolver`). Keep production `dominio` values in the DB so logos/assets keep working.
-
-```bash
-DOMAIN_PROFILE=trackerdev sudo bash scripts/migrate/bootstrap-vps.sh
-# … export / restore / deploy …
-DOMAIN_PROFILE=trackerdev sudo bash /opt/kiosk-migrate/finalize-server.sh
-```
-
-DNS: point the four trackerdev names at the VPS before finalize.
+Canonical URL after finalize: **https://cateringsolutions.trackerdev.com.ar/** (`www` redirects to apex).
 
 ## Scripts
 
 | Script | Where | Role |
 |---|---|---|
-| [`bootstrap-vps.sh`](./bootstrap-vps.sh) | New VPS (root) | Full stack install + HTTP nginx for all domains |
-| [`export-from-source.sh`](./export-from-source.sh) | Current production | Dump DB + shared secrets + nginx/systemd snapshot |
-| [`restore-on-vps.sh`](./restore-on-vps.sh) | New VPS | Import tarball (optional `--apply-server-configs`) |
-| [`finalize-server.sh`](./finalize-server.sh) | New VPS (root) | Certbot for all domains, HTTPS nginx, start Puma + DJ, smoke checks |
+| [`bootstrap-vps.sh`](./bootstrap-vps.sh) | New VPS (root) | Stack + HTTP nginx. Run **once**. |
+| [`export-from-source.sh`](./export-from-source.sh) | Current production as `dev` | DB dump + `shared/config` + uploads |
+| [`restore-on-vps.sh`](./restore-on-vps.sh) | New VPS | Import tarball (unix_socket; no `--apply-server-configs` on trackerdev) |
+| [`finalize-server.sh`](./finalize-server.sh) | New VPS (root) | Let’s Encrypt, HTTPS nginx, start Puma + DJ |
 
-Templates: [`templates/`](./templates/) (HTTP + HTTPS nginx for production and `*.trackerdev`, domains lists, puma unit, sudoers).
+---
 
-## End-to-end runbook
+## Trackerdev runbook (do this in order)
 
-### 1. New VPS — bootstrap
+Replace `NEW_VPS_IP` with the new box (example: `149.50.153.150`). Old production in the previous lift was `dev@66.97.42.153` port `5181`.
 
-```bash
-# Ubuntu 24.04, SSH as root; copy scripts/migrate or clone repo
-sudo bash scripts/migrate/bootstrap-vps.sh
-# scripts also copied to /opt/kiosk-migrate/
+### 0. Mac — SSH config
+
+`~/.ssh/config`:
+
+```text
+Host rosa
+  HostName NEW_VPS_IP
+  User dev
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+
+Host kiosk-old
+  HostName 66.97.42.153
+  Port 5181
+  User dev
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
 ```
 
-### 2. Old server — export
+Your laptop key must be in **both**:
+
+- `root` and later `dev` `authorized_keys` on the new VPS
+- `dev` `authorized_keys` on the old server
+
+Check:
+
+```bash
+ssh kiosk-old 'whoami && hostname'
+# After bootstrap (step 2), `dev` exists:
+ssh rosa 'whoami && hostname'
+```
+
+Until bootstrap finishes, SSH to the new VPS as root:
+
+```text
+Host rosa-root
+  HostName NEW_VPS_IP
+  User root
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+```
+
+### 1. Copy migrate scripts onto the new VPS (as root)
+
+From the Mac, in this repo (scripts already include the unix_socket import fix):
+
+```bash
+scp -r scripts/migrate rosa-root:/tmp/kiosk-migrate-src
+ssh rosa-root
+```
+
+### 2. Bootstrap **once** (new VPS, root)
+
+```bash
+DOMAIN_PROFILE=trackerdev sudo bash /tmp/kiosk-migrate-src/bootstrap-vps.sh
+```
+
+Creates user `dev` (sudo, asdf Ruby 3.4.8, Node, Yarn), copies scripts to `/opt/kiosk-migrate/`, HTTP nginx for the four trackerdev names, empty DB `kiosk`. Puma is enabled but not serving a real release yet.
+
+Confirm:
+
+```bash
+sudo -iu dev -- bash -lc 'whoami && ruby -v'
+# ruby 3.4.8
+```
+
+Your Mac pubkey should already be in `/home/dev/.ssh/authorized_keys` (copied from root). Then `ssh rosa` works.
+
+### 3. GitHub deploy key (new VPS, as `dev`)
+
+Capistrano clones `git@github.com:picocastillo/cateringsolutions.git` **on the VPS**, not from your Mac working copy.
 
 ```bash
 sudo -iu dev
-bash /path/to/scripts/migrate/export-from-source.sh
-# final cutover later: ... --maintenance
+ssh-keygen -t ed25519 -C "kiosk-deploy@$(hostname)" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
 ```
+
+Add that public key as a **deploy key** (read-only) on GitHub → repo Settings → Deploy keys.
 
 ```bash
-scp /tmp/kiosk-migrate-*.tar.gz /tmp/kiosk-migrate-*.tar.gz.sha256 root@NEW_IP:/tmp/
+ssh -T git@github.com
+# Hi picocastillo/cateringsolutions! You've successfully authenticated...
 ```
 
-### 3. New VPS — restore
+### 4. Export from old production (as `dev`)
+
+Copy the **updated** `export-from-source.sh` if the old box still has the previous script:
 
 ```bash
-sudo bash /opt/kiosk-migrate/restore-on-vps.sh /tmp/kiosk-migrate-YYYYMMDD-HHMMSS.tar.gz --apply-server-configs
+scp scripts/migrate/export-from-source.sh kiosk-old:/tmp/export-from-source.sh
+ssh kiosk-old
+bash /tmp/export-from-source.sh
 ```
 
-### 4. Deploy key + Capistrano
-
-As `dev` on the new VPS: create SSH key, add GitHub deploy key, `ssh -T git@github.com`.
-
-On your laptop, point SSH host `rosa` at the new IP:
+Wait until it prints `Export complete` and a path under `/tmp/kiosk-migrate-*.tar.gz`. Do not Ctrl-C. It must report table `tiendas` inside the dump.
 
 ```bash
-bundle exec cap production deploy
+scp kiosk-old:/tmp/kiosk-migrate-YYYYMMDD-HHMMSS.tar.gz \
+    kiosk-old:/tmp/kiosk-migrate-YYYYMMDD-HHMMSS.tar.gz.sha256 \
+    rosa-root:/tmp/
 ```
 
-### 5. DNS
+### 5. Restore on the new VPS (root)
 
-Point **A** records for all six names (apex + www × 3) to the new VPS **before** finalize.
-
-### 6. Finalize (TLS + services)
+**Without** `--apply-server-configs`:
 
 ```bash
-CERTBOT_EMAIL=you@example.com sudo bash /opt/kiosk-migrate/finalize-server.sh
+sudo bash /opt/kiosk-migrate/restore-on-vps.sh /tmp/kiosk-migrate-YYYYMMDD-HHMMSS.tar.gz
 ```
 
-This issues one Let’s Encrypt cert (primary name `cateringsolutions.com.ar` with SANs), installs the production HTTPS nginx site (matching `/cable`, gzip, www→apex, HTTP→HTTPS), starts `puma-kiosk`, restarts Delayed Job pools, and smoke-checks HTTPS on the three apex domains.
+Wait for `tables in kiosk:` **≥ 70** and lines `tienda dominio: …`. Do not Ctrl-C. The script drops DB `kiosk`, imports via unix_socket, and aligns `root@127.0.0.1` with `database.yml` so Rails can connect.
 
-### 7. Final data cutover (optional second pass)
+If you still have the old `/opt/kiosk-migrate/restore-on-vps.sh`, copy the repo version first:
 
-On old server: `export-from-source.sh --maintenance` → scp → `restore-on-vps.sh` → `systemctl restart puma-kiosk` → flip any remaining DNS TTL.
+```bash
+scp scripts/migrate/restore-on-vps.sh rosa-root:/opt/kiosk-migrate/restore-on-vps.sh
+```
 
-### 8. Cleanup
+### 6. Push + Capistrano deploy (Mac)
 
-Delete migration tarballs; never commit dumps or `shared/config` secrets.
+The VPS clones **GitHub `master`**, not local uncommitted files. Push first:
 
-## Verify
+```bash
+git push origin master
+```
+
+`~/.ssh/config` `Host rosa` must be the **new** VPS.
+
+```bash
+ssh rosa 'whoami && hostname'
+# whoami → dev
+
+docker compose --profile deploy build deploy   # first time / after Gemfile change
+docker compose --profile deploy run --rm --entrypoint ssh deploy -T rosa
+docker compose --profile deploy run --rm deploy
+```
+
+After deploy:
+
+```bash
+ssh rosa 'readlink -f /var/www/kiosk/current; test -f /var/www/kiosk/current/config/puma.rb && echo puma.rb_ok'
+# must NOT be .../current_placeholder
+```
+
+### 7. DNS (before finalize)
+
+A records, all to `NEW_VPS_IP`:
+
+- `cateringsolutions.trackerdev.com.ar`
+- `www.cateringsolutions.trackerdev.com.ar`
+- `tivoglio.trackerdev.com.ar`
+- `www.tivoglio.trackerdev.com.ar`
+
+```bash
+dig +short cateringsolutions.trackerdev.com.ar A
+```
+
+### 8. Finalize (TLS + Puma) — new VPS, root
+
+```bash
+DOMAIN_PROFILE=trackerdev CERTBOT_EMAIL=you@example.com sudo bash /opt/kiosk-migrate/finalize-server.sh
+```
+
+This issues the Let’s Encrypt cert, switches nginx to HTTPS (port 443), starts `puma-kiosk`, restarts Delayed Job.
+
+Open **https://cateringsolutions.trackerdev.com.ar/** (not `www`).
+
+### 9. Verify
 
 ```bash
 sudo systemctl status puma-kiosk nginx mariadb redis-server
-curl -I https://cateringsolutions.com.ar/
-curl -I https://tivoglio.com.ar/
-curl -I https://cotidianomarket.ar/
+curl -I https://cateringsolutions.trackerdev.com.ar/
+curl -I https://tivoglio.trackerdev.com.ar/
 redis-cli ping
+sudo mysql --protocol=socket -e "SHOW TABLES FROM kiosk LIKE 'tiendas';"
 sudo -iu dev
 cd /var/www/kiosk/current && RAILS_ENV=production bundle exec bin/delayed_job --queue=fast --pool=fast:3 --pid-dir=/tmp/fast_queue status
 ```
 
-## Local Docker (Mac) — import the dump
+---
 
-To run the app on your Mac with Docker and load a production/migration dump:
+## If this VPS is already bootstrapped
+
+Do **not** bootstrap again. From step 4 (export) onward. Keep `current` pointing at a real release. Copy the updated restore script to `/opt/kiosk-migrate/` before importing again.
+
+Restore stops Puma while it drops/reloads the DB; start it after (or run finalize / `systemctl start puma-kiosk`).
+
+## Production cutover
+
+Same flow with `DOMAIN_PROFILE=production` (default), six A records, and finalize without the trackerdev env. Optional frozen dump: `export-from-source.sh --maintenance`.
+
+## Local Docker dump
 
 ```bash
-# From a migration tarball OR a .sql / .sql.gz:
 ./scripts/migrate/prepare-local-dump.sh /path/to/kiosk-migrate-*.tar.gz
-# → docker/db/01-kiosk_development.sql.gz
-
 docker compose --profile app up -d --build
-# http://localhost:3000
 ```
 
-Details: [docs/DOCKER.md](../../docs/DOCKER.md).
+See [docs/DOCKER.md](../../docs/DOCKER.md). Capistrano from Docker: [docs/CAPISTRANO_DOCKER.md](../../docs/CAPISTRANO_DOCKER.md).
 
 ## Related
 
 - [docs/DEPLOY.md](../../docs/DEPLOY.md)
-- Capistrano: `config/deploy.rb`
+- Capistrano: `config/deploy.rb` (`set :domain, 'rosa'`, repo `picocastillo/cateringsolutions`, branch `master`)

@@ -7,6 +7,7 @@ Multi-tenant billing, inventory, and order management for catering / restaurants
 | Guide | Description |
 |---|---|
 | [docs/DOCKER.md](docs/DOCKER.md) | Docker local (app + MariaDB/Redis; dónde poner el dump de la DB) |
+| [docs/CAPISTRANO_DOCKER.md](docs/CAPISTRANO_DOCKER.md) | Deploy a producción con Capistrano **desde Docker** (sin Ruby en el Mac) |
 | [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md) | Run the app on your machine (Docker MariaDB/Redis, Ruby 3.4.8) |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Production deploy & ops on the VPS (Capistrano, Puma, Delayed Job) |
 | [PARALLEL_TESTING.md](PARALLEL_TESTING.md) | Parallel RSpec / Selenium grid |
@@ -63,8 +64,12 @@ git pull
 # ... your commits ...
 git push origin rosa
 
-# 2. Deploy from this machine
+# 2. Deploy from this machine (Ruby + Capistrano en el Mac)
 bundle exec cap production deploy
+
+# o sin Ruby local — ver docs/CAPISTRANO_DOCKER.md
+docker compose --profile deploy build deploy
+docker compose --profile deploy run --rm deploy
 ```
 
 Capistrano will: checkout `rosa` on the server → `bundle` + `yarn` → assets → migrations → restart `puma-kiosk` → restart Delayed Job pools → cleanup old releases.

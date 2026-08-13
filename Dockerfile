@@ -17,6 +17,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     default-libmysqlclient-dev \
     default-mysql-client \
     git \
+    openssh-client \
     imagemagick \
     libffi-dev \
     libyaml-dev \

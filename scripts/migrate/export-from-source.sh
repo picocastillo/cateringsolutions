@@ -79,45 +79,70 @@ copy_if_exists() {
   fi
 }
 
+read_yml_password() {
+  local yml="${SHARED_PATH}/config/database.yml"
+  local awk_prog='
+    /^production:/ { p=1; next }
+    p && /^[^[:space:]#]/ { p=0 }
+    p && $1=="password:" {
+      sub(/^[[:space:]]*password:[[:space:]]*/, "")
+      gsub(/^["'\'']|["'\'']$/, "")
+      print
+      exit
+    }'
+  if [[ -r "${yml}" ]]; then
+    awk "${awk_prog}" "${yml}"
+  elif [[ -f "${yml}" ]]; then
+    sudo awk "${awk_prog}" "${yml}"
+  fi
+}
+
 dump_database() {
   echo "==> Dumping MariaDB database '${DB_NAME}'"
+  echo "    this can take several minutes — do not Ctrl-C"
   local dump_file="${PACK_DIR}/kiosk.sql"
-  local mysql_args=(-h "${DB_HOST}" -u "${DB_USER}")
+  local dumped=0
+
+  if [[ -z "${DB_PASSWORD:-}" ]]; then
+    DB_PASSWORD="$(read_yml_password || true)"
+  fi
 
   if [[ -n "${DB_PASSWORD:-}" ]]; then
     export MYSQL_PWD="${DB_PASSWORD}"
-  fi
-
-  local dump_cmd=(mysqldump
-    --single-transaction
-    --routines
-    --triggers
-    --events
-    --default-character-set=utf8mb4
-    "${mysql_args[@]}"
-    "${DB_NAME}"
-  )
-
-  if [[ -n "${MYSQLDUMP_OPTS:-}" ]]; then
-    # shellcheck disable=SC2206
-    dump_cmd+=(${MYSQLDUMP_OPTS})
-  fi
-
-  if ! "${dump_cmd[@]}" > "${dump_file}" 2>/tmp/kiosk-mysqldump.err; then
-    echo "mysqldump failed; retrying via sudo mysqldump..." >&2
-    cat /tmp/kiosk-mysqldump.err >&2 || true
-    if sudo mysqldump \
+    if mysqldump \
       --single-transaction --routines --triggers --events \
-      --default-character-set=utf8mb4 \
-      "${DB_NAME}" > "${dump_file}"; then
-      echo "    dumped via sudo mysqldump"
+      --default-character-set=utf8mb4 --max_allowed_packet=1G \
+      -h "${DB_HOST}" -u "${DB_USER}" "${DB_NAME}" > "${dump_file}"; then
+      dumped=1
+      echo "    dumped via TCP ${DB_HOST} as ${DB_USER}"
     else
-      exit 1
+      rm -f "${dump_file}"
+      echo "    TCP dump failed; will try sudo unix_socket"
     fi
+    unset MYSQL_PWD
+  fi
+
+  if [[ "${dumped}" -ne 1 ]]; then
+    sudo mysqldump \
+      --protocol=socket \
+      --single-transaction --routines --triggers --events \
+      --default-character-set=utf8mb4 --max_allowed_packet=1G \
+      "${DB_NAME}" > "${dump_file}"
+    echo "    dumped via sudo unix_socket"
+  fi
+
+  if [[ ! -s "${dump_file}" ]]; then
+    echo "ERROR: dump is empty" >&2
+    exit 1
+  fi
+  if ! grep -q 'CREATE TABLE `tiendas`' "${dump_file}"; then
+    echo "ERROR: dump is missing table tiendas — aborting" >&2
+    exit 1
   fi
 
   gzip -9 "${dump_file}"
-  echo "    wrote ${PACK_DIR}/kiosk.sql.gz"
+  gzip -t "${PACK_DIR}/kiosk.sql.gz"
+  echo "    wrote ${PACK_DIR}/kiosk.sql.gz ($(du -h "${PACK_DIR}/kiosk.sql.gz" | awk '{print $1}'))"
 }
 
 pack_shared() {
@@ -176,7 +201,7 @@ pack_server_configs() {
       if [[ -n "${DB_PASSWORD:-}" ]]; then export MYSQL_PWD="${DB_PASSWORD}"; fi
       mysql -N -h "${DB_HOST}" -u "${DB_USER}" "${DB_NAME}" \
         -e "SELECT dominio FROM tiendas WHERE dominio IS NOT NULL AND dominio != ''" 2>/dev/null \
-      || sudo mysql -N "${DB_NAME}" \
+      || sudo mysql --protocol=socket -N "${DB_NAME}" \
         -e "SELECT dominio FROM tiendas WHERE dominio IS NOT NULL AND dominio != ''" 2>/dev/null \
       || true
     )"

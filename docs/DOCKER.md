@@ -124,7 +124,7 @@ docker compose --profile app down
 
 ```text
 Dockerfile                 # imagen Ruby 3.4.8 + Node 16 + Yarn
-docker-compose.yml         # mariadb, redis, web, worker, selenium
+docker-compose.yml         # mariadb, redis, web, worker, deploy, selenium
 docker/entrypoint.sh       # espera DB, arregla log/, bundle/yarn
 docker/db/                 # ← ACÁ VA EL DUMP
   00-create-databases.sql
@@ -156,6 +156,18 @@ docker compose --profile app up -d worker
 | `log` apunta a `/var/www/...` | El entrypoint lo reemplaza por un directorio local |
 | Gems desactualizadas | `docker compose --profile app exec web bundle install` |
 | PDFs / Nailgun | En Docker no está Java 8; PDF con Flying Saucer puede fallar (igual que en setup mínimo local) |
+
+## Deploy a producción (Capistrano)
+
+El servicio `deploy` (profile `deploy`) corre Capistrano por SSH al VPS. No usa MariaDB/Redis ni el profile `app`.
+
+Guía completa (español): [CAPISTRANO_DOCKER.md](./CAPISTRANO_DOCKER.md).
+
+```bash
+docker compose --profile deploy build deploy
+docker compose --profile deploy run --rm --entrypoint ssh deploy -T rosa
+docker compose --profile deploy run --rm deploy   # cap production deploy
+```
 
 ## Relación con el setup híbrido
 

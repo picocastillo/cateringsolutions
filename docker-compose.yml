@@ -95,6 +95,22 @@ services:
       web:
         condition: service_started
 
+  # One-shot Capistrano runner (no MariaDB/Redis). See docs/CAPISTRANO_DOCKER.md
+  deploy:
+    build: .
+    profiles: ["deploy"]
+    working_dir: /app
+    entrypoint: []
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["bundle", "exec", "cap", "production", "deploy"]
+
   selenium:
     image: selenium/standalone-chrome:4.9.0
     container_name: selenium_chrome

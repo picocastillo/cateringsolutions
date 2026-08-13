@@ -85,12 +85,15 @@ ln -f shared/config/qz_tray/private-key.pem → release/config/qz_tray/
 Requires Capistrano configured locally (see `Capfile`, `config/deploy.rb`) and SSH access as `dev` to the host aliased as `rosa`.
 
 ```bash
-# From a clean rosa branch (or the commit you intend to ship)
-git checkout rosa
+# From a clean branch matching config/deploy.rb (currently master)
+git checkout master
 git pull
+git push origin master
 
 bundle exec cap production deploy
 ```
+
+To run Capistrano **from Docker** (no Ruby on the Mac): [CAPISTRANO_DOCKER.md](./CAPISTRANO_DOCKER.md).
 
 What the deploy does (high level):
 

@@ -77,6 +77,23 @@ timedatectl set-timezone "${TZ_AREA}" || true
 
 echo "==> Installing packages"
 apt-get update -y
+
+# Ubuntu's default-mysql-* metapackages pull Oracle MySQL 8.0 client,
+# which conflicts with MariaDB (virtual-mysql-client / mysql-client-core-8.0).
+# Purge them so a re-run after a failed mix still succeeds.
+apt-get remove -y --purge \
+  default-mysql-client \
+  default-libmysqlclient-dev \
+  mysql-client \
+  mysql-client-8.0 \
+  mysql-client-core-8.0 \
+  mysql-server \
+  mysql-server-8.0 \
+  mysql-server-core-8.0 \
+  libmysqlclient-dev \
+  2>/dev/null || true
+apt-get -y --purge autoremove || true
+
 apt-get install -y --no-install-recommends \
   build-essential \
   curl \
@@ -91,8 +108,8 @@ apt-get install -y --no-install-recommends \
   libssl-dev \
   libyaml-dev \
   zlib1g-dev \
-  default-libmysqlclient-dev \
-  default-mysql-client \
+  libmariadb-dev \
+  libmariadb-dev-compat \
   mariadb-server \
   mariadb-client \
   redis-server \

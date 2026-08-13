@@ -36,7 +36,7 @@ set :user, 'dev'
 set :use_sudo, false
 set :deploy_to, "/var/www/#{application}"
 set :deploy_via, :remote_cache
-set :repository, 'git@github.com:tanqueta/kiosk.git'
+set :repository, 'git@github.com:picocastillo/cateringsolutions.git'
 default_run_options[:pty] = true
 
 set :default_environment, 'PATH' => '$HOME/.asdf/shims:$HOME/.asdf/bin:$PATH'
@@ -45,7 +45,7 @@ desc 'deploy to the production environment'
 task :production do
   set :domain, 'rosa'
   set :rails_env, 'production'
-  set :branch, 'rosa'
+  set :branch, 'master'
   finalize
 end
 

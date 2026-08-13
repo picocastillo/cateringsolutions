@@ -12,6 +12,8 @@ Environment=RAILS_ENV=production
 Environment=WEB_CONCURRENCY=5
 Environment=RAILS_MAX_THREADS=5
 Environment=MALLOC_ARENA_MAX=2
+# Optional: site-wide test banner. Uncomment or set via `systemctl edit puma-kiosk`.
+# Environment=MODO_PRUEBA=true
 # asdf Ruby 3.4.8 — adjust if asdf install path differs
 Environment=PATH=/home/dev/.asdf/shims:/home/dev/.asdf/installs/ruby/3.4.8/bin:/home/dev/.asdf/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/bin/bash -lc 'cd /var/www/kiosk/current && bundle exec puma -C config/puma.rb'

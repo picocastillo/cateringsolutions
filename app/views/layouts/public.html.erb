@@ -88,7 +88,8 @@
     }
   <% end %>
   </style>
-  <body class="fix-header fix-sidebar card-no-border mini-sidebar <%= 'resizable' if true %>" id="<%= yield :page_id %>">
+  <body class="fix-header fix-sidebar card-no-border mini-sidebar <%= 'resizable' if true %><%= ' modo-prueba' if modo_prueba? %>" id="<%= yield :page_id %>">
+    <%= render '/layouts/modo_prueba_banner' %>
     <%= render '/layouts/menu_admin' %>
     <div id="main-wrapper">
       <div>

@@ -250,6 +250,13 @@ if [[ "${DEPLOY_USER}" != "dev" ]]; then
   sed -i "s|/home/dev|/home/${DEPLOY_USER}|g; s|User=dev|User=${DEPLOY_USER}|; s|Group=dev|Group=${DEPLOY_USER}|" \
     /etc/systemd/system/puma-kiosk.service
 fi
+if [[ "${DOMAIN_PROFILE}" == "trackerdev" ]]; then
+  if ! grep -q '^Environment=MODO_PRUEBA=' /etc/systemd/system/puma-kiosk.service; then
+    sed -i '/^Environment=RAILS_ENV=production$/a Environment=MODO_PRUEBA=true' \
+      /etc/systemd/system/puma-kiosk.service
+  fi
+  echo "    MODO_PRUEBA=true (site-wide test banner)"
+fi
 systemctl daemon-reload
 systemctl enable puma-kiosk
 echo "    puma-kiosk enabled (start after first real Capistrano deploy)"

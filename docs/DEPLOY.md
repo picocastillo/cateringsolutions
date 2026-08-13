@@ -136,6 +136,26 @@ MALLOC_ARENA_MAX=2
 ExecStart=bundle exec puma -C config/puma.rb
 ```
 
+### Test-mode banner (`MODO_PRUEBA`)
+
+Set `MODO_PRUEBA=true` on Puma to show a site-wide **MODO PRUEBA** bar (login + logged-in pages). Trackerdev bootstrap enables it automatically. On an existing unit:
+
+```bash
+sudo systemctl edit puma-kiosk
+```
+
+```ini
+[Service]
+Environment=MODO_PRUEBA=true
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart puma-kiosk
+```
+
+Remove the drop-in (or set `MODO_PRUEBA=false`) and restart to hide it. Delayed Job does not need this variable.
+
 Puma binds to:
 
 ```text

@@ -133,4 +133,34 @@ RSpec.describe ApplicationHelper, type: :helper do
       expect(result).to have_selector('meta[name="turbolinks-cache-control"][content="no-cache"]', visible: false)
     end
   end
+
+  describe '#modo_prueba?' do
+    around do |example|
+      original = ENV.fetch('MODO_PRUEBA', nil)
+      begin
+        example.run
+      ensure
+        if original.nil?
+          ENV.delete('MODO_PRUEBA')
+        else
+          ENV['MODO_PRUEBA'] = original
+        end
+      end
+    end
+
+    it 'is true when MODO_PRUEBA is true' do
+      ENV['MODO_PRUEBA'] = 'true'
+      expect(helper.modo_prueba?).to be true
+    end
+
+    it 'is false when MODO_PRUEBA is unset' do
+      ENV.delete('MODO_PRUEBA')
+      expect(helper.modo_prueba?).to be false
+    end
+
+    it 'is false when MODO_PRUEBA is any other value' do
+      ENV['MODO_PRUEBA'] = '1'
+      expect(helper.modo_prueba?).to be false
+    end
+  end
 end

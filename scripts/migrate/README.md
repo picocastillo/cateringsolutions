@@ -35,6 +35,16 @@ Same Rails app and MariaDB database `kiosk`. Tiendas keep production `dominio` v
 
 Canonical URL after finalize: **https://cateringsolutions.trackerdev.com.ar/** (`www` redirects to apex).
 
+Bootstrap sets `MODO_PRUEBA=true` on `puma-kiosk` so the site shows a **MODO PRUEBA** bar. On a VPS that was already bootstrapped:
+
+```bash
+sudo systemctl edit puma-kiosk
+# [Service]
+# Environment=MODO_PRUEBA=true
+sudo systemctl daemon-reload
+sudo systemctl restart puma-kiosk
+```
+
 ## Scripts
 
 | Script | Where | Role |

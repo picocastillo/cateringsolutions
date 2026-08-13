@@ -3629,3 +3629,45 @@ body > .tooltip {
     pointer-events: none;
   }
 }
+
+$modo-prueba-banner-height: 36px;
+
+.modo-prueba-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10050;
+  height: $modo-prueba-banner-height;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #f59e0b;
+  color: #1c1917;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+body.modo-prueba {
+  .topbar {
+    top: $modo-prueba-banner-height !important;
+  }
+
+  .left-sidebar {
+    top: $modo-prueba-banner-height !important;
+    height: calc(100vh - #{$modo-prueba-banner-height}) !important;
+  }
+
+  .page-wrapper {
+    padding-top: calc(64px + #{$modo-prueba-banner-height}) !important;
+  }
+
+  #login-page {
+    top: $modo-prueba-banner-height;
+    height: calc(100% - #{$modo-prueba-banner-height});
+  }
+}

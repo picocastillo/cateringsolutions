@@ -87,7 +87,8 @@
 <% end %>
 
 
-  <body class="fix-header fix-sidebar card-no-border mini-sidebar resizable" id="<%= yield :page_id %>" <% if tienda_activa.color_de_fondo.present? %>style="background:<%= tienda_activa.color_de_fondo %>!important"<% end %> <% if current_user && !current_user.cliente? %>data-servicio-impresion="<%= current_user.servicio_de_impresion.name %>"<% end %>>
+  <body class="fix-header fix-sidebar card-no-border mini-sidebar resizable<%= ' modo-prueba' if modo_prueba? %>" id="<%= yield :page_id %>" <% if tienda_activa.color_de_fondo.present? %>style="background:<%= tienda_activa.color_de_fondo %>!important"<% end %> <% if current_user && !current_user.cliente? %>data-servicio-impresion="<%= current_user.servicio_de_impresion.name %>"<% end %>>
+    <%= render '/layouts/modo_prueba_banner' %>
     <% if inside %>
     <% if session.delete(:print_on_load) %>
       <div id="print_on_load_required">

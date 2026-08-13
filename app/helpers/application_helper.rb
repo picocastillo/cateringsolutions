@@ -63,6 +63,10 @@ module ApplicationHelper
     tag.meta(name: 'turbolinks-cache-control', content: @turbolinks_cache_control || 'cache')
   end
 
+  def modo_prueba?
+    ENV['MODO_PRUEBA'] == 'true'
+  end
+
   def loading_indicator
     content_tag :div, '', class: 'busy loading-indicator'
   end
